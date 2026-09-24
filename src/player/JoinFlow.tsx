@@ -131,7 +131,9 @@ export function CodeScreen({ initialError, onSubmit }: { initialError: string | 
           <label htmlFor="join-code">{t('join.code.title')}</label>
         </h1>
       </header>
-      <div className={styles.codeField}>
+      {/* The input covers the cells, so a tap on any cell lands on it; the click handler also
+          refocuses it if something else took the tap (e.g. the keyboard was dismissed). */}
+      <div className={styles.codeField} onClick={() => inputRef.current?.focus()} data-testid="code-cells">
         <div className={styles.cells} aria-hidden="true" data-invalid={error ? 'true' : undefined}>
           {Array.from({ length: CODE_LENGTH }, (_, i) => (
             <span

@@ -49,6 +49,20 @@ describe('JoinFlow P1 (code)', () => {
     expect(screen.getByTestId('screen-name')).toBeInTheDocument();
     expect(screen.getByText('4821')).toBeInTheDocument();
   });
+
+  it('draws the typed digits in four cells; tapping any cell focuses the real input', () => {
+    renderFlow();
+    const input = screen.getByTestId('code-input');
+    const cells = screen.getByTestId('code-cells').querySelectorAll('[aria-hidden="true"] > span');
+    expect(cells).toHaveLength(4);
+    input.blur();
+    expect(document.activeElement).not.toBe(input);
+    fireEvent.click(cells[3]);
+    expect(document.activeElement).toBe(input);
+    fireEvent.change(input, { target: { value: '4٨' } });
+    expect(Array.from(cells, (c) => c.textContent)).toEqual(['4', '8', '', '']);
+    expect(input).toHaveValue('48');
+  });
 });
 
 describe('JoinFlow P2 (name)', () => {

@@ -9,6 +9,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--s-5);
+  flex: 1;
   min-height: 100%;
   padding-block: var(--s-6);
   padding-inline: var(--phone-gutter);

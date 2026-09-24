@@ -274,7 +274,7 @@ export function Trivia({ seed, roundStartEpoch, roundEnded, snapshot, onProgress
 
   if (state.phase === 'intro') {
     return (
-      <div className={styles.screen}>
+      <div className={`${styles.screen} ${styles.screenCenter}`}>
         <div className={styles.intro}>
           <p className={styles.eyebrow}>{t('game.trivia.intro')}</p>
           <h1 className={styles.title}>{t('game.trivia.name')}</h1>
@@ -289,7 +289,7 @@ export function Trivia({ seed, roundStartEpoch, roundEnded, snapshot, onProgress
     const score = scoreTrivia(raw);
     const correctCount = state.answers.filter((a) => a.correct).length;
     return (
-      <div className={styles.screen}>
+      <div className={`${styles.screen} ${styles.screenCenter}`}>
         <p className={styles.score}>{score}</p>
         <p className={styles.resultLine}>{t('game.trivia.result', { n: correctCount })}</p>
       </div>

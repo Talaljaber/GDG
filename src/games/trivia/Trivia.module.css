@@ -8,6 +8,7 @@
   align-items: stretch;
   justify-content: flex-start;
   gap: var(--s-5);
+  flex: 1;
   min-height: 100%;
   padding-block: var(--s-6);
   padding-inline: var(--phone-gutter);
@@ -191,8 +192,9 @@ button.option:active {
 
 .score {
   font-size: var(--type-score-size);
-  font-weight: var(--type-score-weight);
-  color: var(--primary-text);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
   margin: 0;
 }
@@ -242,4 +244,9 @@ button.option:active {
   font-size: var(--type-caption-size);
   letter-spacing: normal;
   text-transform: none;
+}
+
+/* Intro card and result block sit in the vertical middle, like the other games. */
+.screenCenter {
+  justify-content: center;
 }
