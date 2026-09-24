@@ -14,7 +14,8 @@ const DashboardApp = lazy(() =>
 
 // No router library (ADR-107): three paths switched by location.pathname.
 function App() {
-  switch (window.location.pathname) {
+  // Normalise a trailing slash so '/host/' opens the host, matching the admin-session check in lib/supabase.ts.
+  switch (window.location.pathname.replace(/\/+$/, '') || '/') {
     case '/host':
       return (
         <Suspense fallback={<Spinner />}>
