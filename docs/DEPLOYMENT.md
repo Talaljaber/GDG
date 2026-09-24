@@ -10,7 +10,7 @@ Last updated: 2026-09-24
 
 | | Local | Cloud |
 |---|---|---|
-| Supabase | `supabase start` (CLI stack on this machine) | one project, `efujkyahxteycysrcgkl`, for dev and prod (ADR-127) |
+| Supabase | `supabase start` (CLI stack on this machine) | one project, `gdg-booth` (ref `ppikklvltpfdwbxtilme`, `eu-central-1`), for dev and prod (ADR-127) |
 | Netlify | `npm run dev` | deploy previews + branch deploys (free) and the production deploy of `main` (15 credits each, ADR-126) |
 | Used by | development, unit/pgTAP/e2e tests, load tests | deploy previews, rehearsals, dry run, event |
 
@@ -48,6 +48,12 @@ Settings → API Keys: copy the **publishable key** (`sb_publishable_…`). Neve
 
 ### 2.6 Schema
 Apply migrations (§5). Then check: Database → Publications → `supabase_realtime` contains `sessions`, `rounds`, `players`, `scores`, `hidden_names`.
+
+### 2.7 Cloud project status (2026-09-24)
+- `gdg-booth` (`ppikklvltpfdwbxtilme`) created in `eu-central-1`. It replaces the first project (`efujkyahxteycysrcgkl`, `ap-northeast-2` Seoul, schema pasted in by hand with no migration history), which is retired: nothing points at it.
+- `supabase db push` applied `20260924000001`–`0007` and `20260925000200` (the migrations committed on `main`). The lineup migration (`20260925000300_lineup_exactly_three`, renamed from `…000100` so it sorts after `000200`) is **not applied yet**: `main` still runs 1-game sessions, and that migration requires exactly 3. Push it (plain `supabase db push`) only once the Phase 3 code that sets `ROUNDS_PER_SESSION = 3` is on `main`.
+- Verified from the catalog: 8 tables in `public`, all with RLS; anon has no table grants and can execute only `keepalive()`; `supabase_realtime` publishes `hidden_names`, `players`, `rounds`, `scores`, `sessions`; the only definer functions in `public` are `join_session`, `keepalive` and Supabase's `rls_auto_enable` (the "automatic RLS" event trigger `ensure_rls`, left on; the pgTAP checks skip event-trigger functions).
+- `supabase test db --linked` runs as a temporary CLI login role that can't `truncate` or create `pgtap`, so the full suite on the cloud needs the database password: `$env:SUPABASE_DB_PASSWORD = "<db password>"; npx supabase test db --linked` (PowerShell), run by a maintainer. Pending: that run (AC0.1), the Auth settings (§2.2–2.3), the admin (§2.4, `host@gdg.com`), the keepalive secrets (§4) and Netlify (§3).
 
 ## 3. Netlify setup
 
@@ -93,7 +99,7 @@ Source: https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for
   - New migration: `supabase migration new <name>` → edit the SQL file in `supabase/migrations/`.
   - Local: `supabase start`, `supabase db reset` (re-applies all migrations), `supabase test db` (pgTAP tests in `supabase/tests/`, https://supabase.com/docs/guides/local-development/testing/overview).
   - A local `db reset` also wipes auth users: run `npm run dev:admin` afterwards. It creates (or repairs) the local admin from `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` in `.env.local` (non-`VITE_`, never bundled) with `app_metadata.role = 'admin'`, reading the CLI's local secret key at runtime from `supabase status -o env` (never stored anywhere); it refuses any non-localhost API URL.
-  - Remote: `supabase link --project-ref efujkyahxteycysrcgkl`, `supabase migration list --linked`, then `supabase db push` and `supabase test db --linked`.
+  - Remote: `supabase link --project-ref ppikklvltpfdwbxtilme`, `supabase migration list --linked`, then `supabase db push` and `supabase test db --linked`.
 - Rules (`.claude/rules/supabase.md`):
   - Every schema change is a migration; never edit the schema in the dashboard.
   - Never edit an applied migration; add a new one.
