@@ -1,0 +1,146 @@
+/* Perfect Circle screen. Tokens only (docs/DESIGN_SYSTEM.md §2-6); no raw
+   colours or durations. Logical properties only (no left/right). The canvas
+   geometry is never mirrored in RTL (§8). */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  min-height: 100%;
+  padding-block: var(--s-5);
+  padding-inline: var(--phone-gutter);
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.title {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  margin: 0;
+}
+
+.pitch {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Label / hint / score ring area above the canvas; fixed height so the
+   canvas never jumps between states. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-block-size: calc(var(--s-8) * 2);
+}
+
+.draw {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--primary-text);
+  margin: 0;
+}
+
+.hint {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--text);
+  margin: 0;
+}
+
+.board {
+  position: relative;
+  flex: none;
+  direction: ltr; /* game geometry is not mirrored */
+}
+
+.canvas {
+  display: block;
+  background: var(--gdg-paper);
+  border-radius: var(--r-card);
+  box-shadow: 0 0 0 1px var(--gdg-line);
+  touch-action: none;
+  cursor: crosshair;
+  opacity: 1;
+}
+
+/* Invalid stroke fades out while the hint shows (§7). */
+.fading {
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-exit);
+}
+
+.centreDot {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  inline-size: var(--s-2);
+  block-size: var(--s-2);
+  border-radius: var(--r-chip);
+  background: var(--gdg-line);
+  pointer-events: none;
+}
+
+.ring {
+  position: relative;
+  inline-size: calc(var(--s-8) + var(--s-6));
+  block-size: calc(var(--s-8) + var(--s-6));
+}
+
+.ringSvg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.ringTrack {
+  fill: none;
+  stroke: var(--gdg-line);
+  stroke-width: 10;
+}
+
+.ringProgress {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+/* Ink, not amber: amber is never text on a light background. */
+.ringValue {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-score-weight);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
