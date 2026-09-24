@@ -15,7 +15,7 @@ describe('en.json / ar.json', () => {
 
 describe('translate: interpolation', () => {
   it('substitutes a single placeholder', () => {
-    expect(translate('en', 'lobby.you_are', { name: 'Sara' })).toBe('Playing as Sara');
+    expect(translate('en', 'host.lobby.remove_confirm', { name: 'Sara' })).toBe('Remove Sara from this session?');
   });
 
   it('substitutes multiple placeholders', () => {
@@ -23,11 +23,11 @@ describe('translate: interpolation', () => {
   });
 
   it('leaves an unmatched placeholder untouched', () => {
-    expect(translate('en', 'lobby.you_are')).toBe('Playing as {name}');
+    expect(translate('en', 'host.lobby.remove_confirm')).toBe('Remove {name} from this session?');
   });
 
   it('interpolates in Arabic too', () => {
-    expect(translate('ar', 'lobby.you_are', { name: 'سارة' })).toBe('اسمك في اللعبة: سارة');
+    expect(translate('ar', 'host.lobby.remove_confirm', { name: 'سارة' })).toBe('إزالة سارة من هذه الجلسة؟');
   });
 });
 
