@@ -1,0 +1,74 @@
+/*
+ * Mosaic shatter layer (docs/DESIGN_SYSTEM.md §5, §6.2). Global class names
+ * (gdg-shatter-*) so integrating screens can reference them.
+ *
+ * Z-order rule: the shard layer never covers the logo. The layer sits at
+ * --z-shatter, below banners (--z-banner) and dialogs (--z-dialog); an
+ * element with .gdg-shatter-logo-safe sits at --z-shatter-logo, above it.
+ * These two layer tokens belong in src/styles/tokens.css (§4 layers); they
+ * live here until that file is next edited.
+ */
+:root {
+  --z-shatter: 40;
+  --z-shatter-logo: 45;
+}
+
+.gdg-shatter-layer {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-shatter);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.gdg-shatter-shard {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  overflow: visible;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.gdg-shatter-shard polygon {
+  stroke: var(--gdg-paper);
+  stroke-width: var(--line-width);
+  stroke-linejoin: round;
+}
+
+/* Celebrate: amber ring (the glow pulse animates only its opacity/transform). */
+.gdg-shatter-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-card);
+  box-shadow:
+    0 0 0 var(--line-width-strong) var(--gdg-amber),
+    0 0 var(--s-5) var(--s-1) var(--gdg-amber);
+  will-change: transform, opacity;
+}
+
+/* Put this on the logo (or its wrapper) so it stays above the shard layer. */
+.gdg-shatter-logo-safe {
+  position: relative;
+  z-index: var(--z-shatter-logo);
+}
+
+/* Celebrate / ShatterBurst wrap their single child without a box of their own. */
+.gdg-shatter-contents {
+  display: contents;
+}
+
+/* ShatterTransition: both screens share one grid cell during a crossfade. */
+.gdg-shatter-stack {
+  display: grid;
+}
+
+.gdg-shatter-stack > .gdg-shatter-cell {
+  grid-area: 1 / 1;
+  min-inline-size: 0;
+}
+
+.gdg-shatter-leaving {
+  pointer-events: none;
+}
