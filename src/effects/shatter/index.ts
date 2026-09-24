@@ -47,5 +47,5 @@ export { SHARD_CAPS, SHARD_FILLS, createShards, type Density, type Shard, type R
 export const SHATTER_LOGO_CLASS = 'gdg-shatter-logo-safe';
 /** Class of every shard overlay (fixed, z-index var(--z-shatter)). */
 export const SHATTER_LAYER_CLASS = 'gdg-shatter-layer';
-/** CSS custom properties for the layer order (defined in shatter.css). */
+/** CSS custom properties for the layer order (defined in src/styles/tokens.css). */
 export const SHATTER_Z_TOKENS = { layer: '--z-shatter', logo: '--z-shatter-logo' } as const;

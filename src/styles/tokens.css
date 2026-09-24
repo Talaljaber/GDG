@@ -98,6 +98,10 @@
   --focus-width: 3px;
   --dot-size: 12px;
   --proj-dot-size: 2.4vh;
+  /* Layers (DESIGN_SYSTEM §4): the shard overlay sits below banners and dialogs;
+     the logo (SHATTER_LOGO_CLASS) sits above the shard overlay (§5). */
+  --z-shatter: 40;
+  --z-shatter-logo: 45;
   --z-banner: 50;
   --z-dialog: 100;
   --dialog-max-width: 36rem;
@@ -135,11 +139,19 @@
   --focus: var(--gdg-amber);
 }
 
-/* ---- §6.2 Reduced motion: zero every duration ---- */
+/* ---- §6.2 Reduced motion: zero every duration ----
+   The OS setting, or the host's "Reduce motion" toggle on the big screen
+   (sets data-motion="reduced" on <html>, SCREENS H6). */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-fast: 0ms;
     --dur-base: 0ms;
     --dur-slow: 0ms;
   }
+}
+
+:root[data-motion='reduced'] {
+  --dur-fast: 0ms;
+  --dur-base: 0ms;
+  --dur-slow: 0ms;
 }

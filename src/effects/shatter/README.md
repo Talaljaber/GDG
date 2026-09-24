@@ -11,6 +11,8 @@ Always import from the folder (`index.ts`). The layer's CSS (`shatter.css`) load
 
 ## Where each variant goes (SCREENS.md)
 
+Wired in Phase 5; the per-screen list is DESIGN_SYSTEM §6.2 "Where it's wired". Screens don't import this folder for rows, dots or celebrate: they go through `src/components/RevealIn.tsx` / `useRevealRows.ts`, and screen changes through `src/components/ScreenTransition.tsx`.
+
 | Variant | Component | Screens |
 |---|---|---|
 | Screen transition | `<ShatterTransition>` | Player join → lobby, round → intermission, intermission → next round, results. Host H1 → H2 → H3 → H4 |
@@ -40,7 +42,7 @@ The shard layer never covers the logo.
 - Each overlay is a `position: fixed` element appended to `<body>`, with class `gdg-shatter-layer` (`SHATTER_LAYER_CLASS`) and `z-index: var(--z-shatter)` = 40. That puts it below `--z-banner` (50) and `--z-dialog` (100).
 - Put **`SHATTER_LOGO_CLASS`** (`gdg-shatter-logo-safe`, z-index `var(--z-shatter-logo)` = 45) on the logo `<img>` or its wrapper.
 - No ancestor of the logo may create a stacking context below 45 (transform, opacity < 1, filter, or a z-index). The simplest way: keep the TopBar/logo **outside** `<ShatterTransition>` and outside the merge stage. In full motion, `ShatterTransition` never sets transform or opacity on its content. In reduced motion it fades whole screens, so a logo inside it would fade. Keep the logo outside.
-- `--z-shatter` and `--z-shatter-logo` are defined in `shatter.css` for now. **Move them into `src/styles/tokens.css` (§4 layers) and DESIGN_SYSTEM §4** the next time those files are edited. This agent was limited to `src/effects/`.
+- `--z-shatter` and `--z-shatter-logo` are defined in `src/styles/tokens.css` (DESIGN_SYSTEM §4 layers); `shatter.css` only references them.
 - Never pass the logo, or an element containing it, to `Celebrate`, `ShatterIn`, `ShatterBurst` or as a merge target. They hide their element with inline `opacity`.
 
 ## API
@@ -103,7 +105,7 @@ const { ref, celebrate, cancel, playing } = useCelebrate<HTMLLIElement>({ densit
 - Each row is hidden, then assembles from shards top to bottom. The shards fly in from 24–64 px away with up to ±40° rotation. The row is revealed at the end of its slot, and the shards fade over 120 ms.
 - Shards per row come from `shardsPerItem()`, so the rows alive at the same time stay within the cap. That is at most 8 per row; 4 per row on a 10-row projector board; 2 on a phone. If the budget is 0 (a huge list with `stagger={0}`), rows just fade in.
 - Rows added after it plays just appear. Bump `trigger` to replay.
-- `delay` shifts the whole sequence. `src/components/RevealIn.tsx` (the per-element "SHATTER HOOK" another agent added) can either wrap each row in `<ShatterIn delay={delayMs}>` with one child, or call `playShatterIn([el], { delayMs, … })`. Its dots map to `<ShatterBurst delay={delayMs}>`.
+- `delay` shifts the whole sequence. Lists in the app use `useRevealRows` (`src/components/useRevealRows.ts`), which calls `playShatterIn` once per batch of new rows (so the budget covers the whole batch); dots use `<RevealIn variant="dot">` → `<ShatterBurst>`.
 
 ### `<DayBoardMerge>` and `playDayBoardMerge()`
 

@@ -5,13 +5,8 @@
  * Z-order rule: the shard layer never covers the logo. The layer sits at
  * --z-shatter, below banners (--z-banner) and dialogs (--z-dialog); an
  * element with .gdg-shatter-logo-safe sits at --z-shatter-logo, above it.
- * These two layer tokens belong in src/styles/tokens.css (§4 layers); they
- * live here until that file is next edited.
+ * Both layer tokens are defined in src/styles/tokens.css (DESIGN_SYSTEM §4).
  */
-:root {
-  --z-shatter: 40;
-  --z-shatter-logo: 45;
-}
 
 .gdg-shatter-layer {
   position: fixed;
