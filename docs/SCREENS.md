@@ -2,7 +2,7 @@
 
 Purpose: every screen of the player phone, the big screen (host view) and the admin dashboard: its states, what it shows, which strings it uses (keys from `COPY.md`), and how it transitions. Game-internal states are specified in each `docs/games/*.md` file and only referenced here. Visual tokens come from `DESIGN_SYSTEM.md`.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 Routes: `/` player · `/host` big screen · `/dashboard` admin (ADR-107). Sizes: phones portrait 320–430 px wide; big screen 16:9.
 
@@ -154,14 +154,14 @@ States: `normal`, `no_scores` (session had no scores), `not_scored` (this player
 Strings: `results.title`, `results.your_total`, `results.rank`, `results.breakdown_missing`, `results.no_scores`, `results.join_next`, `game.*.name`.
 
 **P10 Day board.** Shown after the host taps Show day board (phones follow `sessions.day_board_shown_at`): tabs for the session's 3 games, top 10 each + own row (matched by name key, without suffix); the player's best today is highlighted. Boards poll every 10 s; hidden names are polled every 3 s and dropped at once (AC2.9). "Join the next game" stays at the bottom. A session closed by New session keeps showing it.
-Strings: `dayboard.title`, `dayboard.empty`, `game.*.name`, `results.join_next`.
+Strings: `dayboard.title`, `host.dayboard.empty`, `game.*.name`, `results.join_next`.
 
 **P11 Session ended elsewhere.** If the session was closed by a new event day (E25): a `closed` session that never reached results, or whose event day is no longer current. Message + button.
 Strings: `results.session_ended`, `results.join_next`.
 
 ## 2. Big screen (host view, projected)
 
-Everything on this screen uses the projector scale (`DESIGN_SYSTEM.md` §3.2). Host controls are small, grouped in the inline-end bottom corner, and labelled.
+Everything on this screen uses the projector scale (`DESIGN_SYSTEM.md` §3.2) and the v2 layout (§0.2): a header strip (logo · `host.header.tagline` or the screen title · inline-end the next-session code during play), a 12-column body, and one operator bar at the bottom (lineup / next session's games inline-start; `host.settings.title` menu with Reduce motion, language and Sign out; then the screen's one solid primary action). Boards are tables (`host.board.rank`, `host.board.player`, `host.board.score`). On H2/H3 the logo sits outside the screen transitions (`HostShell`), so it never fades.
 
 ### 2.1 Flow
 
@@ -199,10 +199,11 @@ Strings: `host.signin.title`, `host.signin.email`, `host.signin.password`, `host
 │  Games: ① Stop the Clock ② Odd One Out ③ Trivia  [edit]   [ Start ] │
 └────────────────────────────────────────────────────────────────────┘
 ```
-- The join instructions (`host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.code_label`) are shown **in both languages at once**, since the audience is mixed; everything else follows the host's screen language.
+- v2 body: join panel (4 cols: `host.lobby.join_title`, the QR, `host.lobby.or_visit` with the URL, three numbered steps `host.lobby.step_scan`/`step_code`/`step_name`), the code hero (4 cols, `host.lobby.code_label`, framed by thin facing chevrons), the players panel (4 cols: `host.lobby.players` count, a 2-column grid of name tags; a long list scrolls inside the panel with the newest name in view; empty = six dashed slots + `host.lobby.empty`). At 16:10 and 4:3 the join panel takes the inline-start column and the code sits above the players.
+- The join labels (`host.lobby.join_title`, the steps, `host.lobby.code_label`) are shown **in both languages at once, on one line** (screen language, then `·` and the other language, muted); everything else follows the host's screen language.
 - Players appear with a shatter-in; presence dot `●` blue when connected, `○` grey after 10 s without presence (ADR-103).
 - Remove `[×]` → confirm → `admin_remove_player`.
-- Lineup picker: one card per **registered** game (`src/games/registry.ts`), tap to add in order (① ② ③), tap again to remove, at most `ROUNDS_PER_SESSION`; Trivia greyed if fewer than 5 ready questions. A valid pick is saved at once with `admin_set_lineup` (phones' P3 follows); the lobby itself comes from `admin_open_lobby` with the default lineup (first `ROUNDS_PER_SESSION` registered games).
+- Lineup picker (a compact segmented list with small tabular ordinals): one segment per **registered** game (`src/games/registry.ts`), tap to add in order (① ② ③), tap again to remove, at most `ROUNDS_PER_SESSION`; Trivia greyed if fewer than 5 ready questions. A valid pick is saved at once with `admin_set_lineup` (phones' P3 follows); the lobby itself comes from `admin_open_lobby` with the default lineup (first `ROUNDS_PER_SESSION` registered games).
 - Host controls (inline-end bottom corner, every host screen): the screen action (Start / End round / New session), Reduce motion (H6), the language toggle and Sign out (the rest of H6 comes later).
 - Start disabled until ≥ 1 player and a valid lineup.
 States: `empty`, `players`, `lineup_invalid`, `starting`.
@@ -227,10 +228,10 @@ Strings: `host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.code_label`, `hos
 - "next games ▾" opens the lineup picker for the **pending** session (ADR-009).
 - End round → confirm → `admin_end_round(force_end)`.
 - The host loop (`SESSION_LIFECYCLE.md` §3.1) ends the round by itself with `all_finished` when score rows ≥ joined players, or `time_cap` at the 128 s deadline (server time via one `server_now()` offset). "x/y finished" = score rows / joined players. Time left counts down the phones' 3 s + 120 s.
-- Corner code (inline-start bottom, H2–H5): `host.corner.next_code` with the pending session's code in large digits + `host.corner.late`. "next games ▾" (`host.lineup.next_title`) opens the same game cards as H1 for the pending session, with `common.done` to close it.
+- Next-session code (header inline-end, H2–H5): `host.corner.late` as an eyebrow + the pending session's code in tabular digits. H2 body: side panel (round eyebrow + game title, time left, `host.round.finished`, the lineup with the current round in blue) + the live board table; `host.round.no_scores_yet` before the first score. "next games ▾" (`host.lineup.next_title`) opens the same game cards as H1 for the pending session, with `common.done` to close it.
 - Stop the Clock rounds show scores only; guesses stay hidden until the intermission reveal.
 States: `live`, `no_scores_yet`, `ending`.
-Strings: `round.label`, `game.<id>.name`, `round.time_left`, `host.round.finished`, `round.board_title`, `host.corner.next_code`, `host.corner.late`, `host.lineup.next_title`, `host.round.force_end`, `host.round.force_end_confirm`, `round.no_scores`.
+Strings: `round.label`, `game.<id>.name`, `round.time_left`, `host.round.finished`, `round.board_title`, `host.corner.late`, `host.lineup.next_title`, `host.round.force_end`, `host.round.force_end_confirm`, `round.no_scores`.
 
 **H3 Intermission** (after every round; requested in chat 2026-09-24, ADR-117).
 1. Round board, 7 s: "Round n results", top 10 with a shatter-in; #1 in amber. For Stop the Clock this step is the **guess reveal** (three strips, `games/stop-the-clock.md` §6).
@@ -240,19 +241,19 @@ Control: "Next round now" skips to step 3 (from the tap). Corner code and the ne
 After the **last** round only step 1 runs (7 s, no skip), then H4 (ADR-129). The steps are anchored on the round's `ended_at` in server time, so a reload lands on the same step; a host that reopens after the 15 s shows 3 s of step 3 before starting the round.
 Stop the Clock reveal: three strips (5 s, 10 s, 7 s targets, labelled with `game.stop_the_clock.target`), the time axis never mirrored in Arabic; one dot per player per measured guess at `50 % + 50 % × (guess − target) / 5 s`, dots beyond ±5 s pinned to the edge (outlined); the top 5 of the round board are labelled with their display names. Dots burst in strip by strip within 5 s (`DESIGN_SYSTEM.md` §6.2; 200 ms fade-ins with reduced motion).
 States: `round_board`, `stc_reveal`, `session_total`, `next_intro`.
-Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `intermission.skip`, `round.label`, `game.stc.reveal_title`, `game.stc.reveal_axis`, `game.stop_the_clock.target`, `game.<id>.name`, `round.no_scores`, `results.no_scores`, `host.corner.next_code`, `host.corner.late`, `host.lineup.next_title`.
+Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `intermission.skip`, `round.label`, `game.stc.reveal_title`, `game.stc.reveal_axis`, `game.stop_the_clock.target`, `game.<id>.name`, `round.no_scores`, `results.no_scores`, `host.corner.late`, `host.lineup.next_title`.
 
-**H4 Session results.** Winner card (versus frame, amber), then the full session board (top 10 by total, SCORING §5 order) as a table: rank, name (with suffix), one column per round in round order (game name as header; "–" for a missing round), total. Late scores (E22) and hidden names re-query it. Stays until the host acts. Corner code + next-games picker stay (ADR-129).
+**H4 Session results.** Winner (`host.results.winner` eyebrow, name + total framed by the chevrons) in the side panel; Show day board is the primary action, New session a text button, then the full session board (top 10 by total, SCORING §5 order) as a table: rank, name (with suffix), one column per round in round order (game name as header; "–" for a missing round), total. Late scores (E22) and hidden names re-query it. Stays until the host acts. Corner code + next-games picker stay (ADR-129).
 Controls: `Show day board`, `New session`.
 States: `results`, `no_scores`.
 Strings: `results.title`, `host.results.winner`, `results.no_scores`, `results.breakdown_missing`, `host.results.total`, `host.results.show_day_board`, `host.new_session`, `game.*.name`.
 
-**H5 Day boards.** After the ~15 s merge (`DESIGN_SYSTEM.md` §6.2, `src/host/Results.tsx`; H4 and H5 are one screen): 0–1.5 s the session board fragments; then each game's tab in turn for 4 s while shards stream into its highlighted rows; 13.5 s back to the first tab; from 15 s the normal rotation. Reduced motion: a crossfade straight to the first tab. A reload onto H5 skips the merge; New session mid-merge is allowed (E21). Then: one tab per game in the session's lineup, auto-rotating every 8 s (tabs also tappable); each shows the top 10 best-per-name for today (names without suffix). Rows whose best came from this session are highlighted (dashed outline) for the first rotation. Re-queried on every score of the day (`day:<event_day_id>` channel) and on hidden-name changes. The next code sits in the corner (it is now the lobby-to-be).
+**H5 Day boards.** After the ~15 s merge (`DESIGN_SYSTEM.md` §6.2, `src/host/Results.tsx`; H4 and H5 are one screen): 0–1.5 s the session board fragments; then each game's tab in turn for 4 s while shards stream into its highlighted rows; 13.5 s back to the first tab; from 15 s the normal rotation. Reduced motion: a crossfade straight to the first tab. A reload onto H5 skips the merge; New session mid-merge is allowed (E21). Then: one tab per game in the session's lineup, auto-rotating every 8 s (tabs also tappable); each shows the top 10 best-per-name for today (names without suffix). Tabs are text tabs with a blue underline. Rows whose best came from this session are highlighted (blue tint + blue inline-start rule) for the first rotation. Re-queried on every score of the day (`day:<event_day_id>` channel) and on hidden-name changes. The next code sits in the corner (it is now the lobby-to-be).
 Controls: `New session`.
-Strings: `dayboard.title`, `dayboard.empty`, `game.*.name`, `host.new_session`, `host.corner.next_code`, `host.corner.late`, `host.lineup.next_title`, `common.done`.
+Strings: `dayboard.title`, `host.dayboard.empty`, `game.*.name`, `host.new_session`, `host.corner.late`, `host.lineup.next_title`, `common.done`.
 
-**H6 Host overlays.** Settings (gear): screen language, dark screen, reduce motion, sign out. Built so far as corner controls: language, **Reduce motion** (`aria-pressed`; remembered on the laptop; every shatter falls back to crossfades/static and `data-motion="reduced"` zeroes the CSS durations) and Sign out. Banners: reconnecting, database unreachable.
-Strings: `host.settings.language`, `host.settings.theme`, `host.settings.reduced_motion`, `host.signout`, `host.banner.reconnecting`, `host.banner.db_down`.
+**H6 Host overlays.** Settings (gear): screen language, dark screen, reduce motion, sign out. Built so far as the operator bar's Settings menu (quiet text buttons): language, **Reduce motion** (`aria-pressed`; remembered on the laptop; every shatter falls back to crossfades/static and `data-motion="reduced"` zeroes the CSS durations) and Sign out. Banners: reconnecting, database unreachable.
+Strings: `host.settings.title`, `host.settings.language`, `host.settings.theme`, `host.settings.reduced_motion`, `host.signout`, `host.banner.reconnecting`, `host.banner.db_down`.
 
 ## 3. Admin dashboard (`/dashboard`, never projected)
 
