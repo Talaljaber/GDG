@@ -1,0 +1,354 @@
+/* Player phone screens (docs/SCREENS.md §1). Tokens only; logical
+   properties only; min width 320 px, portrait. */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
+  inline-size: 100%;
+  max-inline-size: var(--phone-max-width);
+  min-inline-size: var(--phone-min-width);
+  margin-inline: auto;
+  background: var(--bg);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--s-5);
+  padding-block: var(--s-5);
+  padding-inline: var(--phone-gutter);
+}
+
+.center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.title {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+}
+
+.body {
+  font-size: var(--type-body-size);
+}
+
+.caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ---- P1 code ---- */
+
+.codeInput {
+  inline-size: 100%;
+  min-block-size: var(--s-8);
+  padding-block: var(--s-3);
+  padding-inline: var(--s-4);
+  border: var(--line-width-strong) solid var(--gdg-line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--type-target-size);
+  font-weight: var(--type-target-weight);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--proj-code-letter-spacing);
+  text-align: center;
+}
+
+.codeInput::placeholder {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  letter-spacing: normal;
+  color: var(--text-muted);
+}
+
+.codeInput:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  border-color: var(--primary);
+}
+
+/* ---- P2 name ---- */
+
+.backRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.codeChip {
+  padding-block: var(--s-1);
+  padding-inline: var(--s-3);
+  border-radius: var(--r-chip);
+  background: var(--gdg-blue-tint);
+  color: var(--primary-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--type-button-weight);
+}
+
+.hintRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-size: var(--type-caption-size);
+  color: var(--text-muted);
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- P3 lobby ---- */
+
+.hero {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--primary-text);
+}
+
+.lineup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  counter-reset: lineup;
+}
+
+.lineupItem {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding-block: var(--s-3);
+  padding-inline: var(--s-4);
+  border-radius: var(--r-button);
+  background: var(--surface);
+  font-weight: var(--type-caption-weight);
+}
+
+.lineupNo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--s-6);
+  block-size: var(--s-6);
+  border-radius: 50%;
+  background: var(--gdg-blue-deep);
+  color: var(--on-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-button-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.count {
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- P5 intro: versus frame + 3-2-1 ---- */
+
+.versus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+}
+
+.chevron {
+  inline-size: var(--s-7);
+  block-size: var(--s-8);
+  flex: none;
+  animation: chevron-in var(--dur-slow) var(--ease-emphasized) both;
+}
+
+.chevronStart {
+  fill: var(--gdg-blue);
+  --from: -100%;
+}
+
+.chevronEnd {
+  fill: var(--gdg-amber);
+  --from: 100%;
+}
+
+/* RTL mirrors the frame's entry sides and shapes (DESIGN_SYSTEM §8). */
+:global([dir='rtl']) .chevron {
+  scale: -1 1;
+}
+
+:global([dir='rtl']) .chevronStart {
+  --from: 100%;
+}
+
+:global([dir='rtl']) .chevronEnd {
+  --from: -100%;
+}
+
+@keyframes chevron-in {
+  from {
+    transform: translateX(var(--from));
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.gameName {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+}
+
+.countdown {
+  font-size: var(--type-score-size);
+  font-weight: var(--type-score-weight);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+  animation: count-pop var(--dur-countdown) var(--ease-standard) both;
+}
+
+@keyframes count-pop {
+  from {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .countdown {
+    animation: none;
+  }
+}
+
+/* ---- P6 game ---- */
+
+.gameArea {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.go {
+  position: absolute;
+  inset-block-start: var(--s-5);
+  inset-inline: 0;
+  text-align: center;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--primary-text);
+  pointer-events: none;
+}
+
+/* ---- P7 / P9 ---- */
+
+.scoreHero {
+  font-size: var(--type-score-size);
+  font-weight: var(--type-score-weight);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--primary-text);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailRow {
+  display: inline-block;
+  padding-block: var(--s-1);
+  padding-inline: var(--s-2);
+  border-radius: var(--s-1);
+}
+
+.detailBest {
+  background: var(--gdg-amber-tint);
+  box-shadow: 0 0 0 var(--line-width-strong) var(--highlight);
+}
+
+.divider {
+  border: none;
+  border-block-start: var(--line-width) solid var(--gdg-line);
+  margin: 0;
+  inline-size: 100%;
+}
+
+.sectionTitle {
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
+  text-align: start;
+}
+
+.saveState {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  inline-size: 100%;
+}
+
+.breakdownRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.totalRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  inline-size: 100%;
+  gap: var(--s-3);
+}
+
+.totalValue {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+.bottom {
+  position: sticky;
+  inset-block-end: 0;
+  padding-block: var(--s-3);
+  background: var(--bg);
+}
