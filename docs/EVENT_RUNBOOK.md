@@ -114,7 +114,7 @@ If the big screen or phones lag with very large sessions (dozens of phones at on
 5. Note incidents and numbers in `PROGRESS.md`.
 
 ### 6.2 Start the next event day
-Do it at the end of the day or first thing the next morning (before any session): Dashboard → **Event days** → **Start new event day**, label e.g. "Day 2" → confirm. Today's boards move to history; tomorrow's boards start empty. Not possible while a session is playing.
+Do it at the end of the day or first thing the next morning (before any session): Dashboard → **Days** → **Start new event day**, label e.g. "Day 2" → confirm. Today's boards move to history; tomorrow's boards start empty. Not possible while a session is playing. Without the dashboard, a maintainer can paste `scripts/new-event-day.sql` into the Supabase SQL editor (same effect; nothing is deleted).
 
 ### 6.3 Shutdown
 Sign out of `/host` and `/dashboard` on shared devices. Leave the Supabase project running (the keepalive covers the overnight gap).
