@@ -20,7 +20,7 @@
 
 .title {
   font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
+  font-weight: var(--weight-medium);
   margin: 0;
 }
 
@@ -102,7 +102,7 @@
   content: '';
   position: absolute;
   inset: 6%;
-  border-radius: var(--r-card);
+  border-radius: var(--r-panel);
   border-width: 3px;
   border-style: solid;
   pointer-events: none;
@@ -128,7 +128,7 @@
   font-weight: var(--type-caption-weight);
   color: var(--gdg-ink);
   background: var(--surface);
-  border-radius: var(--r-chip);
+  border-radius: var(--r-tag);
   padding-inline: var(--s-2);
   animation: ooo-float-up var(--dur-slow) var(--ease-standard);
   pointer-events: none;
@@ -177,4 +177,27 @@
     transform: translateY(-10px);
     opacity: 1;
   }
+}
+
+/* v2 chrome (DESIGN_SYSTEM §0.3, ADR-131): the intro card is eyebrow + title + pitch. */
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
 }

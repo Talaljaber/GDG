@@ -286,9 +286,11 @@ export function OddOneOut({
   if (state.phase === 'intro') {
     return (
       <div className={styles.screen}>
-        <h1 className={styles.title}>{t('game.odd_one_out.name')}</h1>
-        <p className={styles.pitch}>{t('game.odd_one_out.pitch')}</p>
-        <p className={styles.caption}>{t('game.odd_one_out.intro')}</p>
+        <div className={styles.intro}>
+          <p className={styles.eyebrow}>{t('game.odd_one_out.intro')}</p>
+          <h1 className={styles.title}>{t('game.odd_one_out.name')}</h1>
+          <p className={styles.pitch}>{t('game.odd_one_out.pitch')}</p>
+        </div>
       </div>
     );
   }

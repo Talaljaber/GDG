@@ -230,9 +230,11 @@ export function StopTheClock({
   if (state.phase === 'intro') {
     return (
       <div className={styles.screen}>
-        <h1 className={styles.title}>{t('game.stop_the_clock.name')}</h1>
-        <p className={styles.pitch}>{t('game.stop_the_clock.pitch')}</p>
-        <p className={styles.caption}>{t('game.stop_the_clock.intro')}</p>
+        <div className={styles.intro}>
+          <p className={styles.eyebrow}>{t('game.stop_the_clock.intro')}</p>
+          <h1 className={styles.title}>{t('game.stop_the_clock.name')}</h1>
+          <p className={styles.pitch}>{t('game.stop_the_clock.pitch')}</p>
+        </div>
       </div>
     );
   }

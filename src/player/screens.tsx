@@ -1,9 +1,12 @@
 /**
- * Player screens P3–P9, P11 and the other-tab state (`SCREENS.md` §1, §4).
- * Screens are presentational plus their own polling; the flow between them
- * is decided by `derivePlayerView` in MemberFlow.
+ * Player screens P3–P9, P11 and the other-tab state (`SCREENS.md` §1, §4),
+ * v2 "quiet scoreboard" layout (DESIGN_SYSTEM §0.3). Each screen with data
+ * is a thin container (its own polling) around a pure `…View` that takes
+ * everything as props, so the dev preview can render it from fixtures; the
+ * flow between screens is decided by `derivePlayerView` in MemberFlow.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { BOARD_POLL_MS, COUNTDOWN_MS } from '../config';
 import { formatNumber, useT } from '../i18n';
 import {
@@ -15,7 +18,7 @@ import {
   type RoundRow,
   type SessionRow,
 } from '../lib/api';
-import { displayName } from '../lib/boards';
+import { displayName, type RankedRow } from '../lib/boards';
 import { games } from '../games/registry';
 import type { GameResult } from '../games/types';
 import { getCurrent, type PendingSubmit } from '../lib/storage';
@@ -28,18 +31,26 @@ import { usePolling, useNow } from './hooks';
 import { usePlayerRows, useRoundBoard, useSessionBoard } from './boardHooks';
 import type { SubmitState } from './submitter';
 import { ResultDetail } from './resultDetail';
+import { ChevronFrame, Eyebrow, ScreenHeader } from './chrome';
+
+export { Chevron } from './chrome';
+
+/** Full-width primary button (DESIGN_SYSTEM §0.3): --button-height, --r-control. */
+export const ctaClass = `${ui.button} ${ui.buttonBlock} ${styles.cta}`;
 
 // ------------------------------------------------------------------ P4
 
 export function RemovedScreen({ onCta }: { onCta(): void }) {
   const t = useT();
   return (
-    <section className={`${styles.screen} ${styles.center}`} data-testid="screen-removed">
-      <h1 className={styles.title}>{t('removed.title')}</h1>
-      <p className={styles.body}>{t('removed.body')}</p>
-      <button type="button" className={`${ui.button} ${ui.buttonBlock}`} onClick={onCta} data-testid="removed-cta">
-        {t('removed.cta')}
-      </button>
+    <section className={styles.screen} data-testid="screen-removed">
+      <ScreenHeader eyebrow={t('app.name')} title={t('removed.title')} lead={t('removed.body')} />
+      <div className={styles.spacer} />
+      <div className={styles.bottom}>
+        <button type="button" className={ctaClass} onClick={onCta} data-testid="removed-cta">
+          {t('removed.cta')}
+        </button>
+      </div>
     </section>
   );
 }
@@ -72,7 +83,6 @@ export function LobbyScreen({
   pending: boolean;
   onPoll(players: PlayerRow[]): void;
 }) {
-  const t = useT();
   const players = usePlayerCounts(session.id, true);
   const onPollRef = useRef(onPoll);
   onPollRef.current = onPoll;
@@ -80,48 +90,84 @@ export function LobbyScreen({
     if (players) onPollRef.current(players);
   }, [players]);
   const joined = players ? countPlayers(players).joined : null;
-
   return (
-    <section className={`${styles.screen} ${styles.center}`} data-testid="screen-lobby">
-      <h1 className={styles.hero}>{pending ? t('lobby.next_round') : t('lobby.in')}</h1>
-      <p className={styles.body}>
-        <Trans k="lobby.you_are" nodes={{ name: <bdi data-testid="lobby-name">{displayName(me.name, me.display_suffix)}</bdi> }} />
-      </p>
-      {pending ? <p className={styles.caption}>{t('lobby.next_round_sub')}</p> : null}
-      <div className={styles.stack}>
-        <h2 className={styles.caption}>{t('lobby.lineup')}</h2>
-        <ol className={styles.lineup} data-testid="lobby-lineup">
-          {session.lineup.map((g, i) => (
-            <li key={g} className={styles.lineupItem}>
-              <span className={styles.lineupNo}>{formatNumber(i + 1)}</span>
-              {t(`game.${g}.name`)}
-            </li>
-          ))}
-        </ol>
+    <LobbyView
+      code={session.code}
+      lineup={session.lineup}
+      name={displayName(me.name, me.display_suffix)}
+      pending={pending}
+      joined={joined}
+    />
+  );
+}
+
+export function LobbyView({
+  code,
+  lineup,
+  name,
+  pending,
+  joined,
+}: {
+  code: string;
+  lineup: readonly GameId[];
+  name: string;
+  pending: boolean;
+  /** Joined players (polled); null until the first poll. */
+  joined: number | null;
+}) {
+  const t = useT();
+  return (
+    <section className={styles.screen} data-testid="screen-lobby">
+      <ScreenHeader
+        eyebrow={
+          <>
+            {t('lobby.code')} <span className={styles.num}>{code}</span>
+          </>
+        }
+        title={pending ? t('lobby.next_round') : t('lobby.in')}
+        lead={pending ? t('lobby.next_round_sub') : undefined}
+      />
+      <div className={styles.panel}>
+        <div className={`${styles.panelRow} ${styles.panelRowSplit}`}>
+          <Eyebrow as="span">{t('lobby.playing_as')}</Eyebrow>
+          <span className={styles.nameTag}>
+            <bdi data-testid="lobby-name">{name}</bdi>
+          </span>
+        </div>
+        <div className={styles.panelRow}>
+          <Eyebrow as="h2">{t('lobby.lineup')}</Eyebrow>
+          <ol className={styles.lineup} data-testid="lobby-lineup">
+            {lineup.map((g, i) => (
+              <li key={g} className={styles.lineupItem}>
+                <span className={styles.lineupNo}>{formatNumber(i + 1)}</span>
+                <span>{t(`game.${g}.name`)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
-      {joined !== null ? (
-        <p className={styles.count} data-testid="lobby-count">
-          {t('lobby.players_count', { n: formatNumber(joined), count: joined })}
-        </p>
-      ) : null}
-      {!pending ? <p className={styles.caption}>{t('lobby.waiting')}</p> : null}
+      <div className={styles.lobbyFoot}>
+        {joined !== null ? (
+          <p className={styles.stat} data-testid="lobby-count">
+            <Trans
+              k="lobby.players_count"
+              params={{ count: joined }}
+              nodes={{ n: <span className={styles.statNum}>{formatNumber(joined)}</span> }}
+            />
+          </p>
+        ) : null}
+        {!pending ? (
+          <p className={styles.live}>
+            <span className={styles.liveDot} aria-hidden="true" />
+            {t('lobby.waiting')}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }
 
 // ------------------------------------------------------------------ P5
-
-export function Chevron({ end }: { end?: boolean }) {
-  return (
-    <svg
-      className={`${styles.chevron} ${end ? styles.chevronEnd : styles.chevronStart}`}
-      viewBox="0 0 48 64"
-      aria-hidden="true"
-    >
-      {end ? <path d="M8 0 L48 32 L8 64 L0 56 L30 32 L0 8 Z" /> : <path d="M40 0 L0 32 L40 64 L48 56 L18 32 L48 8 Z" />}
-    </svg>
-  );
-}
 
 export function IntroScreen({
   round,
@@ -132,23 +178,40 @@ export function IntroScreen({
   roundStartEpoch: number | null;
   totalRounds: number;
 }) {
-  const t = useT();
   const now = useNow(100);
   const remaining = roundStartEpoch === null ? COUNTDOWN_MS : Math.max(0, roundStartEpoch - now);
   const n = Math.max(1, Math.ceil(remaining / 1000));
+  return <IntroView game={round.game} roundNo={round.round_no} totalRounds={totalRounds} count={n} />;
+}
+
+export function IntroView({
+  game,
+  roundNo,
+  totalRounds,
+  count,
+}: {
+  game: GameId;
+  roundNo: number;
+  totalRounds: number;
+  /** The 3-2-1 number on screen. */
+  count: number;
+}) {
+  const t = useT();
   return (
-    <section className={`${styles.screen} ${styles.center}`} data-testid="screen-intro">
-      <p className={styles.caption}>{t('round.label', { n: round.round_no, total: totalRounds })}</p>
-      <div className={styles.versus}>
-        <Chevron />
-        <h1 className={styles.gameName}>{t(`game.${round.game}.name`)}</h1>
-        <Chevron end />
+    <section className={`${styles.screen} ${styles.centerScreen}`} data-testid="screen-intro">
+      <div className={styles.introBlock}>
+        <Eyebrow>{t('round.label', { n: roundNo, total: totalRounds })}</Eyebrow>
+        <ChevronFrame size="title">
+          <h1 className={styles.gameName}>{t(`game.${game}.name`)}</h1>
+        </ChevronFrame>
+        <p className={styles.lead}>{t(`game.${game}.pitch`)}</p>
       </div>
-      <p className={styles.body}>{t(`game.${round.game}.pitch`)}</p>
-      <p className={styles.caption}>{t('round.get_ready')}</p>
-      <p key={n} className={styles.countdown} aria-live="polite" dir="ltr">
-        {formatNumber(n)}
-      </p>
+      <div className={styles.countBlock}>
+        <p key={count} className={styles.countdown} aria-live="polite" dir="ltr">
+          {formatNumber(count)}
+        </p>
+        <p className={styles.caption}>{t('round.get_ready')}</p>
+      </div>
     </section>
   );
 }
@@ -195,14 +258,14 @@ export function GameScreen({
 
   if (!mod) {
     return (
-      <section className={`${styles.screen} ${styles.center}`}>
+      <section className={styles.screen}>
         <p className={ui.error}>{t('sys.generic_error')}</p>
       </section>
     );
   }
   const Game = mod.Component;
   return (
-    <div className={styles.gameArea} data-testid="screen-game">
+    <GameFrame showGo={showGo}>
       <Game
         seed={seed}
         roundStartEpoch={roundStartEpoch}
@@ -211,6 +274,16 @@ export function GameScreen({
         onProgress={onProgress}
         onFinish={handleFinish}
       />
+    </GameFrame>
+  );
+}
+
+/** P6 frame around a game: fills the column; "Go" shows briefly over the top at the start. */
+export function GameFrame({ showGo = false, children }: { showGo?: boolean; children: ReactNode }) {
+  const t = useT();
+  return (
+    <div className={styles.gameArea} data-testid="screen-game">
+      {children}
       {showGo ? (
         <p className={styles.go} aria-hidden="true">
           {t('round.go')}
@@ -228,6 +301,7 @@ export function RoundResultScreen({
   me,
   result,
   submitState,
+  totalRounds,
 }: {
   session: SessionRow;
   round: RoundRow | null;
@@ -235,8 +309,8 @@ export function RoundResultScreen({
   /** The phone's own result for this round, if it played. */
   result: PendingSubmit | null;
   submitState: SubmitState | null;
+  totalRounds: number;
 }) {
-  const t = useT();
   const playerRowId = me.id;
   const roundPlaying = round?.status === 'playing';
   // Poll every 3 s while visible, and once right after the submit is acknowledged.
@@ -244,47 +318,94 @@ export function RoundResultScreen({
   const players = usePlayerCounts(session.id, roundPlaying);
   const counts = players ? countPlayers(players) : null;
   const newBest = useNewBest(session, round, me, result, submitState);
+  return (
+    <RoundResultView
+      round={round}
+      totalRounds={totalRounds}
+      result={result}
+      submitState={submitState}
+      newBest={newBest}
+      board={board}
+      done={
+        roundPlaying && round && counts
+          ? { done: counts.finishedRound(round.round_no), total: counts.joined }
+          : null
+      }
+    />
+  );
+}
+
+export function RoundResultView({
+  round,
+  totalRounds,
+  result,
+  submitState,
+  newBest,
+  board,
+  done,
+}: {
+  round: Pick<RoundRow, 'game' | 'round_no'> | null;
+  totalRounds: number;
+  result: Pick<PendingSubmit, 'score' | 'raw'> | null;
+  submitState: SubmitState | null;
+  newBest: boolean;
+  /** Round board rows (top 10 + own); null until the first poll. */
+  board: readonly RankedRow[] | null;
+  /** "x/y done" while the round is still playing; null otherwise. */
+  done: { done: number; total: number } | null;
+}) {
+  const t = useT();
+  const eyebrow = round ? (
+    <>
+      {t('round.label', { n: round.round_no, total: totalRounds })} · {t(`game.${round.game}.name`)}
+    </>
+  ) : undefined;
 
   return (
     <section className={styles.screen} data-testid="screen-round-result">
       {result ? (
-        <div className={`${styles.stack} ${styles.center}`}>
-          <h1 className={styles.caption}>{t('round.your_score')}</h1>
-          <p className={styles.scoreHero} data-testid="own-score" dir="ltr">
-            {formatNumber(result.score)}
-          </p>
-          {newBest ? (
-            // Celebrate shatter (DESIGN_SYSTEM §6.2): fragment & reassemble + amber glow; a static
-            // amber ring with reduced motion. The round is over for this phone, so no game is covered.
-            <RevealIn variant="celebrate" as="span" className={styles.newBest} data-testid="new-best">
-              {t('results.new_best')}
-            </RevealIn>
-          ) : null}
+        <>
+          <ScreenHeader eyebrow={eyebrow} title={t('round.your_score')} center />
+          <div className={styles.heroBlock}>
+            <ChevronFrame>
+              <p className={styles.scoreHero} data-testid="own-score" dir="ltr">
+                {formatNumber(result.score)}
+              </p>
+            </ChevronFrame>
+            {newBest ? (
+              // Celebrate shatter (DESIGN_SYSTEM §6.2): fragment & reassemble + amber glow; a static
+              // amber ring with reduced motion. The round is over for this phone, so no game is covered.
+              <RevealIn variant="celebrate" as="span" className={styles.newBest} data-testid="new-best">
+                {t('results.new_best')}
+              </RevealIn>
+            ) : null}
+            <p className={styles.saveState} data-testid="save-state" data-state={submitState ?? 'saved'} role="status">
+              {submitState === 'saving' ? t('sys.saving') : submitState === 'failed' ? t('sys.save_failed') : null}
+            </p>
+          </div>
           <ResultDetail game={round?.game as GameId | undefined} raw={result.raw} />
-          <p className={styles.saveState} data-testid="save-state" data-state={submitState ?? 'saved'} role="status">
-            {submitState === 'saving' ? t('sys.saving') : submitState === 'failed' ? t('sys.save_failed') : null}
-          </p>
-        </div>
+        </>
       ) : (
-        <p className={`${styles.body} ${styles.center}`} data-testid="round-missed">
-          {t('round.missed')}
-        </p>
+        <ScreenHeader
+          eyebrow={eyebrow}
+          title={<span data-testid="round-missed">{t('round.missed')}</span>}
+          lead={t('round.missed_sub')}
+        />
       )}
-      <hr className={styles.divider} />
-      <h2 className={styles.sectionTitle}>{t('round.board_title')}</h2>
-      {board && board.length > 0 ? (
-        <Leaderboard rows={board} testId="round-board" />
-      ) : board ? (
-        <p className={styles.caption}>{t('round.no_scores')}</p>
-      ) : null}
-      {roundPlaying && counts ? (
-        <p className={styles.caption} data-testid="waiting-others">
-          {t('round.waiting_others', {
-            done: formatNumber(counts.finishedRound(round.round_no)),
-            total: formatNumber(counts.joined),
-          })}
-        </p>
-      ) : null}
+      <section className={styles.section}>
+        <Eyebrow as="h2">{t('round.board_title')}</Eyebrow>
+        {board && board.length > 0 ? (
+          <Leaderboard rows={board} testId="round-board" />
+        ) : board ? (
+          <p className={styles.empty}>{t('round.no_scores')}</p>
+        ) : null}
+        {done ? (
+          <p className={styles.live} data-testid="waiting-others">
+            <span className={styles.liveDot} aria-hidden="true" />
+            {t('round.waiting_others', { done: formatNumber(done.done), total: formatNumber(done.total) })}
+          </p>
+        ) : null}
+      </section>
     </section>
   );
 }
@@ -338,7 +459,6 @@ export function ResultsScreen({
   playerRowId: string;
   onJoinNext(): void;
 }) {
-  const t = useT();
   const board = useSessionBoard(session.id, playerRowId, true);
   const [own, setOwn] = useState<OwnScore[] | null>(null);
   usePolling(
@@ -353,51 +473,77 @@ export function ResultsScreen({
     true,
     [session.id],
   );
-
-  const ownRow = useMemo(() => board?.rows.find((r) => r.isOwn) ?? null, [board]);
   const lineup: GameId[] =
     rounds.length > 0 ? [...rounds].sort((a, b) => a.round_no - b.round_no).map((r) => r.game) : [...session.lineup];
+  return <ResultsView lineup={lineup} own={own} board={board} onJoinNext={onJoinNext} />;
+}
+
+export function ResultsView({
+  lineup,
+  own,
+  board,
+  onJoinNext,
+}: {
+  lineup: readonly GameId[];
+  /** The phone's own score rows for the session; null until loaded. */
+  own: readonly Pick<OwnScore, 'game' | 'score'>[] | null;
+  /** Session board (top 10 + own) and its row count; null until loaded. */
+  board: { rows: readonly RankedRow[]; total: number } | null;
+  onJoinNext(): void;
+}) {
+  const t = useT();
+  const ownRow = useMemo(() => board?.rows.find((r) => r.isOwn) ?? null, [board]);
   const scored = own !== null && own.length > 0;
   const total = own ? own.reduce((sum, s) => sum + s.score, 0) : 0;
 
   return (
-    <section className={styles.screen} data-testid="screen-results" data-state={!board ? 'loading' : scored ? 'normal' : board.rows.length === 0 ? 'no_scores' : 'not_scored'}>
-      <h1 className={styles.title}>{t('results.title')}</h1>
+    <section
+      className={styles.screen}
+      data-testid="screen-results"
+      data-state={!board ? 'loading' : scored ? 'normal' : board.rows.length === 0 ? 'no_scores' : 'not_scored'}
+    >
+      <ScreenHeader eyebrow={t('results.eyebrow')} title={t('results.title')} center={scored} />
       {scored ? (
-        <div className={styles.stack}>
-          <div className={styles.totalRow}>
-            <span className={styles.body}>{t('results.your_total')}</span>
-            <span className={styles.totalValue} data-testid="results-total" dir="ltr">
-              {formatNumber(total)}
-            </span>
+        <>
+          <div className={styles.heroBlock}>
+            <Eyebrow>{t('results.your_total')}</Eyebrow>
+            <ChevronFrame>
+              <p className={styles.scoreHero} data-testid="results-total" dir="ltr">
+                {formatNumber(total)}
+              </p>
+            </ChevronFrame>
+            {board && ownRow ? (
+              <p className={styles.rank} data-testid="results-rank">
+                {t('results.rank', { rank: formatNumber(ownRow.rank), n: formatNumber(board.total) })}
+              </p>
+            ) : null}
           </div>
-          {board && ownRow ? (
-            <p className={styles.body} data-testid="results-rank">
-              {t('results.rank', { rank: formatNumber(ownRow.rank), n: formatNumber(board.total) })}
-            </p>
-          ) : null}
-          <ul className={styles.breakdown} data-testid="results-breakdown">
+          <ul className={styles.kv} data-testid="results-breakdown">
             {lineup.map((g) => {
               const s = own?.find((o) => o.game === g);
               return (
-                <li key={g} className={styles.breakdownRow} data-testid="breakdown-row" data-game={g}>
-                  <span>{t(`game.${g}.name`)}</span>
-                  <span dir="ltr">{s ? formatNumber(s.score) : t('results.breakdown_missing')}</span>
+                <li key={g} className={styles.kvRow} data-testid="breakdown-row" data-game={g}>
+                  <span className={styles.kvLabel}>{t(`game.${g}.name`)}</span>
+                  <span className={styles.kvValue} dir="ltr">
+                    {s ? formatNumber(s.score) : t('results.breakdown_missing')}
+                  </span>
                 </li>
               );
             })}
           </ul>
-        </div>
+        </>
       ) : null}
-      <hr className={styles.divider} />
-      {board && board.rows.length > 0 ? (
-        <Leaderboard rows={board.rows} testId="session-board" />
-      ) : board ? (
-        <p className={styles.caption}>{t('results.no_scores')}</p>
-      ) : null}
+      <section className={styles.section}>
+        <Eyebrow as="h2">{t('results.board_title')}</Eyebrow>
+        {board && board.rows.length > 0 ? (
+          <Leaderboard rows={board.rows} testId="session-board" />
+        ) : board ? (
+          <p className={styles.empty}>{t('results.no_scores')}</p>
+        ) : null}
+      </section>
       <div className={styles.spacer} />
       <div className={styles.bottom}>
-        <button type="button" className={`${ui.button} ${ui.buttonBlock}`} onClick={onJoinNext} data-testid="join-next">
+        <button type="button" className={ctaClass} onClick={onJoinNext} data-testid="join-next">
           {t('results.join_next')}
         </button>
       </div>
@@ -410,11 +556,14 @@ export function ResultsScreen({
 export function EndedScreen({ onJoinNext }: { onJoinNext(): void }) {
   const t = useT();
   return (
-    <section className={`${styles.screen} ${styles.center}`} data-testid="screen-ended">
-      <h1 className={styles.title}>{t('results.session_ended')}</h1>
-      <button type="button" className={`${ui.button} ${ui.buttonBlock}`} onClick={onJoinNext}>
-        {t('results.join_next')}
-      </button>
+    <section className={styles.screen} data-testid="screen-ended">
+      <ScreenHeader eyebrow={t('app.name')} title={t('results.session_ended')} lead={t('results.session_ended_body')} />
+      <div className={styles.spacer} />
+      <div className={styles.bottom}>
+        <button type="button" className={ctaClass} onClick={onJoinNext}>
+          {t('results.join_next')}
+        </button>
+      </div>
     </section>
   );
 }
@@ -422,8 +571,8 @@ export function EndedScreen({ onJoinNext }: { onJoinNext(): void }) {
 export function OtherTabScreen() {
   const t = useT();
   return (
-    <section className={`${styles.screen} ${styles.center}`} data-testid="screen-other-tab">
-      <h1 className={styles.title}>{t('sys.other_tab')}</h1>
+    <section className={styles.screen} data-testid="screen-other-tab">
+      <ScreenHeader eyebrow={t('app.name')} title={t('sys.other_tab')} lead={t('sys.other_tab_body')} />
     </section>
   );
 }

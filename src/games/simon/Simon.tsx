@@ -290,9 +290,11 @@ export function Simon({ seed, roundStartEpoch, roundEnded, snapshot, onProgress,
   if (state.phase === 'intro') {
     return (
       <div className={styles.screen}>
-        <h1 className={styles.title}>{t('game.simon.name')}</h1>
-        <p className={styles.pitch}>{t('game.simon.pitch')}</p>
-        <p className={styles.caption}>{t('game.simon.intro')}</p>
+        <div className={styles.intro}>
+          <p className={styles.eyebrow}>{t('game.simon.intro')}</p>
+          <h1 className={styles.title}>{t('game.simon.name')}</h1>
+          <p className={styles.pitch}>{t('game.simon.pitch')}</p>
+        </div>
       </div>
     );
   }

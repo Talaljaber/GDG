@@ -13,7 +13,7 @@ import { cleanName, normalizeCode, normalizeDigits, validateName } from '../lib/
 import { getLastName, setLastName } from '../lib/storage';
 import ui from '../components/ui.module.css';
 import styles from './player.module.css';
-import { RemovedScreen } from './screens';
+import { RemovedScreen, ctaClass as cta } from './screens';
 
 const CODE_LENGTH = 4;
 const NAME_MAX = 12;
@@ -83,10 +83,11 @@ export function JoinFlow({ onJoined }: { onJoined(payload: JoinPayload): void })
   );
 }
 
-function CodeScreen({ initialError, onSubmit }: { initialError: string | null; onSubmit(code: string): void }) {
+export function CodeScreen({ initialError, onSubmit }: { initialError: string | null; onSubmit(code: string): void }) {
   const t = useT();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(initialError);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -119,39 +120,65 @@ function CodeScreen({ initialError, onSubmit }: { initialError: string | null; o
     tryAdvance(value, true);
   };
 
+  // Four digit cells over one real input (DESIGN_SYSTEM §0.3): the input keeps the numeric
+  // keypad, paste, autofill and Arabic-Indic normalisation; the cells only draw it.
+  const active = focused ? Math.min(value.length, CODE_LENGTH - 1) : -1;
   return (
     <form className={styles.screen} onSubmit={submit} data-testid="screen-code" noValidate>
-      <h1 className={styles.title}>
-        <label htmlFor="join-code">{t('join.code.title')}</label>
-      </h1>
-      <input
-        id="join-code"
-        ref={inputRef}
-        className={styles.codeInput}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        dir="ltr"
-        placeholder={t('join.code.placeholder')}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error ? 'true' : undefined}
-        aria-describedby={error ? 'join-code-error' : undefined}
-        data-testid="code-input"
-      />
+      <header className={styles.header}>
+        <p className={styles.eyebrow}>{t('join.code.eyebrow')}</p>
+        <h1 className={styles.title}>
+          <label htmlFor="join-code">{t('join.code.title')}</label>
+        </h1>
+      </header>
+      <div className={styles.codeField}>
+        <div className={styles.cells} aria-hidden="true" data-invalid={error ? 'true' : undefined}>
+          {Array.from({ length: CODE_LENGTH }, (_, i) => (
+            <span
+              key={i}
+              className={`${styles.cell} ${i === active ? styles.cellActive : ''} ${value[i] ? styles.cellFilled : ''}`}
+            >
+              {value[i] ?? (i === active ? <span className={styles.caret} /> : null)}
+            </span>
+          ))}
+        </div>
+        <input
+          id="join-code"
+          ref={inputRef}
+          className={styles.codeInput}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          dir="ltr"
+          placeholder={t('join.code.placeholder')}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? 'join-code-error' : 'join-code-hint'}
+          data-testid="code-input"
+        />
+      </div>
       {error ? (
         <p id="join-code-error" className={ui.error} role="alert" data-testid="code-error">
           {t(error)}
         </p>
-      ) : null}
+      ) : (
+        <p id="join-code-hint" className={styles.helper}>
+          {t('join.code.placeholder')}
+        </p>
+      )}
       <div className={styles.spacer} />
-      <button type="submit" className={`${ui.button} ${ui.buttonBlock}`} data-testid="code-next">
-        {t('join.code.next')}
-      </button>
+      <div className={styles.bottom}>
+        <button type="submit" className={cta} data-testid="code-next">
+          {t('join.code.next')}
+        </button>
+      </div>
     </form>
   );
 }
 
-function NameScreen({
+export function NameScreen({
   code,
   name,
   onNameChange,
@@ -161,6 +188,7 @@ function NameScreen({
   waitUntil,
   onWait,
   onJoined,
+  initialError = null,
 }: {
   code: string;
   name: string;
@@ -171,9 +199,11 @@ function NameScreen({
   waitUntil: number | null;
   onWait(seconds: number): void;
   onJoined(payload: JoinPayload): void;
+  /** An error key to start with (dev preview only; the flow always starts clean). */
+  initialError?: string | null;
 }) {
   const t = useT();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const retriedRate = useRef(false);
@@ -274,20 +304,30 @@ function NameScreen({
   return (
     <form className={styles.screen} onSubmit={submit} data-testid="screen-name" noValidate>
       <div className={styles.backRow}>
-        <button type="button" className={ui.linkButton} onClick={onBack} data-testid="name-back">
+        <button type="button" className={`${ui.linkButton} ${styles.back}`} onClick={onBack} data-testid="name-back">
+          <svg className={styles.backIcon} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <polyline points="10,3 5,8 10,13" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           {t('join.back')}
         </button>
-        <span className={styles.codeChip} dir="ltr">
-          {code}
+        <span className={styles.codeTag}>
+          <span className={styles.eyebrow}>{t('join.name.code_label')}</span>
+          <span className={styles.codeTagValue} dir="ltr">
+            {code}
+          </span>
         </span>
       </div>
-      <h1 className={styles.title}>
-        <label htmlFor="join-name">{t('join.name.title')}</label>
-      </h1>
-      <div className={styles.stack}>
+      <header className={styles.header}>
+        <p className={styles.eyebrow}>{t('join.name.eyebrow')}</p>
+        <h1 className={styles.title}>{t('join.name.title')}</h1>
+      </header>
+      <div className={styles.field}>
+        <label htmlFor="join-name" className={styles.fieldLabel}>
+          {t('join.name.label')}
+        </label>
         <input
           id="join-name"
-          className={ui.input}
+          className={`${ui.input} ${styles.nameInput}`}
           autoComplete="nickname"
           autoCapitalize="words"
           enterKeyHint="go"
@@ -295,7 +335,7 @@ function NameScreen({
           value={name}
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={error ? 'true' : undefined}
-          aria-describedby="join-name-hint"
+          aria-describedby={error ? 'join-name-hint join-name-error' : 'join-name-hint'}
           data-testid="name-input"
         />
         <div className={styles.hintRow} id="join-name-hint">
@@ -310,20 +350,22 @@ function NameScreen({
           {t('join.error_wait', { s: waitLeft })}
         </p>
       ) : error ? (
-        <p className={ui.error} role="alert" data-testid="name-error">
+        <p id="join-name-error" className={ui.error} role="alert" data-testid="name-error">
           {t(error)}
         </p>
       ) : null}
       <div className={styles.spacer} />
-      <button
-        type="submit"
-        className={`${ui.button} ${ui.buttonBlock}`}
-        disabled={submitting || waiting}
-        aria-busy={submitting}
-        data-testid="name-submit"
-      >
-        {t('join.name.submit')}
-      </button>
+      <div className={styles.bottom}>
+        <button
+          type="submit"
+          className={cta}
+          disabled={submitting || waiting}
+          aria-busy={submitting}
+          data-testid="name-submit"
+        >
+          {t('join.name.submit')}
+        </button>
+      </div>
     </form>
   );
 }

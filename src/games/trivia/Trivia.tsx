@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useLang, useT } from '../../i18n';
 import type { GameProps } from '../types';
-import poolFile from '../../../docs/content/trivia-questions.json';
+import { triviaPoolFile as poolFile } from './pool';
 import {
   drawTriviaQuestions,
   TRIVIA_QUESTIONS_PER_PLAYER,
@@ -275,9 +275,11 @@ export function Trivia({ seed, roundStartEpoch, roundEnded, snapshot, onProgress
   if (state.phase === 'intro') {
     return (
       <div className={styles.screen}>
-        <h1 className={styles.title}>{t('game.trivia.name')}</h1>
-        <p className={styles.pitch}>{t('game.trivia.pitch')}</p>
-        <p className={styles.caption}>{t('game.trivia.intro')}</p>
+        <div className={styles.intro}>
+          <p className={styles.eyebrow}>{t('game.trivia.intro')}</p>
+          <h1 className={styles.title}>{t('game.trivia.name')}</h1>
+          <p className={styles.pitch}>{t('game.trivia.pitch')}</p>
+        </div>
       </div>
     );
   }

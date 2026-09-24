@@ -1,5 +1,8 @@
-/* Player phone screens (docs/SCREENS.md §1). Tokens only; logical
-   properties only; min width 320 px, portrait. */
+/* Player phone screens (docs/SCREENS.md §1), v2 "quiet scoreboard"
+   (docs/DESIGN_SYSTEM.md §0.3, ADR-131). Tokens only; logical properties
+   only; min width 320 px, portrait. One column inside --phone-gutter; every
+   screen starts with an eyebrow + title; flat panels with a 1 px line; bold
+   only for hero numbers. */
 
 .app {
   display: flex;
@@ -23,172 +26,223 @@
   flex: 1;
   flex-direction: column;
   gap: var(--s-5);
-  padding-block: var(--s-5);
+  padding-block: var(--s-5) var(--s-4);
   padding-inline: var(--phone-gutter);
 }
 
-.center {
-  align-items: center;
+/* A screen whose content sits in the vertical middle (intro, next game). */
+.centerScreen {
   justify-content: center;
+  gap: var(--s-7);
   text-align: center;
-}
-
-.title {
-  font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
-}
-
-.body {
-  font-size: var(--type-body-size);
-}
-
-.caption {
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
-  color: var(--text-muted);
-}
-
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
 }
 
 .spacer {
   flex: 1;
 }
 
-/* ---- P1 code ---- */
-
-.codeInput {
-  inline-size: 100%;
-  min-block-size: var(--s-8);
-  padding-block: var(--s-3);
-  padding-inline: var(--s-4);
-  border: var(--line-width-strong) solid var(--gdg-line);
-  border-radius: var(--r-card);
-  background: var(--surface);
-  color: var(--text);
-  font-size: var(--type-target-size);
-  font-weight: var(--type-target-weight);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--proj-code-letter-spacing);
-  text-align: center;
-}
-
-.codeInput::placeholder {
-  font-size: var(--type-body-size);
-  font-weight: var(--type-body-weight);
-  letter-spacing: normal;
-  color: var(--text-muted);
-}
-
-.codeInput:focus-visible {
-  outline: var(--focus-width) solid var(--focus);
-  border-color: var(--primary);
-}
-
-/* ---- P2 name ---- */
-
-.backRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-}
-
-.codeChip {
-  padding-block: var(--s-1);
-  padding-inline: var(--s-3);
-  border-radius: var(--r-chip);
-  background: var(--gdg-blue-tint);
-  color: var(--primary-text);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--type-button-weight);
-}
-
-.hintRow {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--s-3);
-  font-size: var(--type-caption-size);
-  color: var(--text-muted);
-}
-
-.counter {
+.num {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- P3 lobby ---- */
+/* ---- Header: eyebrow + title (+ lead) ---- */
 
-.hero {
-  font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
-  color: var(--primary-text);
-}
-
-.lineup {
+.header {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
-  counter-reset: lineup;
 }
 
-.lineupItem {
-  display: flex;
+.headerCenter {
   align-items: center;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  line-height: var(--leading-tight);
+  text-transform: uppercase;
+}
+
+/* Arabic labels are never transformed or tracked (§0.1 rule 5); Cairo needs a size step up. */
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.title {
+  font-size: var(--type-heading-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+.title:lang(ar) {
+  line-height: var(--leading-tight-ar);
+}
+
+.lead {
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+}
+
+.caption {
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-regular);
+}
+
+.empty {
+  padding-block: var(--s-4);
+  color: var(--text-muted);
+  font-size: var(--type-small-size);
+  text-align: center;
+}
+
+/* ---- Panels and label · value lists ---- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface);
+}
+
+.panelRow {
+  display: flex;
+  flex-direction: column;
   gap: var(--s-3);
+  padding: var(--s-4);
+}
+
+.panelRow + .panelRow {
+  border-block-start: var(--line-width) solid var(--line);
+}
+
+.panelRowSplit {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kv {
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.kvRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  min-block-size: var(--touch-target-min);
   padding-block: var(--s-3);
   padding-inline: var(--s-4);
-  border-radius: var(--r-button);
-  background: var(--surface);
-  font-weight: var(--type-caption-weight);
+  border-inline-start: var(--rank-rule) solid transparent;
 }
 
-.lineupNo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--s-6);
-  block-size: var(--s-6);
-  border-radius: 50%;
-  background: var(--gdg-blue-deep);
-  color: var(--on-primary);
+.kvRow + .kvRow {
+  border-block-start: var(--line-width) solid var(--line);
+}
+
+.kvLabel {
+  color: var(--text-muted);
+}
+
+.kvValue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+  text-align: end;
+}
+
+.kvNote {
+  color: var(--text-muted);
   font-size: var(--type-caption-size);
-  font-weight: var(--type-button-weight);
-  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-regular);
 }
 
-.count {
-  font-size: var(--type-button-size);
-  font-weight: var(--type-button-weight);
-  font-variant-numeric: tabular-nums;
+/* The one row to point out (Stop the Clock's closest guess): amber tint + amber rule. */
+.kvBest {
+  border-inline-start-color: var(--highlight);
+  background: var(--gdg-amber-tint);
 }
 
-/* ---- P5 intro: versus frame + 3-2-1 ---- */
+.kvBest .kvLabel {
+  color: var(--text);
+}
 
-.versus {
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+/* ---- Buttons and the sticky bottom action ---- */
+
+.cta {
+  min-block-size: var(--button-height);
+  border-radius: var(--r-control);
+}
+
+.bottom {
+  position: sticky;
+  inset-block-end: 0;
+  margin-inline: calc(-1 * var(--phone-gutter));
+  padding-block: var(--s-3) var(--s-4);
+  padding-inline: var(--phone-gutter);
+  background: var(--bg);
+}
+
+/* ---- Thin facing chevrons (§0.1 rule 7) ---- */
+
+.frame {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--s-4);
 }
 
+.frameTitle {
+  gap: var(--s-3);
+}
+
 .chevron {
-  inline-size: var(--s-7);
-  block-size: var(--s-8);
   flex: none;
+  stroke-width: var(--line-width-strong);
   animation: chevron-in var(--dur-slow) var(--ease-emphasized) both;
 }
 
+.chevronHero {
+  inline-size: var(--s-5);
+  block-size: calc(var(--s-8) + var(--s-2));
+}
+
+.chevronTitle {
+  inline-size: var(--s-4);
+  block-size: var(--s-7);
+}
+
 .chevronStart {
-  fill: var(--gdg-blue);
-  --from: -100%;
+  color: var(--primary);
+  --from: -40%;
 }
 
 .chevronEnd {
-  fill: var(--gdg-amber);
-  --from: 100%;
+  color: var(--highlight);
+  --from: 40%;
 }
 
 /* RTL mirrors the frame's entry sides and shapes (DESIGN_SYSTEM §8). */
@@ -197,11 +251,11 @@
 }
 
 :global([dir='rtl']) .chevronStart {
-  --from: 100%;
+  --from: 40%;
 }
 
 :global([dir='rtl']) .chevronEnd {
-  --from: -100%;
+  --from: -40%;
 }
 
 @keyframes chevron-in {
@@ -215,16 +269,273 @@
   }
 }
 
+/* ---- P1 code: four digit cells over one real input ---- */
+
+.codeField {
+  position: relative;
+  inline-size: 100%;
+}
+
+.cells {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-3);
+  direction: ltr; /* the code is never mirrored */
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: var(--code-cell-height);
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--type-title-size);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+
+.cellFilled {
+  border-color: var(--text);
+}
+
+.cellActive {
+  border-color: var(--primary);
+  outline: var(--line-width-strong) solid var(--primary);
+}
+
+.cells[data-invalid='true'] .cell {
+  border-color: var(--text);
+}
+
+.caret {
+  inline-size: var(--line-width-strong);
+  block-size: var(--s-5);
+  background: var(--primary);
+}
+
+/* The real input covers the cells: it takes the taps, keypad and paste; its own text is invisible. */
+.codeInput {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: var(--type-body-size);
+  text-align: center;
+  appearance: none;
+}
+
+.codeInput::placeholder {
+  color: transparent;
+}
+
+.codeInput::selection {
+  background: transparent;
+}
+
+.codeInput:focus,
+.codeInput:focus-visible {
+  outline: none;
+}
+
+.helper {
+  color: var(--text-muted);
+  font-size: var(--type-small-size);
+}
+
+/* ---- P2 name ---- */
+
+.backRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-block: calc(-1 * var(--s-3)) calc(-1 * var(--s-2));
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--type-small-size);
+}
+
+.backIcon {
+  inline-size: var(--s-4);
+  block-size: var(--s-4);
+  stroke-width: var(--line-width-strong);
+}
+
+:global([dir='rtl']) .backIcon {
+  scale: -1 1;
+}
+
+.codeTag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.codeTagValue {
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-eyebrow);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.fieldLabel {
+  font-size: var(--type-small-size);
+  font-weight: var(--weight-medium);
+}
+
+.nameInput {
+  min-block-size: var(--button-height);
+  border-radius: var(--r-control);
+  font-size: var(--type-lead-size);
+}
+
+.hintRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+}
+
+.counter {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- P3 lobby ---- */
+
+.nameTag {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+  max-inline-size: 60%;
+  padding-block: var(--s-1);
+  padding-inline: var(--s-3);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-tag);
+  background: var(--surface-2);
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineup {
+  display: flex;
+  flex-direction: column;
+  margin-block-end: calc(-1 * var(--s-2));
+}
+
+.lineupItem {
+  display: grid;
+  grid-template-columns: var(--s-6) 1fr;
+  align-items: baseline;
+  padding-block: var(--s-3);
+  font-weight: var(--weight-medium);
+}
+
+.lineupItem + .lineupItem {
+  border-block-start: var(--line-width) solid var(--line);
+}
+
+.lineupNo {
+  color: var(--text-muted);
+  font-size: var(--type-small-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.lobbyFoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.stat {
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+}
+
+.statNum {
+  margin-inline-end: var(--s-1);
+  color: var(--text);
+  font-size: var(--type-heading-size);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Live" line: a blue dot (blue = live, §0.1 rule 4) + muted text. */
+.live {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--text-muted);
+  font-size: var(--type-small-size);
+}
+
+.liveDot {
+  flex: none;
+  inline-size: var(--s-2);
+  block-size: var(--s-2);
+  border-radius: 50%;
+  background: var(--primary);
+  animation: live-pulse calc(var(--dur-countdown) * 2) var(--ease-standard) infinite;
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---- P5 intro + P8 "Next" ---- */
+
+.introBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  text-align: center;
+}
+
 .gameName {
   font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+.countBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
 }
 
 .countdown {
+  color: var(--text);
   font-size: var(--type-score-size);
-  font-weight: var(--type-score-weight);
+  font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
-  color: var(--primary-text);
+  line-height: 1;
   animation: count-pop var(--dur-countdown) var(--ease-standard) both;
 }
 
@@ -244,12 +555,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .chevron,
-  .countdown {
+  .countdown,
+  .liveDot {
     animation: none;
   }
 }
 
-/* ---- P6 game ---- */
+/* ---- P6 game frame ---- */
 
 .gameArea {
   position: relative;
@@ -260,142 +572,97 @@
 
 .go {
   position: absolute;
-  inset-block-start: var(--s-5);
+  inset-block-start: var(--s-3);
   inset-inline: 0;
-  text-align: center;
-  font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
   color: var(--primary-text);
+  font-size: var(--type-lead-size);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-eyebrow);
+  text-align: center;
   pointer-events: none;
 }
 
-/* ---- P7 / P9 ---- */
+/* ---- P7 / P9 hero ---- */
 
-.scoreHero {
-  font-size: var(--type-score-size);
-  font-weight: var(--type-score-weight);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--primary-text);
-}
-
-.detail {
+.heroBlock {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  align-items: center;
+  gap: var(--s-3);
+  text-align: center;
+}
+
+.scoreHero {
+  color: var(--text);
+  font-size: var(--type-score-size);
+  font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
-.detailRow {
-  display: inline-block;
-  padding-block: var(--s-1);
-  padding-inline: var(--s-2);
-  border-radius: var(--s-1);
-}
-
-.detailBest {
-  background: var(--gdg-amber-tint);
-  box-shadow: 0 0 0 var(--line-width-strong) var(--highlight);
-}
-
-.divider {
-  border: none;
-  border-block-start: var(--line-width) solid var(--gdg-line);
-  margin: 0;
-  inline-size: 100%;
-}
-
-.sectionTitle {
-  font-size: var(--type-button-size);
-  font-weight: var(--type-button-weight);
-  text-align: start;
+.rank {
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
 }
 
 .saveState {
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
   color: var(--text-muted);
+  font-size: var(--type-caption-size);
 }
 
-.breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  inline-size: 100%;
+.saveState:empty {
+  display: none;
 }
 
-.breakdownRow {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--s-3);
-  font-variant-numeric: tabular-nums;
-}
-
-.totalRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  inline-size: 100%;
-  gap: var(--s-3);
-}
-
-.totalValue {
-  font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
-  font-variant-numeric: tabular-nums;
-  color: var(--primary-text);
-}
-
-.bottom {
-  position: sticky;
-  inset-block-end: 0;
-  padding-block: var(--s-3);
-  background: var(--bg);
-}
-
-/* ---- P7 new best ---- */
-
+/* New personal best: ink text on an amber tint with an amber line (amber is never text, §2.4). */
 .newBest {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding-block: var(--s-1);
   padding-inline: var(--s-3);
-  border-radius: var(--r-chip);
-  background: var(--highlight);
+  border: var(--line-width) solid var(--highlight);
+  border-radius: var(--r-tag);
+  background: var(--gdg-amber-tint);
   color: var(--on-highlight);
-  font-size: var(--type-body-size);
-  font-weight: var(--type-button-weight);
+  font-size: var(--type-small-size);
+  font-weight: var(--weight-medium);
 }
 
-/* ---- P10 day-board tabs ---- */
+/* ---- P10 day-board tabs: text tabs with a blue underline ---- */
 
 .tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
+  display: grid;
+  border-block-end: var(--line-width) solid var(--line);
 }
 
 .tab {
   min-block-size: var(--touch-target-min);
   padding-block: var(--s-2);
-  padding-inline: var(--s-4);
-  border: var(--line-width-strong) solid var(--gdg-line);
-  border-radius: var(--r-chip);
-  background: var(--surface);
-  color: var(--text);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-button-weight);
+  padding-inline: var(--s-2);
+  border-block-end: var(--line-width-strong) solid transparent;
+  margin-block-end: calc(-1 * var(--line-width));
+  color: var(--text-muted);
+  font-size: var(--type-small-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  text-align: center;
 }
 
 .tabOn {
-  border-color: var(--primary);
-  background: var(--primary-text);
-  color: var(--on-primary);
+  border-block-end-color: var(--primary);
+  color: var(--text);
 }
 
 /* ---- E16: portrait only during rounds (landscape phone = short viewport) ---- */
 
 .rotate {
   display: none;
+}
+
+.rotateText {
+  max-inline-size: var(--dialog-max-width);
+  font-size: var(--type-heading-size);
+  font-weight: var(--weight-medium);
 }
 
 @media (orientation: landscape) and (max-height: 500px) {

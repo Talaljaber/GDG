@@ -447,9 +447,11 @@ export function PerfectCircle({
   if (phase === 'intro') {
     return (
       <div className={styles.screen}>
-        <h1 className={styles.title}>{t('game.perfect_circle.name')}</h1>
-        <p className={styles.pitch}>{t('game.perfect_circle.pitch')}</p>
-        <p className={styles.caption}>{t('game.perfect_circle.intro')}</p>
+        <div className={styles.intro}>
+          <p className={styles.eyebrow}>{t('game.perfect_circle.intro')}</p>
+          <h1 className={styles.title}>{t('game.perfect_circle.name')}</h1>
+          <p className={styles.pitch}>{t('game.perfect_circle.pitch')}</p>
+        </div>
       </div>
     );
   }

@@ -1,5 +1,8 @@
-/* Stop the Clock screen. Tokens only (docs/DESIGN_SYSTEM.md §2-6); no raw
-   colours, sizes or durations. Logical properties only (no left/right). */
+/* Stop the Clock screen. Tokens only (docs/DESIGN_SYSTEM.md §0, §2-6); no raw
+   colours, sizes or durations. Logical properties only (no left/right).
+   v2 chrome (ADR-131): eyebrow labels, medium-weight titles; the game spec
+   (huge blue target, 200 px chevron-edge button, nothing moving while the
+   hidden timer runs) is unchanged (docs/games/stop-the-clock.md §6-§8). */
 
 .screen {
   display: flex;
@@ -15,39 +18,75 @@
   color: var(--text);
 }
 
-.title {
-  font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
+/* Intro card: eyebrow + title + pitch, one tight group. */
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
   margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
 }
 
 .pitch {
-  font-size: var(--type-body-size);
-  font-weight: var(--type-body-weight);
-  color: var(--text-muted);
   margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-regular);
 }
 
 .caption {
+  margin: 0;
+  color: var(--text-muted);
   font-size: var(--type-caption-size);
   font-weight: var(--type-caption-weight);
-  color: var(--text-muted);
-  margin: 0;
 }
 
+/* "Try n of 3": an eyebrow label. */
 .tryLabel {
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
-  color: var(--text-muted);
   margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
 }
 
+.tryLabel:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* The one hero while playing: the target, huge, in blue (§7). */
 .target {
-  font-size: var(--type-target-size);
-  font-weight: var(--type-target-weight);
-  color: var(--primary-text);
-  font-variant-numeric: tabular-nums;
   margin: 0;
+  color: var(--primary-text);
+  font-size: var(--type-target-size);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
 }
 
 .button {
@@ -61,6 +100,7 @@
   font-size: var(--type-button-size);
   font-weight: var(--type-button-weight);
   font-family: inherit;
+  letter-spacing: var(--tracking-eyebrow);
   cursor: pointer;
   clip-path: polygon(10% 0%, 100% 0%, 90% 50%, 100% 100%, 10% 100%, 0% 50%);
   transition:
@@ -74,20 +114,20 @@
 }
 
 .button:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 4px;
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--s-1);
 }
 
 .locked {
-  font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
   margin: 0;
+  font-size: var(--type-heading-size);
+  font-weight: var(--weight-medium);
 }
 
 .next {
-  font-size: var(--type-body-size);
-  color: var(--text-muted);
   margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
 }
 
 .srOnly {

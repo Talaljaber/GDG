@@ -18,7 +18,7 @@
 
 .title {
   font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
+  font-weight: var(--weight-medium);
   margin: 0;
 }
 
@@ -54,7 +54,7 @@
   display: inline-flex;
   align-items: center;
   border: 2px solid var(--gdg-line);
-  border-radius: var(--r-chip);
+  border-radius: var(--r-tag);
   padding-block: var(--s-1);
   padding-inline: var(--s-3);
   font-size: var(--type-caption-size);
@@ -71,7 +71,7 @@
 .countdownBar {
   flex: 1;
   block-size: var(--s-2);
-  border-radius: var(--r-chip);
+  border-radius: var(--r-tag);
   background: var(--gdg-line);
   overflow: hidden;
 }
@@ -91,7 +91,7 @@
 .countdownNumber {
   min-inline-size: 2ch;
   font-size: var(--type-button-size);
-  font-weight: var(--type-title-weight);
+  font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
   color: var(--primary-text);
 }
@@ -102,7 +102,7 @@
 .countdownNumberAmber {
   color: var(--on-highlight);
   background: var(--highlight);
-  border-radius: var(--r-chip);
+  border-radius: var(--r-tag);
   padding-inline: var(--s-2);
 }
 
@@ -126,7 +126,7 @@
   gap: var(--s-3);
   min-block-size: 56px;
   border: 2px solid var(--text);
-  border-radius: var(--r-button);
+  border-radius: var(--r-control);
   background: var(--surface);
   color: var(--text);
   font-family: inherit;
@@ -180,10 +180,10 @@ button.option:active {
   display: inline-flex;
   align-items: center;
   font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
+  font-weight: var(--weight-medium);
   color: var(--on-highlight);
   background: var(--highlight);
-  border-radius: var(--r-chip);
+  border-radius: var(--r-tag);
   padding-block: var(--s-1);
   padding-inline: var(--s-4);
   margin: 0;
@@ -219,4 +219,27 @@ button.option:active {
   .countdownFill {
     transition: none;
   }
+}
+
+/* v2 chrome (DESIGN_SYSTEM §0.3, ADR-131): the intro card is eyebrow + title + pitch. */
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
 }

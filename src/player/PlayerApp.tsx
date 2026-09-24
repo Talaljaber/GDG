@@ -45,20 +45,27 @@ export function PlayerApp() {
   );
 }
 
-function Shell({
+/**
+ * P0 shell: top bar (logo + language toggle), then the system banner right
+ * under it (so the logo never moves, SCREENS §4), then the screen.
+ */
+export function Shell({
   showLangToggle,
   inRound = false,
+  forceOffline = false,
   children,
 }: {
   showLangToggle: boolean;
   /** A round (3-2-1 or game) is on screen: portrait only (E16). */
   inRound?: boolean;
+  /** Dev preview only: show the offline banner. */
+  forceOffline?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className={styles.app}>
-      <OfflineBanner />
       <TopBar showLangToggle={showLangToggle} />
+      <OfflineBanner forceOffline={forceOffline} />
       <main className={styles.main}>{children}</main>
       {inRound ? <RotateOverlay /> : null}
     </div>
@@ -74,7 +81,7 @@ function RotateOverlay() {
   const t = useT();
   return (
     <div className={styles.rotate} role="alert" data-testid="rotate-overlay">
-      <p className={styles.title}>{t('sys.rotate')}</p>
+      <p className={styles.rotateText}>{t('sys.rotate')}</p>
     </div>
   );
 }
@@ -364,7 +371,14 @@ function MemberFlow({
               : null;
       body =
         sync.session && sync.me ? (
-          <RoundResultScreen session={sync.session} round={view.round} me={sync.me} result={result} submitState={state} />
+          <RoundResultScreen
+            session={sync.session}
+            round={view.round}
+            me={sync.me}
+            result={result}
+            submitState={state}
+            totalRounds={Math.max(sync.rounds.length, 1)}
+          />
         ) : null;
       break;
     }
