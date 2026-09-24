@@ -46,6 +46,10 @@ Run as three identities: `anon` (no JWT), a guest (anonymous JWT), the admin (JW
 
 **Functions:** every transition in `SESSION_LIFECYCLE.md` §2–§3, plus: start with 0 players → `GD010`; remove after start → `GD010`; two joinable sessions impossible (unique index); `join_session` idempotent for the same uid; removed uid → `GD004`; late score within 15 s accepted, after → `GD007`.
 
+**Lineup:** exactly 3 distinct games (`admin_open_lobby`/`admin_set_lineup` with 1, 2, a repeat or a 2-D array → `GD011`; a new or shrunk `sessions` row with other than 3 games → `23514`, constraint `sessions_lineup_three`).
+
+**Boards (`07_boards.sql`):** round board `score desc, created_at asc`; session board totals with `total_duration_ms` then `joined_at` tie-breaks, a guest sees only sessions it joined; day board one row per name key with the best score, the earliest of equal bests, names without suffix, current day only; a hidden key leaves all three (rows kept) and comes back when unhidden.
+
 **Trigger bounds:** one passing and one failing case per bound in `SCORING.md` §4 (reason code asserted).
 
 **Names:** the §6 vectors in SQL; blocklist "must pass" list (real names that contain short English terms): `Hassan`, `Assem`, `Anass`, `Cassandra`, `Basem`, plus the Arabic names the blocklist owner adds (OQ-13). "Must block" list: maintained with the blocklist (not in this doc).
@@ -57,6 +61,8 @@ The impossible-value bounds (250 ms, 60 ms total error, ε 0.005, 120 ms gap) mu
 ## 5. Load test (simulated phones)
 
 Script `scripts/loadtest/`: N headless "phones" using supabase-js against the **dev** project.
+
+By default it runs against the local stack, even when `.env.local` points at a cloud project. The cloud project is also the event database (ADR-127), so full-scale runs (L3–L5) against it happen only before the dry run, never on event days: `npm run loadtest -- --scenario L3 --target <SUPABASE_URL>`, and afterwards "Start new event day". Any URL other than `SUPABASE_URL` is refused, so the load test never hits the cloud by accident.
 
 Each simulated phone: anonymous sign-in → `join_session` → subscribe like a real phone (§8 of `DATA_MODEL.md`) and `track` presence → on round start wait a random 5–60 s → insert a plausible score → poll boards every 3 s → repeat for 3 rounds. A real host view (browser) runs the session.
 
@@ -111,7 +117,20 @@ Settings to cover: Arabic device language (RTL auto), English; text size 130 %; 
 2. AC1.6 / STC-T7: reload during running attempt 2 resumes attempt 2 with the same `attemptStartEpoch` and attempt 1 kept; a re-sent submit returns 409/23505 and is treated as saved; exactly one score row.
 3. AC1.7 + AC1.3 + STC-T8: a closed phone's presence dot greys after `PRESENCE_GREY_MS`; 19 screenshots 1 s apart during a running attempt are byte-identical; End round (confirm) with one phone that never played → `force_end`, no score row for it.
 
-Every row in `SESSION_LIFECYCLE.md` §6 (E1–E29) maps to a unit, pgTAP or e2e test, or to a manual step in the dry run; keep the mapping table in `PROGRESS.md` until all are covered.
+Since Phase 3 sessions are 3 rounds: the slice tests play round 1 (Stop the Clock) for real and the host force-ends rounds 2–3 (`hostFinishSession` in `e2e/helpers.ts`; phones finish those with the timeout rule, score 0).
+
+**Phase 2 (`e2e/phase2.spec.ts`).** Games are driven from each phone's persisted round seed: Stop the Clock by timed holds, Odd One Out by tapping the seeded odd tile (`grid.ts`, after a 400+ ms pause because of `ooo.find_ms`), Simon by replaying the seeded sequence (`sequence.ts`) to length 3 and then a wrong pad.
+- E2E-1: 3 phones, lineup Stop the Clock → Odd One Out → Simon; no host action after Start (AC2.1): the Stop the Clock reveal (3 strips × 3 dots, labels), P8 steps on the phones, the next-games picker edits the pending session (E20), rounds 2–3 start by themselves, the last round's 7 s board, then H4 (3 round columns, totals = SQL sums, P9 totals and breakdowns), Show day board → H5 tabs rotating + P10 on every phone, best-per-name rows = SQL `max(score)` per key (AC2.5), New session → the pending code becomes the lobby with the picked lineup (AC2.4).
+- E2E-3: the running code is refused (GD001), the corner code lands in P3b, the host's corner shows 1 late joiner, and after New session the latecomer is in the lobby (AC2.3).
+- E2E-6: the host page is closed mid-round; the phone keeps playing and saves; the round's `started_at` is moved back 130 s by SQL (instead of waiting 128 s); on reopen the host ends it with `time_cap` at once and runs the intermission; closed again for 17 s (longer than the intermission), the reopened host shows the 3 s "Next" heads-up and starts round 2 (AC2.2, AC2.7, E8).
+- E2E-7: `admin_hide_name` (the dashboard's call) during the intermission: gone from the host round board < 1 s, from a phone's P8 board < 3.5 s (3 s poll + one request), never on the totals or results; the hidden player's phone still shows its own total (AC2.9, E24). Unhidden in `finally`.
+- E2E-8: "Sara…", "Sara…", "SARA…" → suffixes 2 and 3 on the lobby, round and session boards; one day-board row for the key with its best score and no suffix, on P10 and in SQL (AC2.6).
+
+**Payloads (`e2e/payloads.spec.ts`, AC3.3).** No browser: an admin client and an anonymous guest client (publishable key) run two real sessions covering all five games; each round's score is built by that game's own `buildRaw` + scorer, passes the game's client-side bounds mirror, is accepted by the trigger and stored as sent. The reject side is pgTAP `05_score_bounds.sql`.
+
+The e2e web server runs with `E2E_NO_HMR=1` (no hot reload), so a file saved during a run can't reload the test pages. `e2e/env.ts` refuses any non-local Supabase URL: e2e always runs on the local stack.
+
+Every row in `SESSION_LIFECYCLE.md` §6 (E1–E29) maps to a unit, pgTAP or e2e test, or to a manual step in the dry run; the mapping table is in `PROGRESS.md`.
 
 ## 8. Day-before dry run (script)
 

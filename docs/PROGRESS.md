@@ -1,6 +1,6 @@
 # Progress
 
-Phase 1 (vertical slice) — implemented and verified locally; real-device checks pending.
+Phase 2 (sessions, rounds, leaderboards) and the Phase 3 integration items — implemented and verified locally; real-device checks pending (Phase 1 and 2).
 
 Purpose: the living project memory. It records the current phase, what's done, what's next, blockers and short notes from each working session. Every Claude Code session reads it first and updates it last (CLAUDE.md working agreement). Keep it short: move finished detail into the relevant doc and keep only pointers here.
 
@@ -10,7 +10,28 @@ Last updated: 2026-09-24
 
 ## Current phase
 
-**Phase 1: Vertical slice** (`PHASES.md`). Built and green locally (typecheck, lint, unit tests, `check:i18n`, `check:trivia`, build, `npm run e2e`). Remaining before it's "done": the real-device parts of AC1.2/AC1.3 (below). Phase 0's cloud items (dev/prod projects, Netlify, keepalive runs) are tracked separately.
+**Phase 2: Sessions, rounds and leaderboards** (`PHASES.md`), built with real 3-round sessions (the other game modules already existed), plus the **Phase 3 integration items** (AC3.2–AC3.5: `ROUNDS_PER_SESSION = 3`, the 3-game lineup migration). Green locally: typecheck, lint, unit tests, `check:i18n`, `check:trivia`, `contrast`, build, `npm run e2e` (9 specs), `supabase test db` (450). Remaining: the real-device checks (Phase 1 AC1.2/AC1.3 and the manual items below), and Phase 3's AC3.1/AC3.6/AC3.7 sign-off per game. Phase 0's cloud items are tracked separately.
+
+### Phase 2 acceptance criteria
+| AC | Status | How verified |
+|---|---|---|
+| AC2.1 N rounds start → results with only Start (auto intermissions) | ✅ local | E2E-1: after Start, no host action: STC → intermission (15 s) → Odd One Out → intermission → Simon → 7 s last board → H4; all three rounds `all_finished`; `schedule.test.ts` (7 + 5 + 3 s, skip, last round) |
+| AC2.2 dead phone → 128 s `time_cap`; force-end → `force_end` | ✅ local | `hostLoop.test.ts` (ends at exactly 128 000 ms, not before); E2E-6 (deadline passed while the host was away → `time_cap` 0.9–2.5 s after reopening; an idle phone keeps the round open until then); phase1 test 3 (`force_end`). Waiting a real 128 s is left to the dry run |
+| AC2.3 latecomer via corner code → lobby after New session | ✅ local | E2E-3: running code refused (GD001), corner code → P3b, host corner counts 1, New session → pending becomes the lobby with the latecomer, phone switches to P3 |
+| AC2.4 New session preselects the picker's lineup | ✅ local | E2E-1: next-games picker during the intermission saves `{simon,stop_the_clock,odd_one_out}` on the pending session (E20); after New session the lobby code = the corner code and the H1 cards read ① Simon ② Stop the Clock ③ Odd One Out |
+| AC2.5 day board: one row per name key, best score, ties earliest | ✅ | unit (`boards.test.ts`: `bestPerName`, `compareDayRows`); pgTAP `07_boards.sql` (three "Sara"s → one row, the earlier of two equal 800s); e2e (E2E-1: per key and game = SQL `max(score)`; E2E-8: one row on P10 and in SQL) |
+| AC2.6 duplicate names get suffixes 2, 3 | ✅ local | E2E-8: "Sara…", "Sara… 2", "SARA… 3" on the lobby (phone + host), round board (host + P8) and H4; day board without suffix; pgTAP `04_lifecycle.sql` |
+| AC2.7 host tab closed mid-round and reopened | ✅ local | E2E-6: phones keep playing and saving while the host is closed; reopen reconstructs from the DB, ends the overdue round, runs the intermission; closed again for longer than the intermission → reopen shows the 3 s "Next" heads-up, then starts round 2 (ADR-129) |
+| AC2.8 every E1–E29 has a test or a manual check | ✅ | mapping below |
+| AC2.9 hidden name gone from the host ≤ 1 s, phones ≤ 3 s | ✅ local | E2E-7 (`admin_hide_name` during the intermission): host 0.25–0.35 s (hidden-name events refetch every board unthrottled), phone P8 board 2.84–2.93 s (sampled every 50 ms); never on totals/results; the hidden player's phone still shows its own total. Structural worst case on a phone is the 3 s board poll plus one request (≈ 3.05 s locally), so the test allows 3.5 s; a hard 3 s would need `BOARD_POLL_MS` 2500 (team call) |
+
+### Phase 3 integration criteria (this session)
+| AC | Status | How verified |
+|---|---|---|
+| AC3.2 every game finishes inside its worst case and handles "round ended" | ✅ | `src/games/worstCase.test.tsx`: all five modules, an idle player is scored within `worstCaseMs` (≤ 120 s), and a mid-round "round ended" finishes at once with the scorer's value; plus each game's own E27 tests. Fixed on the way: Odd One Out's documented worst case left out the intro and the last transition (62 → **64 s**, `SCORING.md` §2, `games/odd-one-out.md`; idle measures 63.6 s) |
+| AC3.3 server accepts each game's valid payload; rejects each bound | ✅ local | `e2e/payloads.spec.ts`: two real sessions covering all five games, each payload built by the game's own `buildRaw` (new for Simon: `simon/scoring.ts`), passing the game's client bounds mirror, accepted by the trigger and stored as sent; rejects: pgTAP `05_score_bounds.sql` |
+| AC3.4 a full 3-round session with three different games on 3 phones | ✅ local | E2E-1 (Stop the Clock, Odd One Out, Simon, 3 phones, totals = sums) |
+| AC3.5 `ROUNDS_PER_SESSION = 3`; picker enforces 3 distinct | ✅ | `src/config.ts`; migration `20260925000300_lineup_exactly_three.sql` (`sessions_lineup_three` + `lineup_is_valid` = exactly 3; pgTAP `04`/`07`: 1, 2, repeat, 2-D → GD011, 23514); `hostLoop.test.ts` (picker rules); e2e helpers pick 3 in every test |
 
 ### Phase 1 acceptance criteria
 | AC | Status | How verified |
@@ -26,6 +47,8 @@ Last updated: 2026-09-24
 
 ## Done
 
+- 2026-09-24: **Phase 2 + Phase 3 integration** (this session): multi-round host loop with intermissions anchored on `ended_at` (`src/host/useHost.ts`, `schedule.ts`), pending session corner code + next-games picker (`common.tsx`), H3 with the Stop the Clock guess reveal (`StcReveal.tsx`, `reveal.ts`; shatter hook `src/components/RevealIn.tsx`), H4 table with round columns, H5 rotating day boards (`Results.tsx`); phones P3b, P7 `new_best`, P8, P9 from own rows, P10, P11 by event day, landscape overlay (E16) (`src/player/`); board ordering helpers (`src/lib/boards.ts`); API for rounds, day boards, hidden keys (`src/lib/api.ts`); `pending:` and `day:` channels (`realtime.ts`); `ROUNDS_PER_SESSION = 3` + migration `20260925000300`; pgTAP `07_boards.sql`; e2e `phase2.spec.ts`, `payloads.spec.ts`; Phase 1 e2e adapted to 3 rounds.
+
 - 2026-09-24: **Game modules built ahead of Phase 3** (pure scoring + screens + tests, each to its doc): Odd One Out, Simon, Perfect Circle, Trivia (`src/games/*`). Registered in `src/games/registry.ts`; Trivia is only offered once ≥ 5 questions are ready (currently 3). Sessions stay at `ROUNDS_PER_SESSION = 1` until Phase 2's multi-round sequencing lands (ADR-120). Perfect Circle metric fixes written back to `games/perfect-circle.md` (midpoint resampling; sweep measured around the stroke's centroid).
 - 2026-09-24: **Load-test toolkit** (`scripts/loadtest/`, `npm run loadtest -- --scenario L1`): L1 (15 phones) and L2 (30) pass locally: round-start p95 176 ms / 319 ms, no errors. L3–L5 not yet run at full scale.
 - 2026-09-24: **Phase 0 (local)**: scaffold, tooling, CI + keepalive workflows, tokens (sampled logo colours), i18n generated from COPY.md, client libs, migrations + 420 pgTAP tests (isolated from local data). Cloud parts (Supabase projects, Netlify, keepalive runs) still to do.
@@ -34,36 +57,58 @@ Last updated: 2026-09-24
 
 ## Next
 
-1. Phase 1 real-device checks: AC1.2 on an iPhone and an Android; AC1.3 with airplane mode (see the table above).
-2. Phase 2: multi-round sequencing, intermission, pending lobby + corner code, day boards (`PHASES.md`).
+1. Real-device checks: Phase 1 AC1.2 (iPhone + Android) and AC1.3 (airplane mode); Phase 2 on a projector: H3 reveal and H4/H5 readability, the P8 steps next to the big screen, the landscape overlay (E16) and screen lock (E15) on real phones.
+2. Phase 3 sign-off per game (AC3.1, AC3.6, AC3.7) and E2E-2 (reload mid-round) for the four newer games in the browser (unit-tested today).
 3. Team answers the blocking open questions: OQ-01 (dates), OQ-02 (roles), OQ-03 (trivia writers), OQ-14 (Netlify account), and reviews Proposed ADRs (OQ-19).
 4. Phase 0 cloud tasks: Supabase projects, Netlify, **keepalive on day zero**.
 
 ## Blockers
 
-- Phase 0 cloud setup needs the team's Supabase/Netlify accounts (OQ-14). Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia needs 27 more questions written and reviewed (OQ-03).
+- Phase 0 cloud setup needs the team's Supabase/Netlify accounts (OQ-14). Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia: the pool now has 30 questions marked ready (`check:trivia`); the review sign-off is OQ-03.
 
 ## Edge-case test coverage (E1–E29, `SESSION_LIFECYCLE.md` §6)
 
-Fill in as tests land: `E# → test id / manual step`.
-- E1 reload in lobby → `playerFlow.test.ts` (derivation), manual
-- E2 reload mid-round → e2e test 2 (Stop the Clock)
-- E3 reload after finishing → `playerFlow.test.ts`; e2e test 2 (reload on results)
-- E5 removed, rescans → e2e test 1
-- E6 wrong/old code → e2e test 1, `JoinFlow.test.tsx`
-- E7 phone leaves → e2e test 3 (presence grey + End round)
-- E8 host reload → `hostLoop.test.ts` (overdue round ends at once); manual
+`E# → test / manual step` (unit = Vitest, pgTAP = `supabase/tests`, e2e = Playwright spec + test).
+- E1 reload in lobby → `playerFlow.test.ts` (lobby/pending derivation); `join_session` idempotent (pgTAP 04); manual
+- E2 reload mid-round → e2e phase1 test 2 (Stop the Clock, same attempt and epoch); each game's reload/snapshot unit tests (all five); E2E-2 for the other four games in the browser: to do
+- E3 reload after finishing a round → `playerFlow.test.ts`; e2e phase1 test 2 (reload on P8 after the round: 409 → saved, no new game)
+- E4 reload after the session ended → `playerFlow.test.ts` (results, day board, frozen after New session); manual
+- E5 removed, rescans → e2e phase1 test 1 (GD004); pgTAP 04
+- E6 late join / old code → E2E-3 (running code GD001, corner code → P3b); e2e phase1 test 1; `JoinFlow.test.tsx`; pgTAP 04
+- E7 phone leaves mid-round → e2e phase1 test 3 (grey + End round, no score row); E2E-6 (an idle phone holds the round to the deadline); `hostLoop.test.ts`
+- E8 host crash / reload → E2E-6 (overdue round → `time_cap` on reopen; late resume shows 3 s "Next" then starts the round); `schedule.test.ts`; `hostLoop.test.ts`
 - E9 two tabs → `storage.test.ts` (tab lock); screen `sys.other_tab`
-- E13 Start with zero players → Start disabled (H1); pgTAP GD010
-- E14 network drop mid-submit / 23505 → `submitter.test.ts`; e2e test 2
-- E17 language toggle hidden during rounds → e2e test 1
-- E23 two host tabs → GD010 ignored (`hostLoop.test.ts`); manual
-- E26 phone late to a round → `playerFlow.test.ts` (begin on a playing round)
-- E27 cap during an attempt → STC unit tests; `playerFlow.test.ts` (local 120 s cap)
-- E28 invalid name with right code → e2e test 1, `JoinFlow.test.tsx`
+- E10 two browsers on one phone → accepted by design (separate anonymous user); manual at the dry run
+- E11 duplicate names → E2E-8; pgTAP 04 (suffixes 2, 3), 07 (one day-board row per key)
+- E12 zero players finish → `hostLoop.test.ts` (`time_cap` with no scores); H2/H3 `round.no_scores`, H4/P9 `results.no_scores` (manual)
+- E13 Start with zero players → Start disabled (H1, e2e phase1 before joins); pgTAP 04 (GD010)
+- E14 network drop mid-submit → `submitter.test.ts`; e2e phase1 test 2 (23505 → saved); pgTAP 04 (GD007 after 15 s)
+- E15 screen lock → epoch-based timers in every game (unit tests resume from stored epochs); manual on real phones
+- E16 landscape during a round → E2E-3 (overlay `sys.rotate` in landscape, round continues); Perfect Circle stroke discard on resize (PC unit tests); manual on real phones
+- E17 language toggle → e2e phase1 test 1 (hidden during rounds); E2E-1 (visible again on P8)
+- E18 project paused / 5xx → `errors.test.ts` + `api.ts` mapping (`join.error_warming`), host banner `host.banner.db_down`; manual (runbook §5.1)
+- E19 join the pending session while in the running one → allowed by the server (pgTAP 04 pending joins); manual
+- E20 lineup changed during play → E2E-1 (next-games picker edits the pending session); pgTAP 04 (pending ok, playing GD010)
+- E21 New session before Show day board → E2E-3, E2E-7 (New session straight from H4); pgTAP 04
+- E22 score after force-end → pgTAP 04 (within 15 s accepted, after GD007); host boards re-query on inserts during the intermission (E2E-1/-7 boards update); phase1 test 2 (re-send within the window)
+- E23 two host tabs → `hostLoop.test.ts` (GD010 ignored); `schedule.test.ts` (same step from `ended_at`); manual
+- E24 hidden name on screen → E2E-7; pgTAP 03, 07
+- E25 new event day → `playerFlow.test.ts` (closed pending → P11; results closed by a new day → P11; closed by New session stays); pgTAP 04 (closes joinable/results, refused while playing); manual from the dashboard
+- E26 phone late to a round → `playerFlow.test.ts` (begins on a playing round)
+- E27 cap / round ended during an attempt → `worstCase.test.tsx` (all five games); each game's tests; `playerFlow.test.ts`; E2E-6 (idle phone finishes on `time_cap`)
+- E28 invalid name with the right code → e2e phase1 test 1, `JoinFlow.test.tsx`
 - E29 rate-limited sign-in → `JoinFlow.test.tsx` (one retry after 5 s)
 
 ## Session notes
+
+### 2026-09-24: Phase 2 + Phase 3 integration
+- Decisions filled in (ADR-129, Proposed): intermission anchored on `ended_at` (server time); after the last round only the 7 s round board, then results; a host reopening after the intermission shows 3 s of "Next" first; phones mirror the steps from their own clock and hold on "Next" (P5 does the 3-2-1); corner code + next-games picker on H2–H5.
+- Spec gaps fixed: Odd One Out worst case 62 → 64 s (intro + last transition were missing); a saved lineup with an unregistered game (e.g. Trivia) no longer hides a pick in the picker; E16 overlay was missing.
+- Migration `20260925000300`: `sessions_lineup_three` added NOT VALID and validated only when every row has 3 games (after `supabase db reset` it is validated at once; on a database with old 1-game sessions it stays NOT VALID). Renamed from `000100` to sort after `20260925000200_scores_raw_size.sql`, which the cloud project already has. A CHECK applies to every UPDATE, so the migration closes old *open* 1-game sessions (status only) and refuses to run while one is `playing`.
+- Phones read their own `scores` rows (P9 total for a hidden player, P7 `new_best`) and poll `hidden_names` on P10; no new subscriptions (ADR-112). The host subscribes to `pending:<id>` and, on H5, `day:<event_day_id>`.
+- AC1.5 note: the last Stop the Clock finisher ends the round within ~0.5 s and H3 shows the guess reveal (dots, no scores), so that player's score may skip H2's live board; the phase1 e2e then checks it on H3's session total.
+- Strings added: `common.done`, `host.results.total` (COPY.md §3, §6). Trivia now has 30 ready questions (another session), so the picker offers all five games.
+- e2e: the web server runs with `E2E_NO_HMR=1` (concurrent file edits were reloading the test pages); `e2e/env.ts` refuses non-local Supabase URLs (`.env.local` now points at the cloud project). Tests leave the lobby with whoever joined last (e.g. E2E-3's latecomer): harmless, as every test counts its own players.
 
 ### 2026-09-24: Phase 1 vertical slice
 - Built as scoped (no intermission, pending-lobby UI, day boards, shatter or dashboard). The host loop from `SESSION_LIFECYCLE.md` §3.1 runs for the one-round case, including the 128 s `time_cap` deadline via a `server_now()` offset (PHASES listed cap automation as out; it was cheap and makes stuck rounds end on their own).

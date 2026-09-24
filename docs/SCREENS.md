@@ -95,7 +95,7 @@ Strings: `lobby.in`, `lobby.you_are`, `lobby.lineup`, `lobby.players_count`, `lo
 
 Behaviour: the player count is polled every 3 s (phones don't subscribe to other players, ADR-112); the lineup follows the `sessions` row (realtime).
 
-**P3b Pending lobby ("next round").** Same layout as P3 with the headline and sub-line replaced. (Phase 1 renders it minimally; nothing shows the pending code until Phase 2.)
+**P3b Pending lobby ("next round").** Same layout as P3 with the headline and sub-line replaced; reached by typing the corner code while a session runs (E6). The lineup follows the pending session row, so edits from the host's next-games picker show at once. When the host taps New session the pending session becomes the lobby and the phone switches to P3 (realtime `sessions` UPDATE); the player row is carried over.
 Strings: `lobby.next_round`, `lobby.next_round_sub`, `lobby.you_are`, `lobby.lineup`, `game.*.name`.
 
 **P4 Removed.** Headline, body, one button.
@@ -123,11 +123,12 @@ Strings: `round.label`, `game.<id>.name`, `game.<id>.pitch`, `round.get_ready`, 
 └──────────────────────────┘
 ```
 States: `saving` (pending submit), `saved`, `save_failed` (E14), `missed` (no score for this round), `new_best` (celebrate shatter when this beats the player's day-board best for that game).
-Board: polled every 3 s (ADR-112); top 10 plus the player's own row if lower; names in `<bdi>`. Game detail line for Stop the Clock: the three `game.stop_the_clock.result_row` rows (`game.stop_the_clock.missed` for a missed start), closest guess amber-ringed. "x/y done" counts joined players with `progress = finished` for the round (polled). The language toggle stays hidden while the round is playing. Phase 1 implements `saving`, `saved`, `save_failed`, `missed`; `new_best` needs day boards (Phase 2).
+Board: polled every 3 s (ADR-112); top 10 plus the player's own row if lower; names in `<bdi>`. Game detail line for Stop the Clock: the three `game.stop_the_clock.result_row` rows (`game.stop_the_clock.missed` for a missed start), closest guess amber-ringed. "x/y done" counts joined players with `progress = finished` for the round (polled). The language toggle stays hidden while the round is playing. `new_best`: once saved, the phone reads its name key's best earlier score today in this game (`scores`, excluding this round); a strictly higher score shows `results.new_best` (a first play is not a "new best"). The shatter celebration hooks in there in Phase 5 (`src/components/RevealIn.tsx`).
 Strings: `round.your_score`, `round.board_title`, `round.waiting_others`, `round.missed`, `round.no_scores`, `sys.saving`, `sys.save_failed`, `results.new_best`, plus the game's result line key.
 
-**P8 Intermission.** Mirrors the big screen: round board (7 s) → total so far (5 s) → "Next: <game>" 3-2-1 (3 s). The player's own row is highlighted in both boards.
-Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `game.<id>.name`.
+**P8 Intermission.** Mirrors the big screen: round board (7 s) → total so far (5 s) → "Next: <game>" (versus frame, pitch, "Get ready…"), held until the next round starts; the 3-2-1 is P5's. Steps run from the local time the phone saw the round end (ADR-104, ADR-129). The player's own row is highlighted in both boards (polled every 3 s while shown). Shown to every member between rounds, including one that missed the round. The language toggle is visible.
+States: `round_board`, `session_total`, `next_intro`.
+Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `round.label`, `round.get_ready`, `round.no_scores`, `results.no_scores`, `game.<id>.name`, `game.<id>.pitch`.
 
 **P9 Session results.**
 ```
@@ -146,12 +147,13 @@ Strings: `intermission.round_board`, `intermission.session_total`, `intermission
 └──────────────────────────┘
 ```
 States: `normal`, `no_scores` (session had no scores), `not_scored` (this player has no scores: shows the board and the button only).
+"Your total" and the breakdown come from the phone's own score rows (so a hidden player still sees them, ADR-115); the rank comes from the session board (absent when hidden). Breakdown rows follow the round order; a missing round shows `results.breakdown_missing` ("–").
 Strings: `results.title`, `results.your_total`, `results.rank`, `results.breakdown_missing`, `results.no_scores`, `results.join_next`, `game.*.name`.
 
-**P10 Day board.** Shown after the host taps Show day board: tabs for the session's 3 games, top 10 each + own row; the player's best today is highlighted. "Join the next game" stays at the bottom.
+**P10 Day board.** Shown after the host taps Show day board (phones follow `sessions.day_board_shown_at`): tabs for the session's 3 games, top 10 each + own row (matched by name key, without suffix); the player's best today is highlighted. Boards poll every 10 s; hidden names are polled every 3 s and dropped at once (AC2.9). "Join the next game" stays at the bottom. A session closed by New session keeps showing it.
 Strings: `dayboard.title`, `dayboard.empty`, `game.*.name`, `results.join_next`.
 
-**P11 Session ended elsewhere.** If the session was closed by a new event day (E25): message + button.
+**P11 Session ended elsewhere.** If the session was closed by a new event day (E25): a `closed` session that never reached results, or whose event day is no longer current. Message + button.
 Strings: `results.session_ended`, `results.join_next`.
 
 ## 2. Big screen (host view, projected)
@@ -219,7 +221,8 @@ Strings: `host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.code_label`, `hos
 - Board updates live (host subscribes to scores). New #1 → celebrate shatter on that row.
 - "next games ▾" opens the lineup picker for the **pending** session (ADR-009).
 - End round → confirm → `admin_end_round(force_end)`.
-- The host loop (`SESSION_LIFECYCLE.md` §3.1) ends the round by itself with `all_finished` when score rows ≥ joined players, or `time_cap` at the 128 s deadline (server time via one `server_now()` offset). "x/y finished" = score rows / joined players. Time left counts down the phones' 3 s + 120 s. (Phase 1: no corner code, no "next games" picker.)
+- The host loop (`SESSION_LIFECYCLE.md` §3.1) ends the round by itself with `all_finished` when score rows ≥ joined players, or `time_cap` at the 128 s deadline (server time via one `server_now()` offset). "x/y finished" = score rows / joined players. Time left counts down the phones' 3 s + 120 s.
+- Corner code (inline-start bottom, H2–H5): `host.corner.next_code` with the pending session's code in large digits + `host.corner.late`. "next games ▾" (`host.lineup.next_title`) opens the same game cards as H1 for the pending session, with `common.done` to close it.
 - Stop the Clock rounds show scores only; guesses stay hidden until the intermission reveal.
 States: `live`, `no_scores_yet`, `ending`.
 Strings: `round.label`, `game.<id>.name`, `round.time_left`, `host.round.finished`, `round.board_title`, `host.corner.next_code`, `host.corner.late`, `host.lineup.next_title`, `host.round.force_end`, `host.round.force_end_confirm`, `round.no_scores`.
@@ -228,18 +231,20 @@ Strings: `round.label`, `game.<id>.name`, `round.time_left`, `host.round.finishe
 1. Round board, 7 s: "Round n results", top 10 with a shatter-in; #1 in amber. For Stop the Clock this step is the **guess reveal** (three strips, `games/stop-the-clock.md` §6).
 2. Total so far, 5 s: running session totals (top 10), rank changes animated.
 3. "Next: <game>", 3 s: versus frame + 3-2-1.
-Control: "Next round now" skips to step 3. Corner code stays visible.
+Control: "Next round now" skips to step 3 (from the tap). Corner code and the next-games picker stay visible.
+After the **last** round only step 1 runs (7 s, no skip), then H4 (ADR-129). The steps are anchored on the round's `ended_at` in server time, so a reload lands on the same step; a host that reopens after the 15 s shows 3 s of step 3 before starting the round.
+Stop the Clock reveal: three strips (5 s, 10 s, 7 s targets, labelled with `game.stop_the_clock.target`), the time axis never mirrored in Arabic; one dot per player per measured guess at `50 % + 50 % × (guess − target) / 5 s`, dots beyond ±5 s pinned to the edge (outlined); the top 5 of the round board are labelled with their display names. Dots reveal strip by strip; the Phase 5 shatter replaces the stand-in fade/scale at the single hook `src/components/RevealIn.tsx`.
 States: `round_board`, `stc_reveal`, `session_total`, `next_intro`.
-Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `intermission.skip`, `game.stc.reveal_title`, `game.stc.reveal_axis`, `game.<id>.name`, `host.corner.next_code`, `host.corner.late`.
+Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `intermission.skip`, `round.label`, `game.stc.reveal_title`, `game.stc.reveal_axis`, `game.stop_the_clock.target`, `game.<id>.name`, `round.no_scores`, `results.no_scores`, `host.corner.next_code`, `host.corner.late`, `host.lineup.next_title`.
 
-**H4 Session results.** Winner card (versus frame, amber), then the full session board (top 10 by total) with each player's three round scores. Stays until the host acts. (Phase 1: winner card + board by total; the per-round breakdown line appears when the lineup has more than one game; Show day board comes in Phase 2.)
+**H4 Session results.** Winner card (versus frame, amber), then the full session board (top 10 by total, SCORING §5 order) as a table: rank, name (with suffix), one column per round in round order (game name as header; "–" for a missing round), total. Late scores (E22) and hidden names re-query it. Stays until the host acts. Corner code + next-games picker stay (ADR-129).
 Controls: `Show day board`, `New session`.
 States: `results`, `no_scores`.
-Strings: `results.title`, `host.results.winner`, `results.no_scores`, `results.breakdown_missing`, `host.results.show_day_board`, `host.new_session`, `game.*.name`.
+Strings: `results.title`, `host.results.winner`, `results.no_scores`, `results.breakdown_missing`, `host.results.total`, `host.results.show_day_board`, `host.new_session`, `game.*.name`.
 
-**H5 Day boards.** After the ~15 s merge (`DESIGN_SYSTEM.md` §6.2): one tab per game in the session's lineup, auto-rotating every 8 s; each shows the top 10 best-per-name for today. Rows from this session that entered or rose are highlighted for one rotation. The next code sits in the corner (it is now the lobby-to-be).
+**H5 Day boards.** After the ~15 s merge (`DESIGN_SYSTEM.md` §6.2; Phase 5, hook in `src/host/Results.tsx`): one tab per game in the session's lineup, auto-rotating every 8 s (tabs also tappable); each shows the top 10 best-per-name for today (names without suffix). Rows whose best came from this session are highlighted (dashed outline) for the first rotation. Re-queried on every score of the day (`day:<event_day_id>` channel) and on hidden-name changes. The next code sits in the corner (it is now the lobby-to-be).
 Controls: `New session`.
-Strings: `dayboard.title`, `dayboard.empty`, `game.*.name`, `host.new_session`, `host.corner.next_code`.
+Strings: `dayboard.title`, `dayboard.empty`, `game.*.name`, `host.new_session`, `host.corner.next_code`, `host.corner.late`, `host.lineup.next_title`, `common.done`.
 
 **H6 Host overlays.** Settings (gear): screen language, dark screen, reduce motion, sign out. Banners: reconnecting, database unreachable.
 Strings: `host.settings.language`, `host.settings.theme`, `host.settings.reduced_motion`, `host.signout`, `host.banner.reconnecting`, `host.banner.db_down`.

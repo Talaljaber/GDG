@@ -4,7 +4,7 @@ Purpose: exactly how a session, its three rounds and each player move through th
 
 Last updated: 2026-09-24
 
-Related: ADR-003, ADR-010, ADR-012, ADR-014–ADR-020, ADR-104, ADR-108, ADR-117.
+Related: ADR-003, ADR-010, ADR-012, ADR-014–ADR-020, ADR-104, ADR-108, ADR-117, ADR-129.
 
 ---
 
@@ -12,12 +12,12 @@ Related: ADR-003, ADR-010, ADR-012, ADR-014–ADR-020, ADR-104, ADR-108, ADR-117
 
 | Constant | Value | Where it lives |
 |---|---|---|
-| Rounds per session | 3 distinct games (1 during Phases 1–2, ADR-120) | app config `ROUNDS_PER_SESSION` |
+| Rounds per session | 3 distinct games (ADR-012; it was 1 during the Phase 1 slice, ADR-120) | app config `ROUNDS_PER_SESSION`; DB check `sessions_lineup_three` |
 | Round start countdown (3-2-1) | 3 s, on phone and big screen | app config |
 | Round cap | **120 s** after the countdown ends, measured on each phone | app config |
 | Host deadline for a round | `started_at + 3 s + 120 s + 5 s grace = 128 s` (server time) | host client |
 | Late score acceptance | up to 15 s after `rounds.ended_at` | score trigger |
-| Intermission | 15 s: round board 7 s → session total 5 s → "Next: <game>" 3 s; skippable by host | app config |
+| Intermission | 15 s: round board 7 s → session total 5 s → "Next: <game>" 3 s; skippable by host. After the last round: round board 7 s, then results | app config |
 | Presence grey-out | 10 s without presence | host client |
 | Score submit retry | every 2 s, up to the late-acceptance window | phone |
 
@@ -87,7 +87,11 @@ stateDiagram-v2
    - Every 500 ms: if `count(scores for round) ≥ count(players where status = 'joined')` → `admin_end_round(round, 'all_finished')`.
    - If `Date.now() + offset ≥ started_at + 128 s` → `admin_end_round(round, 'time_cap')`.
    - Force-end button → `admin_end_round(round, 'force_end')`.
-4. On round `done`: run the intermission (15 s, or until "Next round now"), then `admin_start_round(next)`. After the last round the session is `results`: stop and wait for **Show day board**, then **New session**.
+4. On round `done`: run the intermission (15 s, or until "Next round now"), then `admin_start_round(next)`. After the last round the session is `results`: show the last round's board for 7 s, then the results; stop and wait for **Show day board**, then **New session**. Details (ADR-129, `src/host/schedule.ts`):
+   - Every step is computed from the ended round's `ended_at` + the server offset, never from memory, so a reloaded or second host tab shows the same step.
+   - "Next round now" jumps to the 3 s "Next: <game>" step (from the tap); during that step it does nothing. There is no skip after the last round.
+   - A host view that (re)opens after the 15 s are over shows 3 s of "Next: <game>" first, then starts the round. After the last round it goes straight to results.
+   - While a session runs the host also subscribes to the pending session (`pending:<id>`): its code sits in the corner (H2–H5) and the next-games picker edits its lineup with `admin_set_lineup` (E20); New session turns it into the lobby with that lineup (AC2.4).
 5. All calls are idempotent; a double tap or two open host tabs can't double-advance (functions check the current state and raise `GD010`, which the host view ignores).
 
 If the host laptop is closed or crashes mid-round, rounds stop advancing. Phones keep playing and submitting; when the host view is reopened it reconstructs state and immediately ends any round past its deadline. See the runbook.
@@ -149,6 +153,7 @@ sequenceDiagram
 
 - Phone local cap: at 120 s after `roundStartEpoch` the game force-finishes and scores whatever was completed, following the per-game timeout rule (`SCORING.md` §3). If the phone was not in the round at all (joined after it started, or was dead), it submits nothing.
 - If the `rounds` UPDATE to `done` arrives before the phone finishes (another trigger ended the round), the phone finishes immediately with the same rule and submits within the 15 s acceptance window.
+- Between rounds the phone shows P8: the round board 7 s, the session total 5 s, then "Next: <game>" until the next round's `rounds` UPDATE arrives (then P5's 3-2-1). The steps run from the local time the phone saw the round end (it never compares clocks with the server, ADR-104), so they can drift from the big screen by the realtime delay (well under a second on a good connection).
 
 ## 6. Edge cases
 
@@ -180,7 +185,7 @@ sequenceDiagram
 | E22 | **Score arrives after the round was force-ended** | Accepted if within 15 s of `ended_at`; it appears on the round board if the intermission is still showing and always counts on day boards and session totals. |
 | E23 | **Two host tabs open** | Both render; state transitions are idempotent and guarded (`GD010` ignored). Runbook says keep one. |
 | E24 | **Hidden name while on screen** | Rows disappear from every board within ~1 s (`hidden_names` realtime → refetch). The player's own phone still shows their own score at the top. |
-| E25 | **New event day while a pending lobby has players** | Not allowed while a session is `playing`. Otherwise joinable/results sessions are closed; phones in them show "This game has ended — join the next one". |
+| E25 | **New event day while a pending lobby has players** | Not allowed while a session is `playing`. Otherwise joinable/results sessions are closed; phones in them show "This game has ended — join the next one" (P11: a `closed` session without `ended_at`, or whose event day is no longer current; a session closed by New session keeps showing its frozen results/day board). |
 | E26 | **Player's phone joins a round late** (reconnects after round start, never opened the game) | If the round is still `playing` and the phone has no state for it, the phone starts the game right away (3-2-1, normal local cap). The phone doesn't compare its clock with the server's (ADR-104), so the round may end earlier at the host deadline; the phone then finishes with the timeout rule (§5) and submits what it has. |
 | E27 | **Round cap hits during an attempt** | That attempt closes with its timeout rule; remaining attempts count as timed out; the score is submitted (`SCORING.md` §3). |
 | E28 | **Guest types the right code with an invalid name** | Name error shown inline; code is kept; nothing is stored until the name is valid. |

@@ -42,8 +42,8 @@ Phases 3 and 4 can run in parallel once Phase 2 is done.
 **Out:** any real screen beyond a placeholder per route.
 
 Tasks:
-1. Private GitHub repo; Vite + React + TypeScript (ADR-107); ESLint/Prettier; Vitest; `npm run build` → `dist`.
-2. Supabase dev and prod projects in `eu-central-1` (ADR-127); **keepalive workflow on day zero** (ADR-128).
+1. GitHub repo (public, ADR-128); Vite + React + TypeScript (ADR-107); ESLint/Prettier; Vitest; `npm run build` → `dist`.
+2. One cloud Supabase project for dev and prod (ADR-127); **keepalive workflow on day zero** (ADR-128).
 3. Auth: anonymous sign-ins on, sign-ups on, confirm email on, anonymous rate limit 1,000/h, admin user + `app_metadata.role` (`DEPLOYMENT.md` §2).
 4. Migrations `0001`–`0007` from `DATA_MODEL.md`; pgTAP suite from `TESTING.md` §3.
 5. Netlify site on a dedicated account, env vars per context, `_redirects`, deploy previews on (`DEPLOYMENT.md` §3).
@@ -53,9 +53,9 @@ Tasks:
 9. CI: typecheck, unit tests, `check:i18n`, `check:trivia` (schema mode).
 
 Acceptance criteria:
-- [ ] AC0.1 `supabase test db` passes on dev: every RLS case in `TESTING.md` §3.
+- [ ] AC0.1 `supabase test db --linked` passes on the cloud project: every RLS case in `TESTING.md` §3.
 - [ ] AC0.2 `select … rowsecurity` shows RLS on for every `public` table.
-- [ ] AC0.3 The keepalive workflow has ≥ 2 green scheduled runs, and `keepalive.pinged_at` updates on both projects.
+- [ ] AC0.3 The keepalive workflow has ≥ 2 green scheduled runs, and `keepalive.pinged_at` updates on the cloud project.
 - [ ] AC0.4 Production URL serves `/`, `/host`, `/dashboard` (no 404 on reload).
 - [ ] AC0.5 `/host` sign-in with the admin account succeeds and a guest-style anonymous session can't call `admin_open_lobby` (`GD009`).
 - [ ] AC0.6 Toggling language switches `dir` to `rtl` and loads Cairo; `check:i18n` passes.
@@ -96,6 +96,7 @@ Depends on: Phase 0.
 
 **In:** multi-round sequencing and the host loop (`SESSION_LIFECYCLE.md` §3.1), 120 s cap + host deadline, intermission after every round (ADR-117), pending lobby + corner code (ADR-108, ADR-015), session results with totals, Show day board, New session with preselected lineup, day boards (best per name), duplicate-name suffixes, reload/late-join/removed edge cases, hidden names on boards.
 **Out:** other games (use Stop the Clock ×1 per session until Phase 3; the code supports N rounds), dashboard UI (hiding can be tested via SQL function calls), shatter choreography.
+(As built, 2026-09-24: the other four game modules already existed, so Phase 2 was built and tested with real 3-round sessions of three different games, and the Phase 3 integration items (AC3.2–AC3.5) landed with it. Results per AC: `PROGRESS.md`.)
 
 Tasks:
 1. Host loop: all-finished detection, deadline from `server_now()` offset, auto intermission, "Next round now".
@@ -103,7 +104,7 @@ Tasks:
 3. Pending session creation at Start; corner code on H2/H3/H5; P3b.
 4. Boards: round, session total, day board views + polling (phones) / realtime (host) per ADR-112.
 5. H4, H5, P8, P9, P10 screens; Show day board; New session.
-6. Edge cases E1–E29 implemented; e2e tests E2E-1…E2E-8 (with the games available).
+6. Edge cases E1–E29 implemented; e2e tests E2E-1…E2E-8 (with the games available). As built: `e2e/phase2.spec.ts` (E2E-1, -3, -6, -7, -8), `e2e/phase1.spec.ts` (E2E-2 for Stop the Clock, -4, -5); the E# → test map is in `PROGRESS.md`.
 
 Acceptance criteria:
 - [ ] AC2.1 A session with `ROUNDS_PER_SESSION` rounds runs start to results with no host action other than Start (auto intermissions).
