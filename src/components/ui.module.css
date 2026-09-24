@@ -1,0 +1,292 @@
+/* Shared UI pieces for the player and host apps. Tokens only
+   (docs/DESIGN_SYSTEM.md §2-§6); logical properties only (RTL). */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-block: var(--s-3);
+  padding-inline: var(--phone-gutter);
+}
+
+.logo {
+  block-size: var(--logo-phone-height);
+  inline-size: auto;
+}
+
+.projLogo {
+  block-size: var(--logo-proj-height);
+  inline-size: auto;
+}
+
+.langToggle {
+  min-block-size: var(--touch-target-min);
+  min-inline-size: var(--touch-target-min);
+  padding-inline: var(--s-4);
+  border: var(--line-width) solid var(--gdg-line);
+  border-radius: var(--r-chip);
+  background: var(--surface);
+  color: var(--primary-text);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+}
+
+.title {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-block-size: var(--touch-target-min);
+  padding-block: var(--s-3);
+  padding-inline: var(--s-5);
+  border: none;
+  border-radius: var(--r-button);
+  background: var(--gdg-blue-deep);
+  color: var(--on-primary);
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.buttonBlock {
+  inline-size: 100%;
+}
+
+.buttonSecondary {
+  background: var(--surface);
+  color: var(--primary-text);
+  border: var(--line-width-strong) solid var(--primary);
+}
+
+.linkButton {
+  min-block-size: var(--touch-target-min);
+  padding-inline: 0;
+  border: none;
+  background: none;
+  color: var(--primary-text);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-caption-weight);
+}
+
+.input {
+  inline-size: 100%;
+  min-block-size: var(--touch-target-min);
+  padding-block: var(--s-3);
+  padding-inline: var(--s-4);
+  border: var(--line-width-strong) solid var(--gdg-line);
+  border-radius: var(--r-button);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--type-title-size);
+}
+
+.input:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--line-width);
+  border-color: var(--primary);
+}
+
+.error {
+  color: var(--text);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-caption-weight);
+  padding-block: var(--s-2);
+  padding-inline: var(--s-3);
+  border-inline-start: var(--focus-width) solid var(--highlight);
+  background: var(--gdg-amber-tint);
+  border-radius: var(--s-1);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.banner {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-banner);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding-block: var(--s-2);
+  padding-inline: var(--phone-gutter);
+  background: var(--gdg-ink);
+  color: var(--gdg-paper);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  text-align: center;
+}
+
+.bannerOk {
+  background: var(--gdg-blue-deep);
+  color: var(--on-primary);
+}
+
+.spinnerWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 50vh;
+}
+
+.spinner {
+  inline-size: var(--s-6);
+  block-size: var(--s-6);
+  border-radius: 50%;
+  border: var(--focus-width) solid var(--gdg-blue-tint);
+  border-block-start-color: var(--primary);
+  animation: spin var(--dur-spin) linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* ---- Leaderboard ---- */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  inline-size: 100%;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2.5em 1fr auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding-block: var(--s-2);
+  padding-inline: var(--s-3);
+  border-radius: var(--s-2);
+  background: var(--surface);
+  font-size: var(--type-body-size);
+}
+
+.rowFirst {
+  background: var(--gdg-amber-tint);
+  border-inline-start: var(--s-1) solid var(--highlight);
+}
+
+.rowOwn {
+  outline: var(--line-width-strong) solid var(--primary);
+  outline-offset: calc(-1 * var(--line-width-strong));
+}
+
+.rowDetached {
+  margin-block-start: var(--s-2);
+}
+
+.rank {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--type-button-weight);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--type-caption-weight);
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--type-button-weight);
+}
+
+.ownMark {
+  color: var(--primary-text);
+}
+
+/* Projector variant (DESIGN_SYSTEM §3.2): rows >= --proj-row, max 10 rows. */
+.boardProj {
+  gap: var(--proj-s-1);
+}
+
+.boardProj .row {
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+  padding-block: var(--proj-s-1);
+  padding-inline: var(--proj-s-2);
+  border-radius: var(--proj-radius);
+  grid-template-columns: 2.2em 1fr auto;
+}
+
+.boardProj .rank {
+  font-size: var(--proj-row);
+}
+
+/* ---- Dialog ---- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--phone-gutter);
+  background: color-mix(in srgb, var(--gdg-ink) 55%, transparent);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  inline-size: min(100%, var(--dialog-max-width));
+  padding: var(--s-6);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--type-title-size);
+  font-weight: var(--type-caption-weight);
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-3);
+}
+
+/* ---- QR ---- */
+
+.qr {
+  display: block;
+  inline-size: var(--proj-qr);
+  block-size: var(--proj-qr);
+  background: var(--surface);
+}
+
+.qrDark {
+  fill: var(--gdg-ink);
+}
+
+.qrLight {
+  fill: var(--qr-light);
+}
