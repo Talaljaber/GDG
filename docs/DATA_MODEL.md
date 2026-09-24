@@ -10,7 +10,7 @@ Related: `SESSION_LIFECYCLE.md` (which function moves which state), `SCORING.md`
 
 ## 1. Principles
 
-Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`); follow-ups are new files, never edits: `20260925000300_lineup_exactly_three.sql` (§3 notes). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
+Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`); follow-ups are new files, never edits: `20260925000200_scores_raw_size.sql`, `20260925000300_lineup_exactly_three.sql` (§3 notes), `20260925000400_join_throttle.sql` (§3 notes, §6). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
 
 1. **RLS is enabled on every table in `public`. Never disabled.** (ADR-030)
 2. Guests are Supabase **anonymous users**: role `authenticated`, `auth.uid()` = playerId (ADR-102). The unsigned `anon` role can read and write nothing except calling `keepalive()`.
@@ -260,6 +260,17 @@ Notes:
 
   Postgres checks a CHECK constraint on every UPDATE of a row, so an old *open* 1-game session could never be advanced or closed once the constraint exists; that is why those (and only those) are closed. Closed rows are never updated by any function afterwards. On a fresh database (the cloud project) the constraint is validated at once.
 - `players.name` stores the *cleaned* name (`clean_name`), not the raw input.
+- `private.join_attempts` (migration `20260925000400_join_throttle.sql`, ADR-130): the wrong-join-code log behind the throttle in `join_session` (§6). In the unexposed `private` schema, RLS enabled with **no policies**, and all privileges (table and identity sequence) revoked from `public`, `anon` and `authenticated`, since the cloud's default privileges grant ALL on new objects and `authenticated` has `USAGE` on `private`. Only `join_session` (definer, owner `postgres`) reads or writes it. Rows older than 10 minutes are purged by `join_session`; no FK to `auth.users`.
+
+  ```sql
+  create table private.join_attempts (
+    id         bigint generated always as identity primary key,
+    player_id  uuid not null,                        -- auth.uid() of the caller
+    at         timestamptz not null default now()    -- one row per wrong code
+  );
+  create index join_attempts_player_at on private.join_attempts (player_id, at);
+  create index join_attempts_at        on private.join_attempts (at);
+  ```
 - `scores.raw` is at most 4096 bytes as text: constraint `scores_raw_size check (octet_length(raw::text) <= 4096)`, added by migration `20260925000200_scores_raw_size.sql` (`SECURITY.md` T16). The trigger ignores extra keys, so without it a guest could store megabytes per score; a real raw is under 500 bytes. A violation raises `23514`.
 - `scores.duration_ms` is the phone-measured time from the end of the 3-2-1 to the submit, capped by the phone at 120 000 ms; the 130 000 upper bound leaves room for the grace window.
 
@@ -397,11 +408,11 @@ What a guest can and can't do, as a result:
 
 ## 5. Score trigger (migration `20260924000003_score_trigger.sql`)
 
-Error codes raised to the client (the app maps them to `COPY.md` strings):
+Error codes raised to the client (the app maps them to `COPY.md` strings). `GD001` and `GD013` are the exception: `join_session` **returns** them as data, `{"error": "GD001"}` / `{"error": "GD013", "retry_after_s": n}`, so the wrong-code log commits (a raise would roll it back, ADR-130); `src/lib/api.ts` turns them into the same `ApiError` as a raised code.
 
 | SQLSTATE | Meaning | Raised by |
 |---|---|---|
-| `GD001` | code_invalid: no joinable session with that code | `join_session` |
+| `GD001` | code_invalid: no joinable session with that code (returned as data, logged for the throttle) | `join_session` |
 | `GD002` | name_invalid: empty, too long, or disallowed characters | `join_session` |
 | `GD003` | name_blocked | `join_session` |
 | `GD004` | removed: this playerId was removed from that session | `join_session` |
@@ -413,6 +424,7 @@ Error codes raised to the client (the app maps them to `COPY.md` strings):
 | `GD010` | invalid_state (e.g. start a session that isn't a lobby; also an unknown id, or no current event day) | admin functions |
 | `GD011` | lineup_invalid | admin functions |
 | `GD012` | not_signed_in | `join_session` |
+| `GD013` | too_many_tries: 5 wrong codes from this `auth.uid()` within 60 s, locked for 30 s (returned as data with `retry_after_s`, ADR-130) | `join_session` |
 | `23505` | unique_violation on `(round_id, player_id)`: already submitted; **client treats as success** | constraint |
 
 ```sql
@@ -495,7 +507,7 @@ These are the functions the browser calls with `supabase.rpc()`, so they live in
 
 | Function | Who | Does | Errors |
 |---|---|---|---|
-| `join_session(p_code text, p_name text) returns jsonb` | guest | Normalises the code (NFKC, Arabic-Indic and Eastern Arabic-Indic digits to ASCII, whitespace removed; anything but `^[1-9][0-9]{3}$` → `GD001`); finds the joinable session (`pending`/`lobby`) with that code, `FOR UPDATE`; if this `auth.uid()` already has a row there: returns it if `joined` (the name argument is ignored), raises `GD004` if `removed`; else cleans and validates the name, checks the blocklist, computes `name_key` and `display_suffix` (= count of existing rows with that key in the session, removed ones included, + 1, if ≥ 2), inserts the player. Returns `{session_id, player_row_id, name, display_suffix, session_status}`. | GD001, GD002, GD003, GD004, GD012 |
+| `join_session(p_code text, p_name text) returns jsonb` | guest | **Throttle first** (ADR-130; after `GD012`): takes a transaction advisory lock on `auth.uid()` so parallel calls from one identity queue; if a wrong code logged in the last 30 s was the 5th or later within 60 s, returns `{"error": "GD013", "retry_after_s": n}` (n = whole seconds until 30 s after that wrong code, ≥ 1) without looking at the code or the name, and logs nothing. Then normalises the code (NFKC, Arabic-Indic and Eastern Arabic-Indic digits to ASCII, whitespace removed) and finds the joinable session (`pending`/`lobby`) with that code, `FOR UPDATE`; a malformed code (anything but `^[1-9][0-9]{3}$`) or no such session → purges log rows older than 10 minutes, logs one row in `private.join_attempts` and **returns** `{"error": "GD001"}`. If this `auth.uid()` already has a row there: returns it if `joined` (the name argument is ignored), raises `GD004` if `removed`; else cleans and validates the name, checks the blocklist, computes `name_key` and `display_suffix` (= count of existing rows with that key in the session, removed ones included, + 1, if ≥ 2), inserts the player. Returns `{session_id, player_row_id, name, display_suffix, session_status}` (no `error` key). A successful join clears nothing from the log. | returns GD001, GD013; raises GD002, GD003, GD004, GD012 |
 | `server_now() returns timestamptz` | any signed-in | `select now()`. Used once by the host to compute its clock offset (ADR-104). | — |
 | `keepalive() returns void` | anon (and signed-in) | `update keepalive set pinged_at = now() where id = 1`. Called by the GitHub Actions job. | — |
 | `admin_open_lobby(p_lineup game_id[]) returns sessions` | admin | Validates the lineup (below). Creates a `lobby` in the current day with a fresh code, if no joinable session exists; else returns the existing joinable one unchanged apart from flipping `pending` → `lobby` (with `opened_at`) if nothing is running (use `admin_set_lineup` to change its lineup). No current day → `GD010`. | GD009, GD010, GD011 |

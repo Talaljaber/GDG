@@ -192,8 +192,8 @@ select is((select private.is_admin()), false, '... and they report not admin');
 
 -- ================= Joins lock at Start (T2) =================
 select pg_temp.login(pg_temp.v('E')::uuid);
-select is(pg_temp.try(format($$ select public.join_session(%L, 'Eve') $$, pg_temp.v('s1_code'))),
-          'GD001', 'T2: a new identity cannot join a session that already started');
+select is(public.join_session(pg_temp.v('s1_code'), 'Eve'),
+          '{"error": "GD001"}'::jsonb, 'T2: a new identity cannot join a session that already started (GD001 as data, ADR-130)');
 select is((select count(*)::int from public.sessions), 0, 'T7: that identity still sees no session');
 
 -- ================= Email user with forged user_metadata (T9, T15) =================

@@ -1,6 +1,6 @@
 -- TESTING.md section 3, "Functions": every transition in SESSION_LIFECYCLE.md sections 2-3, plus:
 -- start with 0 players -> GD010; remove after start -> GD010; two joinable sessions impossible;
--- join_session idempotent for the same uid; removed uid -> GD004; late score within 15 s accepted, after -> GD007.
+-- join_session idempotent for the same uid; wrong code -> {"error":"GD001"} (data); removed uid -> GD004; late score within 15 s accepted, after -> GD007.
 begin;
 -- isolate from local dev/e2e data (rolled back with the transaction)
 truncate public.scores, public.players, public.rounds, public.sessions, public.hidden_names restart identity cascade;
@@ -108,10 +108,11 @@ select is(pg_temp.join_as('9', ' ' || translate(pg_temp.v('s1_code'), '012345678
           pg_temp.v('s1'), 'join: Eastern Arabic-Indic digits and surrounding spaces accepted');
 select pg_temp.setv('pG', pg_temp.join_as('7', pg_temp.v('s1_code'), 'Zed') ->> 'player_row_id');
 select pg_temp.login(pg_temp.g('d'));
-select is(pg_temp.try($$ select public.join_session('12a4', 'Dana') $$), 'GD001', 'join: malformed code -> GD001');
-select is(pg_temp.try($$ select public.join_session('0999', 'Dana') $$), 'GD001', 'join: code below 1000 -> GD001');
-select is(pg_temp.try(format($$ select public.join_session(%L, 'Dana') $$, case when pg_temp.v('s1_code') = '1000' then '1001' else '1000' end)),
-          'GD001', 'join: code of no joinable session -> GD001');
+-- wrong codes come back as data, not a raise, so the throttle's log row commits (ADR-130; 08_join_throttle)
+select is(public.join_session('12a4', 'Dana'), '{"error": "GD001"}'::jsonb, 'join: malformed code -> {"error":"GD001"}');
+select is(public.join_session('0999', 'Dana'), '{"error": "GD001"}'::jsonb, 'join: code below 1000 -> {"error":"GD001"}');
+select is(public.join_session(case when pg_temp.v('s1_code') = '1000' then '1001' else '1000' end, 'Dana'),
+          '{"error": "GD001"}'::jsonb, 'join: code of no joinable session -> {"error":"GD001"}');
 select is(pg_temp.try(format($$ select public.join_session(%L, 'Sam!') $$, pg_temp.v('s1_code'))), 'GD002', 'join: invalid name -> GD002');
 select is(pg_temp.try(format($$ select public.join_session(%L, 'ass') $$, pg_temp.v('s1_code'))), 'GD003', 'join: blocked name -> GD003');
 select is((select count(*)::int from public.players where player_id = pg_temp.g('d')), 0, 'join: nothing stored after a refused name (E28)');
@@ -162,7 +163,7 @@ select is(split_part(pg_temp.try(format($$ insert into public.sessions (event_da
 
 -- late joiners
 select pg_temp.login(pg_temp.g('8'));
-select is(pg_temp.try(format($$ select public.join_session(%L, 'Late') $$, pg_temp.v('s1_code'))), 'GD001', 'join: running session code -> GD001 (E6)');
+select is(public.join_session(pg_temp.v('s1_code'), 'Late'), '{"error": "GD001"}'::jsonb, 'join: running session code -> {"error":"GD001"} (E6)');
 select pg_temp.setv('jC', pg_temp.join_as('c', pg_temp.v('s2_code'), 'Lina')::text);
 select is(pg_temp.v('jC')::jsonb ->> 'session_status', 'pending', 'join: pending session takes late joiners');
 select pg_temp.as_admin();
