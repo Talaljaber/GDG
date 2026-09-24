@@ -1,0 +1,103 @@
+/* Stop the Clock screen. Tokens only (docs/DESIGN_SYSTEM.md §2-6); no raw
+   colours, sizes or durations. Logical properties only (no left/right). */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-6);
+  min-height: 100%;
+  padding-block: var(--s-6);
+  padding-inline: var(--phone-gutter);
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.title {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  margin: 0;
+}
+
+.pitch {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.tryLabel {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.target {
+  font-size: var(--type-target-size);
+  font-weight: var(--type-target-weight);
+  color: var(--primary-text);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.button {
+  inline-size: 200px;
+  block-size: 200px;
+  min-inline-size: 160px;
+  min-block-size: 160px;
+  border: none;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
+  font-family: inherit;
+  cursor: pointer;
+  clip-path: polygon(10% 0%, 100% 0%, 90% 50%, 100% 100%, 10% 100%, 0% 50%);
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
+}
+
+.button:active {
+  transform: scale(0.97);
+  background: var(--gdg-blue-deep);
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.locked {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  margin: 0;
+}
+
+.next {
+  font-size: var(--type-body-size);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
