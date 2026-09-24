@@ -1,0 +1,145 @@
+/**
+ * Design tokens. Source of truth: docs/DESIGN_SYSTEM.md §2-6.
+ * No raw colours, sizes or durations in component code — reference these
+ * custom properties by name only.
+ */
+
+:root {
+  /* ---- §2.1 Brand (sampled from assets/logo.png on 2026-09-24) ---- */
+  --gdg-blue: #1c89cc;
+  --gdg-blue-deep: #1579b4;
+  --gdg-amber: #f8a928;
+  --gdg-amber-deep: #e59f26;
+  --gdg-ink: #15171a;
+  --gdg-paper: #faf7f2;
+
+  /* ---- §2.2 Derived ---- */
+  --gdg-blue-strong: #146a9e;
+  --gdg-ink-muted: #5b6168;
+  --gdg-blue-tint: color-mix(in srgb, var(--gdg-blue) 12%, var(--gdg-paper));
+  --gdg-amber-tint: color-mix(in srgb, var(--gdg-amber) 18%, var(--gdg-paper));
+  --gdg-line: color-mix(in srgb, var(--gdg-ink) 15%, transparent);
+
+  /* ---- §2.3 Semantic tokens (light, default per ADR-122) ---- */
+  --bg: var(--gdg-paper);
+  --surface: #ffffff;
+  --text: var(--gdg-ink);
+  --text-muted: var(--gdg-ink-muted);
+  --primary: var(--gdg-blue);
+  --primary-text: var(--gdg-blue-strong);
+  --on-primary: #ffffff;
+  --highlight: var(--gdg-amber);
+  --on-highlight: var(--gdg-ink);
+  --focus: var(--gdg-blue-strong);
+
+  /* Simon only exception (§2.3) */
+  --simon-blue: #4285f4;
+  --simon-red: #ea4335;
+  --simon-yellow: #fbbc05;
+  --simon-green: #34a853;
+
+  /* ---- §3.1 Phone type scale (base 17px) ---- */
+  --type-caption-size: 14px;
+  --type-caption-weight: 500;
+  --type-body-size: 17px;
+  --type-body-weight: 400;
+  --type-button-size: 20px;
+  --type-button-weight: 700;
+  --type-question-size: 20px;
+  --type-question-weight: 500;
+  --type-title-size: 28px;
+  --type-title-weight: 700;
+  --type-target-size: 64px;
+  --type-target-weight: 700;
+  --type-score-size: 88px;
+  --type-score-weight: 700;
+
+  /* ---- §3.2 Projector scale (vh units) ---- */
+  --proj-min: 3.2vh;
+  --proj-row: 4.6vh;
+  --proj-row-weight: 700;
+  --proj-heading: 7vh;
+  --proj-heading-weight: 700;
+  --proj-code: 20vh;
+  --proj-code-letter-spacing: 0.08em;
+  --proj-code-weight: 700;
+  --proj-code-corner: 6vh;
+  --proj-qr: 40vh;
+  --proj-timer: 9vh;
+
+  /* ---- §4 Spacing, shape, layout ---- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  --phone-gutter: 16px;
+  --phone-min-width: 320px;
+
+  --r-button: 14px;
+  --r-card: 20px;
+  --r-chip: 999px;
+
+  --touch-target-min: 48px;
+  --touch-target-floor: 44px;
+
+  --big-screen-safe-margin: 5vh;
+
+  /* Layout helpers (DESIGN_SYSTEM §4, §5): phone column, logo sizes, lines, layers */
+  --phone-max-width: 430px;
+  --logo-phone-height: 32px;
+  --logo-proj-height: 8vh;
+  --line-width: 1px;
+  --line-width-strong: 2px;
+  --focus-width: 3px;
+  --dot-size: 12px;
+  --proj-dot-size: 2.4vh;
+  --z-banner: 50;
+  --z-dialog: 100;
+  --dialog-max-width: 36rem;
+  --qr-light: #ffffff;
+
+  /* Projector spacing (vh, DESIGN_SYSTEM §3.2) */
+  --proj-s-1: 1vh;
+  --proj-s-2: 2vh;
+  --proj-s-3: 3vh;
+  --proj-s-4: 5vh;
+  --proj-radius: 1.4vh;
+
+  /* ---- §6.1 Motion ---- */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  --dur-spin: 900ms;
+  --dur-countdown: 1000ms;
+}
+
+/* ---- §2.3 Semantic tokens (dark, big-screen option) ---- */
+:root[data-theme='dark'] {
+  --bg: var(--gdg-ink);
+  --surface: color-mix(in srgb, white 8%, var(--gdg-ink));
+  --text: var(--gdg-paper);
+  --text-muted: color-mix(in srgb, var(--gdg-paper) 70%, transparent);
+  --primary: var(--gdg-blue);
+  --primary-text: var(--gdg-blue);
+  --on-primary: var(--gdg-ink);
+  --highlight: var(--gdg-amber);
+  --on-highlight: var(--gdg-ink);
+  --focus: var(--gdg-amber);
+}
+
+/* ---- §6.2 Reduced motion: zero every duration ---- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+}
