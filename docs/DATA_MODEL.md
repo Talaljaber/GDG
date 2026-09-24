@@ -2,7 +2,7 @@
 
 Purpose: the complete Supabase Postgres schema: every table, column, type, constraint and index; the realtime publication; the full RLS policies for guests and the admin; and the database functions that perform joins and admin state transitions. The first migrations in Phase 0 are written from this file. If the schema changes, this file changes in the same commit as the migration.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 Related: `SESSION_LIFECYCLE.md` (which function moves which state), `SCORING.md` (bounds enforced by the score trigger), `SECURITY.md` (why each policy exists), ADR-030, ADR-101, ADR-102, ADR-110, ADR-113.
 
@@ -248,6 +248,7 @@ insert into public.keepalive (id) values (1);
 Notes:
 - `sessions.lineup` allows 1–3 games so the Phase 1–2 slice can run 1-round sessions (ADR-120). The app enforces `ROUNDS_PER_SESSION`; once it is 3, a follow-up migration tightens the check to `cardinality(lineup) = 3`.
 - `players.name` stores the *cleaned* name (`clean_name`), not the raw input.
+- `scores.raw` is at most 4096 bytes as text: constraint `scores_raw_size check (octet_length(raw::text) <= 4096)`, added by migration `20260925000200_scores_raw_size.sql` (`SECURITY.md` T16). The trigger ignores extra keys, so without it a guest could store megabytes per score; a real raw is under 500 bytes. A violation raises `23514`.
 - `scores.duration_ms` is the phone-measured time from the end of the 3-2-1 to the submit, capped by the phone at 120 000 ms; the 130 000 upper bound leaves room for the grace window.
 
 ## 4. Row Level Security (migration `20260924000002_rls.sql`)
@@ -464,7 +465,7 @@ create trigger scores_mark_finished
 
 `private.score_bounds_violation(game, score, duration_ms, raw) returns text` is a `plpgsql` `immutable` function that returns `null` when the submission is plausible, or a short reason (e.g. `'stc.score_above_990'`). Its exact rules per game are specified in `SCORING.md` §4; one branch per game, one `if` per bound, in the same order as that table. It never recomputes the score.
 
-- A `raw` that isn't the game's JSON shape (not an object, a required key missing, a value of the wrong JSON type such as a string or a fractional number where an integer is expected) fails the game's first check, `<prefix>.shape`. Simon and Perfect Circle have no shape code in `SCORING.md` §4, so this adds **`simon.shape`** and **`pc.shape`**. Extra keys are ignored.
+- A `raw` that isn't the game's JSON shape (not an object, a required key missing, a value of the wrong JSON type such as a string or a fractional number where an integer is expected) fails the game's first check, `<prefix>.shape`. Simon and Perfect Circle have no shape code in `SCORING.md` §4, so this adds **`simon.shape`** and **`pc.shape`**. Extra keys are ignored (the total size is bounded by `scores_raw_size`, §3).
 - Trivia: a `correct` answer with `answer_ms = null` fails `trivia.too_fast` (a correct answer must have been given).
 - Values are read with tolerant helpers (`private.j_int`, `j_num`, `j_bool`), so malformed JSON always yields `GD008` with a reason, never a cast error. `private.simon_min_playback_ms(level)` implements `min_playback_ms`.
 
