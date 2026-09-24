@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { COUNTDOWN_MS, SUBMIT_RETRY_MS } from '../config';
-import { LangProvider } from '../i18n';
+import { LangProvider, useT } from '../i18n';
 import { currentUserId, insertScore, setProgressPlaying, type JoinPayload, type PlayerRow } from '../lib/api';
 import { clearCurrent, getCurrent, patchCurrent, type CurrentState, type PendingSubmit } from '../lib/storage';
 import type { GameResult } from '../games/types';
@@ -16,6 +16,8 @@ import styles from './player.module.css';
 import { JoinFlow } from './JoinFlow';
 import { useNow, usePresence, useSessionSync, useTabLock } from './hooks';
 import { derivePlayerView } from './playerFlow';
+import { latestDoneRound } from '../host/hostLoop';
+import { DayBoardScreen, IntermissionScreen } from './betweenScreens';
 import { createSubmitter, type SubmitState, type Submitter } from './submitter';
 import {
   EndedScreen,
@@ -36,12 +38,36 @@ export function PlayerApp() {
   );
 }
 
-function Shell({ showLangToggle, children }: { showLangToggle: boolean; children: React.ReactNode }) {
+function Shell({
+  showLangToggle,
+  inRound = false,
+  children,
+}: {
+  showLangToggle: boolean;
+  /** A round (3-2-1 or game) is on screen: portrait only (E16). */
+  inRound?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className={styles.app}>
       <OfflineBanner />
       <TopBar showLangToggle={showLangToggle} />
       <main className={styles.main}>{children}</main>
+      {inRound ? <RotateOverlay /> : null}
+    </div>
+  );
+}
+
+/**
+ * E16: games are portrait-only. In landscape an overlay asks to turn the
+ * phone back (CSS media query, so it costs nothing in portrait); timers keep
+ * running underneath, nothing pauses.
+ */
+function RotateOverlay() {
+  const t = useT();
+  return (
+    <div className={styles.rotate} role="alert" data-testid="rotate-overlay">
+      <p className={styles.title}>{t('sys.rotate')}</p>
     </div>
   );
 }
@@ -155,7 +181,22 @@ function MemberFlow({
   const inRound = local.roundId !== null && !local.submittedRounds.includes(local.roundId);
   const now = useNow(250, inRound || sync.session?.status === 'playing');
 
-  const view = derivePlayerView({ local, session: sync.session, rounds: sync.rounds, me: sync.me, now });
+  // P8 anchor: the local time this phone first saw the latest round end (phones never use server time, ADR-104).
+  const lastDoneId = latestDoneRound(sync.rounds)?.id ?? null;
+  const [doneSeen, setDoneSeen] = useState<{ roundId: string; at: number } | null>(null);
+  useEffect(() => {
+    if (lastDoneId) setDoneSeen((cur) => (cur?.roundId === lastDoneId ? cur : { roundId: lastDoneId, at: Date.now() }));
+  }, [lastDoneId]);
+
+  const view = derivePlayerView({
+    local,
+    session: sync.session,
+    rounds: sync.rounds,
+    me: sync.me,
+    now,
+    intermissionSeenAt: doneSeen && doneSeen.roundId === lastDoneId ? doneSeen.at : null,
+    dayCurrent: sync.dayCurrent,
+  });
 
   // ---- presence: tracked while this phone is a joined member of a live session
   const sessionLive = !!sync.session && sync.session.status !== 'closed' && sync.me?.status === 'joined';
@@ -299,26 +340,41 @@ function MemberFlow({
             : result
               ? 'saved'
               : null;
+      body =
+        sync.session && sync.me ? (
+          <RoundResultScreen session={sync.session} round={view.round} me={sync.me} result={result} submitState={state} />
+        ) : null;
+      break;
+    }
+    case 'intermission':
       body = sync.session ? (
-        <RoundResultScreen
+        <IntermissionScreen
           session={sync.session}
           round={view.round}
+          next={view.next}
+          step={view.step}
           playerRowId={playerRowId}
-          result={result}
-          submitState={state}
+          totalRounds={Math.max(sync.rounds.length, 1)}
         />
       ) : null;
       break;
-    }
     case 'results':
       body = sync.session ? (
-        <ResultsScreen session={sync.session} playerRowId={playerRowId} onJoinNext={onLeave} />
+        <ResultsScreen session={sync.session} rounds={sync.rounds} playerRowId={playerRowId} onJoinNext={onLeave} />
       ) : null;
+      break;
+    case 'dayboard':
+      body =
+        sync.session && sync.me ? <DayBoardScreen session={sync.session} me={sync.me} onJoinNext={onLeave} /> : null;
       break;
     case 'ended':
       body = <EndedScreen onJoinNext={onLeave} />;
       break;
   }
 
-  return <Shell showLangToggle={!roundScreen}>{body}</Shell>;
+  return (
+    <Shell showLangToggle={!roundScreen} inRound={view.screen === 'intro' || view.screen === 'game'}>
+      {body}
+    </Shell>
+  );
 }

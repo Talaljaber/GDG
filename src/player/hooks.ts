@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  fetchEventDay,
   fetchPlayer,
   fetchRounds,
   fetchSession,
@@ -23,6 +24,8 @@ export interface SessionSync {
   session: SessionRow | null;
   rounds: RoundRow[];
   me: PlayerRow | null;
+  /** Whether the session's event day is still current (read once the session is closed, E25); null = unknown. */
+  dayCurrent: boolean | null;
   /** True once a fetch succeeded and the own row isn't visible (not a member, or storage from another user). */
   notMember: boolean;
   /** Realtime channel subscribed. */
@@ -34,6 +37,7 @@ export function useSessionSync(sessionId: string, playerRowId: string): SessionS
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [me, setMe] = useState<PlayerRow | null>(null);
+  const [dayCurrent, setDayCurrent] = useState<boolean | null>(null);
   const [notMember, setNotMember] = useState(false);
   const [live, setLive] = useState(false);
   const inFlight = useRef(false);
@@ -52,10 +56,13 @@ export function useSessionSync(sessionId: string, playerRowId: string): SessionS
         fetchRounds(sessionId),
         fetchPlayer(playerRowId),
       ]);
+      // A closed session: was it closed by a new event day (P11) or by New session (results stay)?
+      const day = s?.status === 'closed' ? await fetchEventDay(s.event_day_id) : null;
       if (!alive.current) return;
       setSession(s);
       setRounds(r);
       setMe(p);
+      setDayCurrent(day ? day.is_current : null);
       setNotMember(!s || !p);
     } catch {
       // Offline or transient: keep the last known state; the next event,
@@ -95,7 +102,7 @@ export function useSessionSync(sessionId: string, playerRowId: string): SessionS
     };
   }, [sessionId, playerRowId, load]);
 
-  return { session, rounds, me, notMember, live, refresh: () => void load() };
+  return { session, rounds, me, dayCurrent, notMember, live, refresh: () => void load() };
 }
 
 /** Tracks this phone on `presence:<sid>` while `active` (ADR-103). */

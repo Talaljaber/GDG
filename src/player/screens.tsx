@@ -7,25 +7,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { BOARD_POLL_MS, COUNTDOWN_MS } from '../config';
 import { formatNumber, useT } from '../i18n';
 import {
-  fetchOwnRoundScores,
-  fetchPlayers,
-  fetchRoundBoard,
-  fetchSessionBoard,
+  fetchOwnScores,
+  fetchPreviousBest,
   type GameId,
-  type OwnRoundScore,
+  type OwnScore,
   type PlayerRow,
   type RoundRow,
   type SessionRow,
 } from '../lib/api';
-import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
+import { displayName } from '../lib/boards';
 import { games } from '../games/registry';
 import type { GameResult } from '../games/types';
 import { getCurrent, type PendingSubmit } from '../lib/storage';
 import { Leaderboard } from '../components/Leaderboard';
+import { RevealIn } from '../components/RevealIn';
 import { Trans } from '../components/Trans';
 import ui from '../components/ui.module.css';
 import styles from './player.module.css';
 import { usePolling, useNow } from './hooks';
+import { usePlayerRows, useRoundBoard, useSessionBoard } from './boardHooks';
 import type { SubmitState } from './submitter';
 import { ResultDetail } from './resultDetail';
 
@@ -59,23 +59,7 @@ function countPlayers(players: readonly PlayerRow[]): PlayerCounts {
   };
 }
 
-/** Polls the session's player rows (tiny: one per guest) for the counts on P3 and P7. */
-function usePlayerCounts(sessionId: string, active: boolean) {
-  const [players, setPlayers] = useState<PlayerRow[] | null>(null);
-  usePolling(
-    async () => {
-      try {
-        setPlayers(await fetchPlayers(sessionId));
-      } catch {
-        // keep last value
-      }
-    },
-    BOARD_POLL_MS,
-    active,
-    [sessionId],
-  );
-  return players;
-}
+const usePlayerCounts = usePlayerRows;
 
 export function LobbyScreen({
   session,
@@ -127,7 +111,7 @@ export function LobbyScreen({
 
 // ------------------------------------------------------------------ P5
 
-function Chevron({ end }: { end?: boolean }) {
+export function Chevron({ end }: { end?: boolean }) {
   return (
     <svg
       className={`${styles.chevron} ${end ? styles.chevronEnd : styles.chevronStart}`}
@@ -238,45 +222,28 @@ export function GameScreen({
 
 // ------------------------------------------------------------------ P7
 
-function useRoundBoard(roundId: string | null, playerRowId: string, active: boolean, refreshKey: unknown) {
-  const [rows, setRows] = useState<RankedRow[] | null>(null);
-  usePolling(
-    async () => {
-      if (!roundId) return;
-      try {
-        const page = await fetchRoundBoard(roundId, playerRowId);
-        setRows(mergeBoard(page.top, page.own, playerRowId));
-      } catch {
-        // keep last board
-      }
-    },
-    BOARD_POLL_MS,
-    active && !!roundId,
-    [roundId, refreshKey],
-  );
-  return rows;
-}
-
 export function RoundResultScreen({
   session,
   round,
-  playerRowId,
+  me,
   result,
   submitState,
 }: {
   session: SessionRow;
   round: RoundRow | null;
-  playerRowId: string;
+  me: PlayerRow;
   /** The phone's own result for this round, if it played. */
   result: PendingSubmit | null;
   submitState: SubmitState | null;
 }) {
   const t = useT();
+  const playerRowId = me.id;
   const roundPlaying = round?.status === 'playing';
   // Poll every 3 s while visible, and once right after the submit is acknowledged.
   const board = useRoundBoard(round?.id ?? null, playerRowId, true, submitState);
   const players = usePlayerCounts(session.id, roundPlaying);
   const counts = players ? countPlayers(players) : null;
+  const newBest = useNewBest(session, round, me, result, submitState);
 
   return (
     <section className={styles.screen} data-testid="screen-round-result">
@@ -286,6 +253,12 @@ export function RoundResultScreen({
           <p className={styles.scoreHero} data-testid="own-score" dir="ltr">
             {formatNumber(result.score)}
           </p>
+          {newBest ? (
+            // SHATTER HOOK (Phase 5): the celebrate shatter plays on this line (DESIGN_SYSTEM §6).
+            <RevealIn as="span" className={styles.newBest} data-testid="new-best">
+              {t('results.new_best')}
+            </RevealIn>
+          ) : null}
           <ResultDetail game={round?.game as GameId | undefined} raw={result.raw} />
           <p className={styles.saveState} data-testid="save-state" data-state={submitState ?? 'saved'} role="status">
             {submitState === 'saving' ? t('sys.saving') : submitState === 'failed' ? t('sys.save_failed') : null}
@@ -315,29 +288,62 @@ export function RoundResultScreen({
   );
 }
 
+/**
+ * P7 `new_best`: the saved score beats this name's earlier best today in
+ * this game (day boards are per name key, ADR-105). A first play isn't a
+ * "new best": there's nothing to beat yet.
+ */
+function useNewBest(
+  session: SessionRow,
+  round: RoundRow | null,
+  me: PlayerRow,
+  result: PendingSubmit | null,
+  submitState: SubmitState | null,
+): boolean {
+  const [best, setBest] = useState<{ roundId: string; value: boolean } | null>(null);
+  const roundId = round?.id ?? null;
+  const saved = submitState === 'saved' && !!result && result.roundId === roundId;
+  useEffect(() => {
+    if (!saved || !round || !result || best?.roundId === round.id) return;
+    let alive = true;
+    void fetchPreviousBest(session.event_day_id, round.game, me.name_key, round.id)
+      .then((prev) => {
+        if (alive) setBest({ roundId: round.id, value: prev !== null && result.score > prev });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saved, roundId]);
+  return best?.roundId === roundId && best.value;
+}
+
 // ------------------------------------------------------------------ P9
 
+/**
+ * Session results: own total (from the phone's own score rows, so a hidden
+ * player still sees it, ADR-115), rank, round breakdown ("–" for a missing
+ * round), then the session board. States: normal, no_scores, not_scored.
+ */
 export function ResultsScreen({
   session,
+  rounds,
   playerRowId,
   onJoinNext,
 }: {
   session: SessionRow;
+  rounds: readonly RoundRow[];
   playerRowId: string;
   onJoinNext(): void;
 }) {
   const t = useT();
-  const [board, setBoard] = useState<{ rows: RankedRow[]; total: number } | null>(null);
-  const [own, setOwn] = useState<OwnRoundScore[]>([]);
+  const board = useSessionBoard(session.id, playerRowId, true);
+  const [own, setOwn] = useState<OwnScore[] | null>(null);
   usePolling(
     async () => {
       try {
-        const [page, mine] = await Promise.all([
-          fetchSessionBoard(session.id, playerRowId),
-          fetchOwnRoundScores(session.id, playerRowId),
-        ]);
-        setBoard({ rows: mergeBoard(page.top, page.own, playerRowId), total: page.total });
-        setOwn(mine);
+        setOwn(await fetchOwnScores(session.id, playerRowId));
       } catch {
         // keep last
       }
@@ -348,26 +354,32 @@ export function ResultsScreen({
   );
 
   const ownRow = useMemo(() => board?.rows.find((r) => r.isOwn) ?? null, [board]);
+  const lineup: GameId[] =
+    rounds.length > 0 ? [...rounds].sort((a, b) => a.round_no - b.round_no).map((r) => r.game) : [...session.lineup];
+  const scored = own !== null && own.length > 0;
+  const total = own ? own.reduce((sum, s) => sum + s.score, 0) : 0;
 
   return (
-    <section className={styles.screen} data-testid="screen-results">
+    <section className={styles.screen} data-testid="screen-results" data-state={!board ? 'loading' : scored ? 'normal' : board.rows.length === 0 ? 'no_scores' : 'not_scored'}>
       <h1 className={styles.title}>{t('results.title')}</h1>
-      {board && ownRow ? (
+      {scored ? (
         <div className={styles.stack}>
           <div className={styles.totalRow}>
             <span className={styles.body}>{t('results.your_total')}</span>
             <span className={styles.totalValue} data-testid="results-total" dir="ltr">
-              {formatNumber(ownRow.value)}
+              {formatNumber(total)}
             </span>
           </div>
-          <p className={styles.body} data-testid="results-rank">
-            {t('results.rank', { rank: formatNumber(ownRow.rank), n: formatNumber(board.total) })}
-          </p>
-          <ul className={styles.breakdown}>
-            {session.lineup.map((g) => {
-              const s = own.find((o) => o.game === g);
+          {board && ownRow ? (
+            <p className={styles.body} data-testid="results-rank">
+              {t('results.rank', { rank: formatNumber(ownRow.rank), n: formatNumber(board.total) })}
+            </p>
+          ) : null}
+          <ul className={styles.breakdown} data-testid="results-breakdown">
+            {lineup.map((g) => {
+              const s = own?.find((o) => o.game === g);
               return (
-                <li key={g} className={styles.breakdownRow}>
+                <li key={g} className={styles.breakdownRow} data-testid="breakdown-row" data-game={g}>
                   <span>{t(`game.${g}.name`)}</span>
                   <span dir="ltr">{s ? formatNumber(s.score) : t('results.breakdown_missing')}</span>
                 </li>

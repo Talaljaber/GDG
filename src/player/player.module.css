@@ -352,3 +352,63 @@
   padding-block: var(--s-3);
   background: var(--bg);
 }
+
+/* ---- P7 new best ---- */
+
+.newBest {
+  display: inline-block;
+  padding-block: var(--s-1);
+  padding-inline: var(--s-3);
+  border-radius: var(--r-chip);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-button-weight);
+}
+
+/* ---- P10 day-board tabs ---- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.tab {
+  min-block-size: var(--touch-target-min);
+  padding-block: var(--s-2);
+  padding-inline: var(--s-4);
+  border: var(--line-width-strong) solid var(--gdg-line);
+  border-radius: var(--r-chip);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-button-weight);
+}
+
+.tabOn {
+  border-color: var(--primary);
+  background: var(--primary-text);
+  color: var(--on-primary);
+}
+
+/* ---- E16: portrait only during rounds (landscape phone = short viewport) ---- */
+
+.rotate {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .rotate {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-dialog);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--phone-gutter);
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+  }
+}

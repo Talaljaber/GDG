@@ -169,6 +169,86 @@ describe('derivePlayerView', () => {
   });
 });
 
+describe('derivePlayerView: multi-round sessions, pending lobby, day board (Phase 2)', () => {
+  const lineup: SessionRow['lineup'] = ['stop_the_clock', 'odd_one_out', 'simon'];
+  const s3 = (status: SessionRow['status'], o: Partial<SessionRow> = {}) => session(status, { lineup, ...o });
+  const r1done = round('done', { id: 'r1', round_no: 1 });
+  const r2up = round('upcoming', { id: 'r2', round_no: 2, game: 'odd_one_out' });
+  const r3up = round('upcoming', { id: 'r3', round_no: 3, game: 'simon' });
+
+  it('P3b: a guest in the pending session sees "next round" until New session flips it to lobby (E6, AC2.3)', () => {
+    const input = { local: local(), rounds: [], me: me(), now: NOW };
+    expect(derivePlayerView({ ...input, session: s3('pending') })).toEqual({ screen: 'lobby', pending: true });
+    // New session: pending -> lobby, the player row is carried over
+    expect(derivePlayerView({ ...input, session: s3('lobby', { opened_at: '2026-09-24T10:10:00Z' }) })).toEqual({
+      screen: 'lobby',
+      pending: false,
+    });
+    // a pending session closed by a new event day (E25)
+    expect(derivePlayerView({ ...input, session: s3('closed') }).screen).toBe('ended');
+  });
+
+  it('P8: between rounds the phone mirrors the intermission from when it saw the round end', () => {
+    const l = local({ roundId: 'r1', roundStartEpoch: NOW - 60_000, submittedRounds: ['r1'] });
+    const input = { local: l, session: s3('playing'), rounds: [r1done, r2up, r3up], me: me() };
+    expect(derivePlayerView({ ...input, now: NOW, intermissionSeenAt: NOW })).toMatchObject({
+      screen: 'intermission',
+      step: 'round_board',
+      round: { id: 'r1' },
+      next: { id: 'r2' },
+    });
+    expect(derivePlayerView({ ...input, now: NOW + 7000, intermissionSeenAt: NOW })).toMatchObject({
+      step: 'session_total',
+    });
+    expect(derivePlayerView({ ...input, now: NOW + 40_000, intermissionSeenAt: NOW })).toMatchObject({
+      step: 'next_intro',
+    });
+    // not seen yet: starts at the round board
+    expect(derivePlayerView({ ...input, now: NOW })).toMatchObject({ step: 'round_board' });
+  });
+
+  it('P8 also for a phone that missed the round (no score)', () => {
+    const v = derivePlayerView({ local: local(), session: s3('playing'), rounds: [r1done, r2up, r3up], me: me(), now: NOW });
+    expect(v.screen).toBe('intermission');
+  });
+
+  it('round 2 starts: the phone begins it (3-2-1), even straight from the intermission', () => {
+    const l = local({ roundId: 'r1', roundStartEpoch: NOW - 60_000, submittedRounds: ['r1'] });
+    const r2 = round('playing', { id: 'r2', round_no: 2, game: 'odd_one_out' });
+    const v = derivePlayerView({ local: l, session: s3('playing'), rounds: [r1done, r2, r3up], me: me(), now: NOW });
+    expect(v).toMatchObject({ screen: 'intro', begin: true, round: { id: 'r2' } });
+  });
+
+  it('a phone still in round 1 when it ended finishes it first (E27), then the intermission', () => {
+    const l = local({ roundId: 'r1', roundStartEpoch: NOW - 30_000 });
+    const input = { session: s3('playing'), rounds: [r1done, r2up, r3up], me: me(), now: NOW };
+    expect(derivePlayerView({ ...input, local: l })).toMatchObject({ screen: 'game', roundEnded: true });
+    const after = { ...l, pendingSubmit: { roundId: 'r1', score: 10, durationMs: 30_000, raw: {} } };
+    expect(derivePlayerView({ ...input, local: after }).screen).toBe('intermission');
+  });
+
+  it('after the last round: results, then the day board once the host shows it (P9 → P10)', () => {
+    const done = [r1done, round('done', { id: 'r2', round_no: 2 }), round('done', { id: 'r3', round_no: 3 })];
+    const base = { local: local({ submittedRounds: ['r1', 'r2', 'r3'] }), rounds: done, me: me(), now: NOW };
+    expect(derivePlayerView({ ...base, session: s3('results') }).screen).toBe('results');
+    expect(
+      derivePlayerView({ ...base, session: s3('results', { day_board_shown_at: '2026-09-24T10:20:00Z' }) }).screen,
+    ).toBe('dayboard');
+    // New session closes it: the phone keeps its frozen results / day board
+    const closed = s3('closed', { ended_at: '2026-09-24T10:19:00Z', day_board_shown_at: '2026-09-24T10:20:00Z' });
+    expect(derivePlayerView({ ...base, session: closed, dayCurrent: true }).screen).toBe('dayboard');
+    // ...until a new event day ends it (E25, P11)
+    expect(derivePlayerView({ ...base, session: closed, dayCurrent: false }).screen).toBe('ended');
+  });
+
+  it('a session in results closed by a new event day shows P11 (E25)', () => {
+    const closed = s3('closed', { ended_at: '2026-09-24T10:19:00Z' });
+    expect(derivePlayerView({ local: local(), session: closed, rounds: [r1done], me: me(), now: NOW, dayCurrent: false }).screen).toBe(
+      'ended',
+    );
+  });
+});
+
 describe('helpers', () => {
   it('hasFinishedRound covers saved, pending, last result and failed', () => {
     expect(hasFinishedRound(local({ submittedRounds: ['r1'] }), 'r1')).toBe(true);
