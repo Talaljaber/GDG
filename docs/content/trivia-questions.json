@@ -13,29 +13,29 @@
       "difficulty": "easy",
       "question": {
         "en": "What does HTML stand for?",
-        "ar": "ماذا يعني الاختصار HTML؟"
+        "ar": "ما الاسم الكامل للاختصار HTML؟"
       },
       "options": [
         {
           "en": "HyperText Markup Language",
-          "ar": "لغة ترميز النص التشعبي"
+          "ar": "HyperText Markup Language"
         },
         {
           "en": "High-Level Text Machine Language",
-          "ar": "لغة آلة النصوص عالية المستوى"
+          "ar": "High-Level Text Machine Language"
         },
         {
           "en": "Hyperlink and Text Management Language",
-          "ar": "لغة إدارة الروابط والنصوص"
+          "ar": "Hyperlink and Text Management Language"
         },
         {
           "en": "Home Tool Markup Language",
-          "ar": "لغة ترميز أدوات المنزل"
+          "ar": "Home Tool Markup Language"
         }
       ],
       "source": "https://developer.mozilla.org/en-US/docs/Web/HTML",
       "reviewed_by": [],
-      "notes": "Example entry written with the docs; needs two human reviewers before freeze."
+      "notes": "Example entry written with the docs; needs two human reviewers before freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q02",
@@ -44,29 +44,29 @@
       "difficulty": "easy",
       "question": {
         "en": "What does CSS stand for?",
-        "ar": "ماذا يعني الاختصار CSS؟"
+        "ar": "ما الاسم الكامل للاختصار CSS؟"
       },
       "options": [
         {
           "en": "Cascading Style Sheets",
-          "ar": "أوراق الأنماط المتتالية"
+          "ar": "Cascading Style Sheets"
         },
         {
           "en": "Computer Style Syntax",
-          "ar": "صيغة أنماط الحاسوب"
+          "ar": "Computer Style Syntax"
         },
         {
           "en": "Creative Style System",
-          "ar": "نظام الأنماط الإبداعي"
+          "ar": "Creative Style System"
         },
         {
           "en": "Coded Style Sheets",
-          "ar": "أوراق الأنماط المُرمّزة"
+          "ar": "Coded Style Sheets"
         }
       ],
       "source": "https://developer.mozilla.org/en-US/docs/Web/CSS",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q03",
@@ -111,24 +111,24 @@
       "options": [
         {
           "en": "World Wide Web",
-          "ar": "الشبكة العنكبوتية العالمية"
+          "ar": "World Wide Web"
         },
         {
           "en": "World Wide Wire",
-          "ar": "السلك العالمي الواسع"
+          "ar": "World Wide Wire"
         },
         {
           "en": "Web Wide World",
-          "ar": "عالم الويب الواسع"
+          "ar": "Web Wide World"
         },
         {
           "en": "Wide World Web",
-          "ar": "ويب العالم الواسع"
+          "ar": "Wide World Web"
         }
       ],
       "source": "common knowledge",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q05",
@@ -168,29 +168,29 @@
       "difficulty": "medium",
       "question": {
         "en": "What does \"HTTP\" stand for?",
-        "ar": "ماذا يعني الاختصار HTTP؟"
+        "ar": "ما الاسم الكامل للاختصار HTTP؟"
       },
       "options": [
         {
           "en": "HyperText Transfer Protocol",
-          "ar": "بروتوكول نقل النص التشعبي"
+          "ar": "HyperText Transfer Protocol"
         },
         {
           "en": "High Transfer Text Protocol",
-          "ar": "بروتوكول النص عالي النقل"
+          "ar": "High Transfer Text Protocol"
         },
         {
           "en": "HyperText Transmission Process",
-          "ar": "عملية إرسال النص التشعبي"
+          "ar": "HyperText Transmission Process"
         },
         {
           "en": "Hyperlink Text Transfer Program",
-          "ar": "برنامج نقل نص الروابط"
+          "ar": "Hyperlink Text Transfer Program"
         }
       ],
       "source": "https://developer.mozilla.org/en-US/docs/Web/HTTP",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q07",
@@ -230,29 +230,29 @@
       "difficulty": "medium",
       "question": {
         "en": "In software, what does \"API\" stand for?",
-        "ar": "ماذا يعني الاختصار API في البرمجيات؟"
+        "ar": "ما الاسم الكامل للاختصار API في البرمجيات؟"
       },
       "options": [
         {
           "en": "Application Programming Interface",
-          "ar": "واجهة برمجة التطبيقات"
+          "ar": "Application Programming Interface"
         },
         {
           "en": "Automated Program Installer",
-          "ar": "مثبّت البرامج الآلي"
+          "ar": "Automated Program Installer"
         },
         {
           "en": "Applied Programming Index",
-          "ar": "فهرس البرمجة التطبيقية"
+          "ar": "Applied Programming Index"
         },
         {
           "en": "Application Process Integration",
-          "ar": "تكامل عمليات التطبيق"
+          "ar": "Application Process Integration"
         }
       ],
       "source": "https://developer.mozilla.org/en-US/docs/Glossary/API",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q09",
@@ -265,12 +265,12 @@
       },
       "options": [
         {
-          "en": "Its source code is public and anyone can change it",
-          "ar": "شيفرته المصدرية عامة ويمكن لأي أحد تعديلها"
+          "en": "Its source code is open to everyone and anyone can change it",
+          "ar": "أنّ شيفرته المصدرية متاحة للجميع ويمكن لأي شخص تعديلها"
         },
         {
-          "en": "It is always free of charge",
-          "ar": "أنه مجاني دائمًا"
+          "en": "It is always free for all users",
+          "ar": "أنه مجاني دائمًا لكل المستخدمين"
         },
         {
           "en": "It was made by only one company",
@@ -283,7 +283,7 @@
       ],
       "source": "https://opensource.org/osd",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q10",
@@ -354,29 +354,29 @@
       "difficulty": "hard",
       "question": {
         "en": "What does \"DNS\" stand for in networking?",
-        "ar": "ماذا يعني الاختصار DNS في الشبكات؟"
+        "ar": "ما الاسم الكامل للاختصار DNS في الشبكات؟"
       },
       "options": [
         {
           "en": "Domain Name System",
-          "ar": "نظام أسماء النطاقات"
+          "ar": "Domain Name System"
         },
         {
           "en": "Digital Network Server",
-          "ar": "خادم الشبكة الرقمية"
+          "ar": "Digital Network Server"
         },
         {
           "en": "Data Naming Standard",
-          "ar": "معيار تسمية البيانات"
+          "ar": "Data Naming Standard"
         },
         {
           "en": "Direct Network Service",
-          "ar": "خدمة الشبكة المباشرة"
+          "ar": "Direct Network Service"
         }
       ],
       "source": "https://www.cloudflare.com/learning/dns/what-is-dns/",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q13",
@@ -607,11 +607,11 @@
       "options": [
         {
           "en": "It can sound confident while being wrong",
-          "ar": "قد يبدو واثقًا رغم أنه مخطئ"
+          "ar": "لأنه قد يبدو واثقًا وهو مخطئ"
         },
         {
           "en": "It only tells jokes instead of facts",
-          "ar": "لأنه لا يقول سوى النكات بدل الحقائق"
+          "ar": "لأنه يقول النكات بدل الحقائق"
         },
         {
           "en": "It can only speak one language",
@@ -624,7 +624,7 @@
       ],
       "source": "common knowledge",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q21",
@@ -700,11 +700,11 @@
       "options": [
         {
           "en": "Many chatbots add randomness to each response",
-          "ar": "تضيف كثير من الروبوتات عشوائية لكل إجابة"
+          "ar": "لأن كثيرًا من روبوتات المحادثة تضيف عشوائية إلى كل إجابة"
         },
         {
           "en": "The chatbot secretly knows who is asking",
-          "ar": "لأن الروبوت يعرف سريًّا هوية السائل"
+          "ar": "لأن الروبوت يعرف سرًّا هوية السائل"
         },
         {
           "en": "Each phone has a different chatbot installed",
@@ -717,7 +717,7 @@
       ],
       "source": "common knowledge",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q24",
@@ -735,7 +735,7 @@
         },
         {
           "en": "One works offline and the other never does",
-          "ar": "أحدهما يعمل بلا إنترنت والآخر لا يعمل أبدًا"
+          "ar": "أحدهما يعمل بلا إنترنت والآخر لا يعمل دونه أبدًا"
         },
         {
           "en": "One is always faster than the other",
@@ -748,7 +748,7 @@
       ],
       "source": "common knowledge",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q25",
@@ -757,29 +757,29 @@
       "difficulty": "easy",
       "question": {
         "en": "What does GDG stand for?",
-        "ar": "ماذا يعني الاختصار GDG؟"
+        "ar": "ما الاسم الكامل للاختصار GDG؟"
       },
       "options": [
         {
           "en": "Google Developer Groups",
-          "ar": "مجموعات مطوّري Google"
+          "ar": "Google Developer Groups"
         },
         {
           "en": "Global Design Guild",
-          "ar": "نقابة التصميم العالمية"
+          "ar": "Global Design Guild"
         },
         {
           "en": "Google Data Gateway",
-          "ar": "بوابة بيانات Google"
+          "ar": "Google Data Gateway"
         },
         {
           "en": "General Developers Gathering",
-          "ar": "التجمّع العام للمطوّرين"
+          "ar": "General Developers Gathering"
         }
       ],
       "source": "https://developers.google.com/community/gdg",
       "reviewed_by": [],
-      "notes": "Example entry written with the docs; needs two human reviewers before freeze. Brand names stay in Latin script."
+      "notes": "Example entry written with the docs; needs two human reviewers before freeze. Brand names stay in Latin script; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q26",
@@ -881,7 +881,7 @@
       "difficulty": "medium",
       "question": {
         "en": "What is \"Women Techmakers\"?",
-        "ar": "ما هو برنامج «Women Techmakers»؟"
+        "ar": "ما هو «Women Techmakers»؟"
       },
       "options": [
         {
@@ -889,8 +889,8 @@
           "ar": "برنامج من Google يدعم النساء في التقنية"
         },
         {
-          "en": "A fashion event for tech companies",
-          "ar": "حدث أزياء لشركات التقنية"
+          "en": "A fashion show for tech companies",
+          "ar": "عرض أزياء لشركات التقنية"
         },
         {
           "en": "A Google internal training for new hires",
@@ -903,7 +903,7 @@
       ],
       "source": "https://www.womentechmakers.com/programs",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     },
     {
       "id": "q30",
@@ -912,7 +912,7 @@
       "difficulty": "medium",
       "question": {
         "en": "What is a \"Google Developer Expert\" (GDE)?",
-        "ar": "من هو «Google Developer Expert» (GDE)؟"
+        "ar": "ما المقصود بـ «Google Developer Expert»؟"
       },
       "options": [
         {
@@ -934,7 +934,7 @@
       ],
       "source": "https://developers.google.com/community/experts",
       "reviewed_by": [],
-      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze; revised after Arabic review 2026-09-25."
     }
   ]
 }
