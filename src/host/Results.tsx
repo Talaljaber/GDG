@@ -30,14 +30,11 @@ import {
   type SessionScoreRow,
 } from '../lib/api';
 import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
-import logo from '../assets/logo.png';
-import { DayBoardMerge, SHATTER_LOGO_CLASS } from '../effects/shatter';
-import { Leaderboard } from '../components/Leaderboard';
+import { DayBoardMerge } from '../effects/shatter';
 import { useRevealRows } from '../components/useRevealRows';
-import ui from '../components/ui.module.css';
 import styles from './host.module.css';
-import { CornerCode, CornerControls, NextGamesButton } from './common';
-import { Versus } from './Intermission';
+import { BoardTable } from './BoardTable';
+import { CornerCode, Framed, HostHeader, NextGamesButton, OperatorBar } from './common';
 import type { HostController, HostData } from './useHost';
 
 function useNewSession(host: HostController) {
@@ -64,7 +61,10 @@ function roundGames(data: HostData): GameId[] {
 /** A day-board row came from this session if one of its scores is that row's best (same game, score, time). */
 function fromSession(row: DayBoardRow, game: GameId, scores: readonly SessionScoreRow[]): boolean {
   return scores.some(
-    (s) => s.game === game && s.score === row.score && Date.parse(s.createdAt) === Date.parse(row.achievedAt),
+    (s) =>
+      s.game === game &&
+      s.score === row.score &&
+      Date.parse(s.createdAt) === Date.parse(row.achievedAt),
   );
 }
 
@@ -77,7 +77,10 @@ function useSessionResults(sessionId: string, scoresVersion: number, enabled: bo
     let alive = true;
     const load = async () => {
       try {
-        const [page, rows] = await Promise.all([fetchSessionBoard(sessionId), fetchSessionRoundScores(sessionId)]);
+        const [page, rows] = await Promise.all([
+          fetchSessionBoard(sessionId),
+          fetchSessionRoundScores(sessionId),
+        ]);
         if (!alive) return;
         setBoard(mergeBoard(page.top, null, null));
         setBreakdown(rows);
@@ -100,7 +103,12 @@ function useSessionResults(sessionId: string, scoresVersion: number, enabled: bo
  * each hidden-name change. Loaded from the moment Show day board lands, so
  * the rows are there when the merge streams into them 1.7 s later.
  */
-function useDayBoardData(host: HostController, data: HostData, lineup: readonly GameId[], enabled: boolean) {
+function useDayBoardData(
+  host: HostController,
+  data: HostData,
+  lineup: readonly GameId[],
+  enabled: boolean,
+) {
   const { session } = data;
   const [rows, setRows] = useState<Record<string, DayBoardRow[]>>({});
   const [sessionScores, setSessionScores] = useState<SessionScoreRow[]>([]);
@@ -131,7 +139,23 @@ function useDayBoardData(host: HostController, data: HostData, lineup: readonly 
 
 type View = 'results' | 'dayboard';
 
-export function HostSessionEnd({ host, data }: { host: HostController; data: HostData }) {
+/** Dev preview only: fixed data instead of the database queries. */
+export interface SessionEndPreview {
+  board?: RankedRow[] | null;
+  breakdown?: RoundScoreRow[];
+  dayRows?: Record<string, DayBoardRow[]>;
+  sessionScores?: SessionScoreRow[];
+}
+
+export function HostSessionEnd({
+  host,
+  data,
+  preview,
+}: {
+  host: HostController;
+  data: HostData;
+  preview?: SessionEndPreview;
+}) {
   const t = useT();
   const { session } = data;
   const lineup = roundGames(data);
@@ -154,8 +178,19 @@ export function HostSessionEnd({ host, data }: { host: HostController; data: Hos
     }
   }
 
-  const results = useSessionResults(session.id, host.scoresVersion, view === 'results');
-  const day = useDayBoardData(host, data, lineup, onDayBoard);
+  const live = !preview;
+  const fetchedResults = useSessionResults(
+    session.id,
+    host.scoresVersion,
+    live && view === 'results',
+  );
+  const fetchedDay = useDayBoardData(host, data, lineup, live && onDayBoard);
+  const results = preview
+    ? { board: preview.board ?? null, breakdown: preview.breakdown ?? [] }
+    : fetchedResults;
+  const day = preview
+    ? { rows: preview.dayRows ?? {}, sessionScores: preview.sessionScores ?? [] }
+    : fetchedDay;
 
   const [tab, setTab] = useState(0);
   const [rotations, setRotations] = useState(0);
@@ -184,83 +219,99 @@ export function HostSessionEnd({ host, data }: { host: HostController; data: Hos
 
   // Merge targets: the rows of the shown tab that came from this session (highlighted).
   const dayBoardArea = useRef<HTMLDivElement>(null);
-  const targets = () => Array.from(dayBoardArea.current?.querySelectorAll('[data-highlight="true"]') ?? []);
+  const targets = () =>
+    Array.from(dayBoardArea.current?.querySelectorAll('[data-highlight="true"]') ?? []);
+
+  const newSessionButton = (primary: boolean) => (
+    <button
+      type="button"
+      className={primary ? styles.primary : styles.textButton}
+      onClick={() => void newSession.run()}
+      disabled={newSession.busy}
+      data-testid="host-new-session"
+    >
+      {t('host.new_session')}
+    </button>
+  );
 
   return (
     <>
-      <header className={styles.header}>
-        <h1 className={styles.heading}>{t(view === 'results' ? 'results.title' : 'dayboard.title')}</h1>
-        <img src={logo} alt={t('app.name')} className={`${ui.projLogo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
-      </header>
-      {view === 'dayboard' ? (
-        <nav className={styles.tabs} role="tablist" data-testid="host-dayboard-tabs">
-          {lineup.map((g, i) => (
+      <HostHeader
+        withLogo
+        title={
+          <h1 className={styles.headerTitle}>
+            {t(view === 'results' ? 'results.title' : 'dayboard.title')}
+          </h1>
+        }
+        end={<CornerCode pending={data.pending} joined={data.pendingPlayers} />}
+      />
+      <main className={`${styles.body} ${styles.stack}`}>
+        {view === 'dayboard' ? (
+          <nav className={styles.tabs} role="tablist" data-testid="host-dayboard-tabs">
+            {lineup.map((g, i) => (
+              <button
+                key={g}
+                type="button"
+                role="tab"
+                aria-selected={i === tab}
+                className={`${styles.tab} ${i === tab ? styles.tabOn : ''}`}
+                onClick={() => setTab(i)}
+                data-testid={`dayboard-tab-${g}`}
+              >
+                {t(`game.${g}.name`)}
+              </button>
+            ))}
+          </nav>
+        ) : null}
+        <DayBoardMerge
+          trigger={mergeRun}
+          games={lineup.map((id) => ({ id, targets }))}
+          className={styles.mergeStage}
+          data-testid="host-merge-stage"
+          onFragmented={() => setView('dayboard')}
+          onGameStart={(_, i) => setTab(i)}
+          onSettle={() => setTab(0)}
+          onDone={() => {
+            setMerging(false);
+            setRotations(0);
+          }}
+        >
+          {view === 'results' ? (
+            <SessionResultsBoard
+              lineup={lineup}
+              board={results.board}
+              breakdown={results.breakdown}
+            />
+          ) : (
+            <DayBoardPanel
+              ref={dayBoardArea}
+              game={lineup[tab] ?? lineup[0]}
+              rows={day.rows}
+              sessionScores={day.sessionScores}
+              firstCycle={rotations < lineup.length}
+              reveal={!merging}
+            />
+          )}
+        </DayBoardMerge>
+      </main>
+      <OperatorBar start={<NextGamesButton host={host} pending={data.pending} />}>
+        {!onDayBoard ? (
+          <>
+            {newSessionButton(false)}
             <button
-              key={g}
               type="button"
-              role="tab"
-              aria-selected={i === tab}
-              className={`${styles.tab} ${i === tab ? styles.tabOn : ''}`}
-              onClick={() => setTab(i)}
-              data-testid={`dayboard-tab-${g}`}
-            >
-              {t(`game.${g}.name`)}
-            </button>
-          ))}
-        </nav>
-      ) : null}
-      <DayBoardMerge
-        trigger={mergeRun}
-        games={lineup.map((id) => ({ id, targets }))}
-        className={styles.mergeStage}
-        data-testid="host-merge-stage"
-        onFragmented={() => setView('dayboard')}
-        onGameStart={(_, i) => setTab(i)}
-        onSettle={() => setTab(0)}
-        onDone={() => {
-          setMerging(false);
-          setRotations(0);
-        }}
-      >
-        {view === 'results' ? (
-          <SessionResultsBoard lineup={lineup} board={results.board} breakdown={results.breakdown} />
-        ) : (
-          <DayBoardPanel
-            ref={dayBoardArea}
-            game={lineup[tab] ?? lineup[0]}
-            rows={day.rows}
-            sessionScores={day.sessionScores}
-            firstCycle={rotations < lineup.length}
-            reveal={!merging}
-          />
-        )}
-      </DayBoardMerge>
-      <footer className={styles.footer}>
-        <CornerCode pending={data.pending} joined={data.pendingPlayers} />
-        <CornerControls>
-          <NextGamesButton host={host} pending={data.pending} />
-          {!onDayBoard ? (
-            <button
-              type="button"
-              className={`${ui.button} ${ui.buttonSecondary} ${styles.control}`}
+              className={styles.primary}
               onClick={() => void showDayBoard()}
               disabled={showing}
               data-testid="host-show-day-board"
             >
               {t('host.results.show_day_board')}
             </button>
-          ) : null}
-          <button
-            type="button"
-            className={`${ui.button} ${styles.control}`}
-            onClick={() => void newSession.run()}
-            disabled={newSession.busy}
-            data-testid="host-new-session"
-          >
-            {t('host.new_session')}
-          </button>
-        </CornerControls>
-      </footer>
+          </>
+        ) : (
+          newSessionButton(true)
+        )}
+      </OperatorBar>
     </>
   );
 }
@@ -281,25 +332,38 @@ function SessionResultsBoard({
   // Rows shatter in top to bottom as the board appears (DESIGN_SYSTEM §6.2).
   const bodyRef = useRevealRows<HTMLTableSectionElement>((board ?? []).map((r) => r.playerRowId));
   return (
-    <div className={styles.main} data-testid="host-results">
-      <div className={styles.boardWrap}>
+    <div className={`${styles.split} ${styles.fill}`} data-testid="host-results">
+      <aside className={styles.side}>
         {winner ? (
-          <Versus>
-            <div className={styles.winner} data-testid="host-winner">
-              <span className={styles.winnerLabel}>{t('host.results.winner')}</span>
-              <bdi>{displayName(winner.name, winner.displaySuffix)}</bdi>
-              <span className={styles.winnerScore}>{formatNumber(winner.value)}</span>
-            </div>
-          </Versus>
+          <div className={styles.winner} data-testid="host-winner">
+            <span className={styles.eyebrow}>{t('host.results.winner')}</span>
+            <Framed>
+              <div className={styles.winnerBody}>
+                <bdi className={styles.winnerName}>
+                  {displayName(winner.name, winner.displaySuffix)}
+                </bdi>
+                <span className={styles.winnerScore}>{formatNumber(winner.value)}</span>
+              </div>
+            </Framed>
+          </div>
         ) : null}
+      </aside>
+      <section className={styles.boardArea}>
         {board && board.length > 0 ? (
-          <table className={styles.sessionTable} data-testid="host-session-board">
+          <table
+            className={`${styles.table} ${styles.sessionTable}`}
+            data-testid="host-session-board"
+          >
             <thead>
               <tr>
-                <th scope="col" className={styles.colRank} />
-                <th scope="col" className={styles.colName} />
+                <th scope="col" className={styles.colRank}>
+                  {t('host.board.rank')}
+                </th>
+                <th scope="col" className={styles.colName}>
+                  {t('host.board.player')}
+                </th>
                 {lineup.map((g) => (
-                  <th key={g} scope="col" className={styles.colScore}>
+                  <th key={g} scope="col" className={`${styles.colScore} ${styles.colRound}`}>
                     {t(`game.${g}.name`)}
                   </th>
                 ))}
@@ -312,7 +376,7 @@ function SessionResultsBoard({
               {board.map((r) => (
                 <tr
                   key={r.playerRowId}
-                  className={`${styles.sessionRow} ${r.rank === 1 ? styles.sessionRowFirst : ''}`}
+                  className={`${styles.row} ${r.rank === 1 ? styles.rowFirst : ''} ${r.rank <= 3 ? styles.rowPodium : ''}`}
                   data-testid="board-row"
                   data-reveal-key={r.playerRowId}
                 >
@@ -321,14 +385,21 @@ function SessionResultsBoard({
                     <bdi data-testid="board-name">{displayName(r.name, r.displaySuffix)}</bdi>
                   </td>
                   {lineup.map((g) => {
-                    const s = breakdown.find((b) => b.playerRowId === r.playerRowId && b.game === g);
+                    const s = breakdown.find(
+                      (b) => b.playerRowId === r.playerRowId && b.game === g,
+                    );
                     return (
-                      <td key={g} className={styles.colScore} data-testid="board-round-score" data-game={g}>
+                      <td
+                        key={g}
+                        className={`${styles.colScore} ${styles.colRound}`}
+                        data-testid="board-round-score"
+                        data-game={g}
+                      >
                         {s ? formatNumber(s.score) : t('results.breakdown_missing')}
                       </td>
                     );
                   })}
-                  <td className={`${styles.colScore} ${styles.colTotal}`} data-testid="board-score">
+                  <td className={styles.colScore} data-testid="board-score">
                     {formatNumber(r.value)}
                   </td>
                 </tr>
@@ -336,11 +407,11 @@ function SessionResultsBoard({
             </tbody>
           </table>
         ) : board ? (
-          <p className={`${styles.big} ${styles.muted}`} data-testid="host-no-scores">
+          <p className={styles.emptyBoard} data-testid="host-no-scores">
             {t('results.no_scores')}
           </p>
         ) : null}
-      </div>
+      </section>
     </div>
   );
 }
@@ -376,16 +447,30 @@ const DayBoardPanel = forwardRef<
   );
   const highlight = useMemo(
     () =>
-      new Set(firstCycle && current ? current.filter((r) => fromSession(r, game, sessionScores)).map((r) => r.nameKey) : []),
+      new Set(
+        firstCycle && current
+          ? current.filter((r) => fromSession(r, game, sessionScores)).map((r) => r.nameKey)
+          : [],
+      ),
     [firstCycle, current, game, sessionScores],
   );
   return (
-    <div ref={ref} className={styles.main} data-testid="host-dayboard" data-game={game}>
-      <div className={styles.boardWrap} key={game}>
+    <div
+      ref={ref}
+      className={`${styles.dayboard} ${styles.fill}`}
+      data-testid="host-dayboard"
+      data-game={game}
+    >
+      <div className={styles.boardArea} key={game}>
         {ranked.length > 0 ? (
-          <Leaderboard rows={ranked} projector reveal={reveal} testId="host-day-board" highlightIds={highlight} />
+          <BoardTable
+            rows={ranked}
+            reveal={reveal}
+            testId="host-day-board"
+            highlightIds={highlight}
+          />
         ) : current ? (
-          <p className={`${styles.big} ${styles.muted}`}>{t('dayboard.empty')}</p>
+          <p className={styles.emptyBoard}>{t('host.dayboard.empty')}</p>
         ) : null}
       </div>
     </div>

@@ -3,23 +3,32 @@
  * Clock: the guess reveal) → session total 5 s → "Next: <game>" 3 s with
  * 3-2-1, then the host loop starts the next round. After the last round only
  * the round board shows, then H4. "Next round now" skips to the "Next" step.
- * The pending code stays in the corner. Each step change plays the screen
- * shatter (HostApp's ScreenTransition); the boards shatter in (Leaderboard)
- * and the Stop the Clock dots burst in (StcReveal).
+ * The pending code stays at the header's inline end. Each step change plays
+ * the screen shatter (HostApp's ScreenTransition); the boards shatter in
+ * (BoardTable) and the Stop the Clock dots burst in (StcReveal).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { formatNumber, useT } from '../i18n';
-import { fetchRoundBoard, fetchSessionBoard } from '../lib/api';
+import { fetchRoundBoard, fetchSessionBoard, type RevealRow } from '../lib/api';
 import { mergeBoard, type RankedRow } from '../lib/boards';
-import { Leaderboard } from '../components/Leaderboard';
 import { Spinner } from '../components/Spinner';
-import ui from '../components/ui.module.css';
 import styles from './host.module.css';
-import { CornerCode, CornerControls, NextGamesButton } from './common';
+import { BoardTable } from './BoardTable';
+import {
+  CornerCode,
+  Framed,
+  HostHeader,
+  LineupSummary,
+  NextGamesButton,
+  OperatorBar,
+} from './common';
 import { StcReveal } from './StcReveal';
 import type { HostController, HostData } from './useHost';
 
-function useBoard(fetcher: (() => Promise<RankedRow[]>) | null, deps: unknown[]): RankedRow[] | null {
+function useBoard(
+  fetcher: (() => Promise<RankedRow[]>) | null,
+  deps: unknown[],
+): RankedRow[] | null {
   const [rows, setRows] = useState<RankedRow[] | null>(null);
   useEffect(() => {
     if (!fetcher) return;
@@ -37,108 +46,185 @@ function useBoard(fetcher: (() => Promise<RankedRow[]>) | null, deps: unknown[])
   return rows;
 }
 
-export function Versus({ children }: { children: React.ReactNode }) {
-  return (
-    <div className={styles.versus}>
-      <svg className={`${styles.chevron} ${styles.chevronStart}`} viewBox="0 0 48 64" aria-hidden="true">
-        <path d="M40 0 L0 32 L40 64 L48 56 L18 32 L48 8 Z" />
-      </svg>
-      {children}
-      <svg className={`${styles.chevron} ${styles.chevronEnd}`} viewBox="0 0 48 64" aria-hidden="true">
-        <path d="M8 0 L48 32 L8 64 L0 56 L30 32 L0 8 Z" />
-      </svg>
-    </div>
-  );
+/** Dev preview only: fixed boards / reveal rows instead of the database queries. */
+export interface IntermissionPreview {
+  roundBoard?: RankedRow[] | null;
+  totalBoard?: RankedRow[] | null;
+  reveal?: RevealRow[];
 }
 
-export function HostIntermission({ host, data }: { host: HostController; data: HostData }) {
+export function HostIntermission({
+  host,
+  data,
+  preview,
+}: {
+  host: HostController;
+  data: HostData;
+  preview?: IntermissionPreview;
+}) {
   const t = useT();
   const info = host.intermission;
   const roundId = info?.round.id ?? null;
   const step = info?.state.step ?? null;
   const showsRound = step === 'round_board' || (step === 'done' && !info?.next);
+  const live = !preview;
 
   // Late scores (≤ 15 s after ended_at, E22) and hidden names re-query via scoresVersion.
-  const roundBoard = useBoard(
-    roundId && showsRound ? async () => mergeBoard((await fetchRoundBoard(roundId)).top, null, null) : null,
-    [roundId, showsRound, host.scoresVersion],
+  const fetchedRound = useBoard(
+    live && roundId && showsRound
+      ? async () => mergeBoard((await fetchRoundBoard(roundId)).top, null, null)
+      : null,
+    [roundId, showsRound, host.scoresVersion, live],
   );
   const showsTotal = step === 'session_total';
-  const totalBoard = useBoard(
-    showsTotal ? async () => mergeBoard((await fetchSessionBoard(data.session.id)).top, null, null) : null,
-    [data.session.id, showsTotal, host.scoresVersion],
+  const fetchedTotal = useBoard(
+    live && showsTotal
+      ? async () => mergeBoard((await fetchSessionBoard(data.session.id)).top, null, null)
+      : null,
+    [data.session.id, showsTotal, host.scoresVersion, live],
   );
+  const roundBoard = preview ? (preview.roundBoard ?? null) : fetchedRound;
+  const totalBoard = preview ? (preview.totalBoard ?? null) : fetchedTotal;
 
   if (!info) return <Spinner />;
   const { round, next, state } = info;
   const serverNow = Date.now() + (host.offset ?? 0);
   const secondsLeft = Math.max(1, Math.ceil((state.stepEndsAtMs - serverNow) / 1000));
+  const total = data.rounds.length;
+  const lineup = [...data.rounds].sort((a, b) => a.round_no - b.round_no).map((r) => r.game);
 
-  let heading: React.ReactNode;
-  let body: React.ReactNode;
+  const header = (
+    <HostHeader
+      withLogo={false}
+      end={<CornerCode pending={data.pending} joined={data.pendingPlayers} />}
+    />
+  );
+  const skip =
+    next && state.step !== 'next_intro' && state.step !== 'done' ? (
+      <button
+        type="button"
+        className={styles.primary}
+        onClick={host.skipIntermission}
+        data-testid="host-skip"
+      >
+        {t('intermission.skip')}
+      </button>
+    ) : null;
+  const operator = (
+    <OperatorBar start={<NextGamesButton host={host} pending={data.pending} />}>{skip}</OperatorBar>
+  );
+
   // 'done' with a next round keeps the "Next" step until the round has started (no flash of the
   // round board, and one screen transition "Next" → H2, DESIGN_SYSTEM §6.2).
   if ((state.step === 'next_intro' || state.step === 'done') && next) {
-    heading = null;
-    body = (
-      <div className={styles.nextIntro} data-testid="host-next-intro" data-game={next.game}>
-        <p className={styles.big}>{t('round.label', { n: next.round_no, total: data.rounds.length })}</p>
-        <Versus>
-          <h1 className={styles.nextGame}>{t('intermission.next', { game: t(`game.${next.game}.name`) })}</h1>
-        </Versus>
-        <p key={secondsLeft} className={styles.countdown} dir="ltr" aria-live="polite">
-          {formatNumber(secondsLeft)}
-        </p>
-      </div>
+    return (
+      <>
+        {header}
+        <main
+          className={styles.body}
+          data-testid="host-intermission"
+          data-step={state.step}
+          data-round={round.round_no}
+        >
+          <div className={styles.nextIntro} data-testid="host-next-intro" data-game={next.game}>
+            <p className={styles.eyebrow}>{t('round.label', { n: next.round_no, total })}</p>
+            <Framed>
+              <h1 className={styles.nextGame}>
+                {t('intermission.next', { game: t(`game.${next.game}.name`) })}
+              </h1>
+            </Framed>
+            <p key={secondsLeft} className={styles.countdown} dir="ltr" aria-live="polite">
+              {formatNumber(secondsLeft)}
+            </p>
+          </div>
+        </main>
+        {operator}
+      </>
     );
-  } else if (state.step === 'session_total') {
-    heading = t('intermission.session_total');
+  }
+
+  const upNext = next ? (
+    <p className={styles.upNext}>{t('intermission.next', { game: t(`game.${next.game}.name`) })}</p>
+  ) : null;
+
+  // Stop the Clock: the round board is the guess reveal, full width (three strips).
+  if (state.step !== 'session_total' && round.game === 'stop_the_clock') {
+    return (
+      <>
+        {header}
+        <main
+          className={`${styles.body} ${styles.stack}`}
+          data-testid="host-intermission"
+          data-step={state.step}
+          data-round={round.round_no}
+        >
+          <div className={styles.revealHead}>
+            <h1 className={styles.titleBlock} data-testid="host-intermission-title">
+              <span className={styles.eyebrow}>
+                {t('intermission.round_board', { n: round.round_no })}
+              </span>
+              <span className={styles.titleSep}>{' · '}</span>
+              <span className={styles.title}>{t(`game.${round.game}.name`)}</span>
+            </h1>
+            {upNext}
+          </div>
+          {preview?.reveal ? (
+            <StcReveal roundId={round.id} version={host.scoresVersion} rows={preview.reveal} />
+          ) : (
+            <StcReveal roundId={round.id} version={host.scoresVersion} />
+          )}
+        </main>
+        {operator}
+      </>
+    );
+  }
+
+  let title: ReactNode;
+  let eyebrow: string;
+  let body: ReactNode;
+  if (state.step === 'session_total') {
+    eyebrow = t('round.label', { n: round.round_no, total });
+    title = t('intermission.session_total');
     body =
       totalBoard && totalBoard.length > 0 ? (
-        <Leaderboard rows={totalBoard} projector testId="host-total-board" />
+        <BoardTable rows={totalBoard} testId="host-total-board" />
       ) : totalBoard ? (
-        <p className={`${styles.big} ${styles.muted}`}>{t('results.no_scores')}</p>
+        <p className={styles.emptyBoard}>{t('results.no_scores')}</p>
       ) : null;
   } else {
-    heading = `${t('intermission.round_board', { n: round.round_no })} · ${t(`game.${round.game}.name`)}`;
+    eyebrow = t('intermission.round_board', { n: round.round_no });
+    title = t(`game.${round.game}.name`);
     body =
-      round.game === 'stop_the_clock' ? (
-        <StcReveal roundId={round.id} version={host.scoresVersion} />
-      ) : roundBoard && roundBoard.length > 0 ? (
-        <Leaderboard rows={roundBoard} projector testId="host-round-board" />
+      roundBoard && roundBoard.length > 0 ? (
+        <BoardTable rows={roundBoard} testId="host-round-board" />
       ) : roundBoard ? (
-        <p className={`${styles.big} ${styles.muted}`}>{t('round.no_scores')}</p>
+        <p className={styles.emptyBoard}>{t('round.no_scores')}</p>
       ) : null;
   }
 
   return (
     <>
-      {heading ? (
-        <header className={styles.header}>
-          <h1 className={styles.heading} data-testid="host-intermission-title">
-            {heading}
+      {header}
+      <main
+        className={`${styles.body} ${styles.split}`}
+        data-testid="host-intermission"
+        data-step={state.step}
+        data-round={round.round_no}
+      >
+        <aside className={styles.side}>
+          <h1 className={styles.titleBlock} data-testid="host-intermission-title">
+            <span className={styles.eyebrow}>{eyebrow}</span>
+            <span className={styles.titleSep}>{' · '}</span>
+            <span className={styles.title}>{title}</span>
           </h1>
-        </header>
-      ) : null}
-      <div className={styles.main} data-testid="host-intermission" data-step={state.step} data-round={round.round_no}>
-        <div className={styles.boardWrap}>{body}</div>
-      </div>
-      <footer className={styles.footer}>
-        <CornerCode pending={data.pending} joined={data.pendingPlayers} />
-        <CornerControls>
-          <NextGamesButton host={host} pending={data.pending} />
-          {next && state.step !== 'next_intro' && state.step !== 'done' ? (
-            <button
-              type="button"
-              className={`${ui.button} ${styles.control}`}
-              onClick={host.skipIntermission}
-              data-testid="host-skip"
-            >
-              {t('intermission.skip')}
-            </button>
+          {upNext}
+          {lineup.length > 1 ? (
+            <LineupSummary games={lineup} current={next ? next.round_no : round.round_no + 1} />
           ) : null}
-        </CornerControls>
-      </footer>
+        </aside>
+        <section className={styles.boardArea}>{body}</section>
+      </main>
+      {operator}
     </>
   );
 }

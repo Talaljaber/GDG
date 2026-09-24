@@ -22,10 +22,24 @@ import { RevealIn } from '../components/RevealIn';
 import { revealSchedule } from '../effects/shatter';
 import styles from './host.module.css';
 
-export function StcReveal({ roundId, version }: { roundId: string; version: number }) {
+/** One tick per second across the ±5 s window (geometry, never mirrored). */
+const TICKS = [10, 20, 30, 40, 60, 70, 80, 90];
+
+export function StcReveal({
+  roundId,
+  version,
+  rows: previewRows,
+}: {
+  roundId: string;
+  version: number;
+  /** Dev preview only: fixed rows instead of the database query. */
+  rows?: RevealRow[];
+}) {
   const t = useT();
-  const [rows, setRows] = useState<RevealRow[] | null>(null);
+  const [fetched, setRows] = useState<RevealRow[] | null>(null);
+  const live = !previewRows;
   useEffect(() => {
+    if (!live) return;
     let alive = true;
     void fetchRoundReveal(roundId)
       .then((r) => {
@@ -35,7 +49,8 @@ export function StcReveal({ roundId, version }: { roundId: string; version: numb
     return () => {
       alive = false;
     };
-  }, [roundId, version]);
+  }, [roundId, version, live]);
+  const rows = previewRows ?? fetched;
 
   const strips = useMemo(() => (rows ? revealStrips(rows) : null), [rows]);
   const plan = useMemo(() => (strips ? revealSchedule(strips.map((dots) => dots.length)) : null), [strips]);
@@ -43,36 +58,42 @@ export function StcReveal({ roundId, version }: { roundId: string; version: numb
 
   return (
     <div className={styles.reveal} data-testid="stc-reveal">
-      <h2 className={styles.subheading}>{t('game.stop_the_clock.reveal_title')}</h2>
+      <h2 className={styles.eyebrow}>{t('game.stop_the_clock.reveal_title')}</h2>
       {strips.map((dots, i) => {
         const s = STC_TARGETS_MS[i] / 1000;
+        let labelled = 0;
         return (
           <section key={i} className={styles.strip} data-testid="stc-strip" data-target={STC_TARGETS_MS[i]}>
-            <p className={styles.stripLabel}>
-              {t('game.stop_the_clock.target', { s: formatNumber(s), count: s })}
-            </p>
+            <p className={styles.stripLabel}>{t('game.stop_the_clock.target', { s: formatNumber(s), count: s })}</p>
             <div className={styles.stripTrack} dir="ltr">
+              {TICKS.map((p) => (
+                <span key={p} className={styles.stripTick} style={{ insetInlineStart: `${p}%` }} aria-hidden="true" />
+              ))}
               <span className={styles.stripCentre} aria-hidden="true" />
               <span className={styles.stripAxis}>{t('game.stop_the_clock.reveal_axis')}</span>
-              {dots.map((d, j) => (
-                <RevealIn
-                  key={d.playerRowId}
-                  as="span"
-                  variant="dot"
-                  delayMs={plan[i][j].delayMs}
-                  shards={plan[i][j].shards}
-                  className={`${styles.revealDot} ${d.pinned ? styles.revealDotPinned : ''}`}
-                  style={{ insetInlineStart: `${d.pos}%` }}
-                  data-testid="stc-dot"
-                  data-player={d.playerRowId}
-                >
-                  {d.label ? (
-                    <bdi className={styles.revealName} data-testid="stc-dot-label">
-                      {d.label}
-                    </bdi>
-                  ) : null}
-                </RevealIn>
-              ))}
+              {dots.map((d, j) => {
+                // Labels alternate above/below the track so neighbours don't collide.
+                const below = d.label ? labelled++ % 2 === 1 : false;
+                return (
+                  <RevealIn
+                    key={d.playerRowId}
+                    as="span"
+                    variant="dot"
+                    delayMs={plan[i][j].delayMs}
+                    shards={plan[i][j].shards}
+                    className={`${styles.revealDot} ${d.pinned ? styles.revealDotPinned : ''} ${d.label ? styles.revealDotLabelled : ''}`}
+                    style={{ insetInlineStart: `${d.pos}%` }}
+                    data-testid="stc-dot"
+                    data-player={d.playerRowId}
+                  >
+                    {d.label ? (
+                      <bdi className={`${styles.revealName} ${below ? styles.revealNameBelow : ''}`} data-testid="stc-dot-label">
+                        {d.label}
+                      </bdi>
+                    ) : null}
+                  </RevealIn>
+                );
+              })}
             </div>
           </section>
         );

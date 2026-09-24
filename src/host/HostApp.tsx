@@ -21,6 +21,7 @@ import { HostLobby, HostRound } from './screens';
 import { HostIntermission } from './Intermission';
 import { HostSessionEnd } from './Results';
 import { HostMotionProvider } from './motion';
+import { HostShell } from './common';
 
 export function HostApp() {
   return (
@@ -79,7 +80,7 @@ function HostRoot() {
   return <HostMain />;
 }
 
-function SignIn({
+export function SignIn({
   notice,
   onNotAdmin,
   onSignedIn,
@@ -98,10 +99,15 @@ function SignIn({
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { data, error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { data, error: err } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
     setBusy(false);
     if (err || !data.session) {
-      setError(err && /fetch|network/i.test(err.message) ? 'sys.generic_error' : 'host.signin.error');
+      setError(
+        err && /fetch|network/i.test(err.message) ? 'sys.generic_error' : 'host.signin.error',
+      );
       return;
     }
     if (!isAdmin(data.session)) {
@@ -114,40 +120,52 @@ function SignIn({
 
   const shown = error ?? notice;
   return (
-    <form className={styles.signin} onSubmit={submit} data-testid="host-signin">
-      <img src={logo} alt={t('app.name')} className={`${ui.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
-      <h1 className={ui.title}>{t('host.signin.title')}</h1>
-      <label className={styles.field}>
-        <span>{t('host.signin.email')}</span>
-        <input
-          className={ui.input}
-          type="email"
-          autoComplete="username"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          data-testid="signin-email"
+    <div className={styles.signinPage}>
+      <form className={styles.signin} onSubmit={submit} data-testid="host-signin">
+        <img
+          src={logo}
+          alt={t('app.name')}
+          className={`${ui.logo} ${SHATTER_LOGO_CLASS}`}
+          data-testid="logo"
         />
-      </label>
-      <label className={styles.field}>
-        <span>{t('host.signin.password')}</span>
-        <input
-          className={ui.input}
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          data-testid="signin-password"
-        />
-      </label>
-      {shown ? (
-        <p className={ui.error} role="alert" data-testid="signin-error">
-          {t(shown)}
-        </p>
-      ) : null}
-      <button type="submit" className={`${ui.button} ${ui.buttonBlock}`} disabled={busy} data-testid="signin-submit">
-        {t('host.signin.submit')}
-      </button>
-    </form>
+        <h1 className={styles.signinTitle}>{t('host.signin.title')}</h1>
+        <label className={styles.field}>
+          <span>{t('host.signin.email')}</span>
+          <input
+            className={ui.input}
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            data-testid="signin-email"
+          />
+        </label>
+        <label className={styles.field}>
+          <span>{t('host.signin.password')}</span>
+          <input
+            className={ui.input}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            data-testid="signin-password"
+          />
+        </label>
+        {shown ? (
+          <p className={ui.error} role="alert" data-testid="signin-error">
+            {t(shown)}
+          </p>
+        ) : null}
+        <button
+          type="submit"
+          className={`${ui.button} ${ui.buttonBlock}`}
+          disabled={busy}
+          data-testid="signin-submit"
+        >
+          {t('host.signin.submit')}
+        </button>
+      </form>
+    </div>
   );
 }
 
@@ -162,7 +180,8 @@ function HostMain() {
   const screenOfKey = useRef(new Map<string, string>());
   screenOfKey.current.set(screenKey, host.screen);
   const [shownKey, setShownKey] = useState(screenKey);
-  const shownScreen = shownKey === screenKey ? host.screen : (screenOfKey.current.get(shownKey) ?? host.screen);
+  const shownScreen =
+    shownKey === screenKey ? host.screen : (screenOfKey.current.get(shownKey) ?? host.screen);
 
   const online = useOnline();
   const banner = host.dbDown
@@ -172,12 +191,7 @@ function HostMain() {
       : null;
 
   return (
-    <div className={styles.host} data-testid="host-root" data-screen={shownScreen}>
-      {banner ? (
-        <div className={styles.banner} role="status" data-testid="host-banner">
-          {banner}
-        </div>
-      ) : null}
+    <HostShell screen={shownScreen} banner={banner}>
       <ScreenTransition
         screenKey={screenKey}
         className={styles.screens}
@@ -196,6 +210,6 @@ function HostMain() {
           <HostSessionEnd host={host} data={data} />
         )}
       </ScreenTransition>
-    </div>
+    </HostShell>
   );
 }

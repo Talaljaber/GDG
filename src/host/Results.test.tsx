@@ -185,6 +185,7 @@ describe('host "Reduce motion" toggle (SCREENS H6)', () => {
     await flush();
     advance(2000); // the H4 rows have shattered in (full motion so far)
     expect(layers()).toHaveLength(0);
+    act(() => screen.getByTestId('host-settings').click()); // the toggle lives in the Settings menu
     const toggle = screen.getByTestId('host-reduced-motion');
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
     act(() => toggle.click());
