@@ -43,15 +43,20 @@
 .eyebrow {
   font-size: var(--proj-eyebrow);
   font-weight: var(--type-eyebrow-weight);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
   color: var(--text-muted);
 }
 
-:global([lang='ar']) .eyebrow,
-.eyebrow :global([lang='ar']) {
-  letter-spacing: normal;
+/* Latin labels are uppercase with tracking; Arabic is never transformed or spaced
+   (letter-spacing breaks joined letters), also inside a bilingual label. */
+.eyebrow:lang(en),
+.eyebrow :lang(en) {
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+}
+
+.eyebrow :lang(ar) {
   text-transform: none;
+  letter-spacing: normal;
 }
 
 .bilingual {
@@ -115,9 +120,7 @@
 }
 
 .logoSlot {
-  display: block;
-  block-size: var(--logo-proj-height);
-  aspect-ratio: 667 / 406;
+  visibility: hidden;
 }
 
 /* H2/H3: the logo lives outside the screen transitions, exactly over the header slot. */
@@ -174,7 +177,7 @@
   gap: var(--proj-s-3);
   flex: 1;
   min-block-size: 0;
-  padding-block: var(--proj-s-3);
+  padding-block: var(--proj-s-2) var(--proj-s-1);
   padding-inline: var(--big-screen-safe-margin);
 }
 
@@ -202,18 +205,20 @@
 
 /* ---- H1 lobby ---- */
 
+.lobby {
+  grid-template-columns: minmax(0, 11fr) minmax(0, 12fr) minmax(0, 13fr);
+}
+
 .lobby > .join {
-  grid-column: span 4;
+  grid-column: auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: var(--proj-s-1);
+  min-block-size: 0;
 }
 
-.lobby > .codeHero {
-  grid-column: span 4;
-}
 
-.lobby > .playersPanel {
-  grid-column: span 4;
-}
 
 .qrWrap {
   border: var(--line-width) solid var(--line);
@@ -222,10 +227,16 @@
   line-height: 0;
 }
 
+.qrWrap {
+  flex: none;
+  margin-block: var(--proj-s-1);
+  background: var(--qr-light);
+}
+
 .qrWrap svg {
-  inline-size: min(var(--proj-qr), 100%);
-  block-size: auto;
-  aspect-ratio: 1;
+  /* 90 % of --proj-qr so the three steps fit under it at every aspect ratio. */
+  inline-size: calc(var(--proj-qr) * 0.9);
+  block-size: calc(var(--proj-qr) * 0.9);
 }
 
 .url {
@@ -242,7 +253,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--proj-s-1);
-  align-self: stretch;
+  margin-block-start: var(--proj-s-1);
 }
 
 .step {
@@ -313,7 +324,9 @@
   border: var(--line-width) solid var(--line);
   border-radius: var(--r-tag);
   background: var(--surface);
-  font-weight: var(--weight-medium);
+  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
+  padding-inline-end: var(--proj-s-1);
+  position: relative;
 }
 
 .tagName {
@@ -361,17 +374,19 @@
 }
 
 .remove {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
   display: inline-flex;
-  flex: none;
   align-items: center;
   justify-content: center;
   min-inline-size: var(--touch-target-floor);
   min-block-size: var(--touch-target-floor);
   border: none;
   border-radius: var(--r-tag);
-  background: transparent;
+  background: var(--surface);
   color: var(--text-muted);
-  opacity: 0.35;
+  opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-standard);
 }
 
@@ -544,22 +559,17 @@
 }
 
 .table th {
-  padding-block: var(--proj-s-1);
+  padding-block: calc(var(--proj-s-1) / 2);
   padding-inline: var(--proj-s-2);
   border-block-end: var(--line-width) solid var(--line-strong);
   font-size: var(--proj-eyebrow);
   font-weight: var(--type-eyebrow-weight);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
   color: var(--text-muted);
   vertical-align: bottom;
 }
 
-:global([lang='ar']) .table th {
-  letter-spacing: normal;
-}
-
 .table td {
+  line-height: var(--proj-row-leading);
   padding-block: var(--proj-row-pad);
   padding-inline: var(--proj-s-2);
   border-block-end: var(--line-width) solid var(--line);
@@ -567,7 +577,7 @@
 }
 
 .colRank {
-  inline-size: 3.2em;
+  inline-size: calc(var(--proj-row) * 1.9);
   text-align: start;
   color: var(--text-muted);
 }
@@ -580,13 +590,17 @@
 }
 
 .colScore {
-  inline-size: 5em;
+  inline-size: calc(var(--proj-row) * 3.4);
   text-align: end;
   white-space: nowrap;
 }
 
 .table th.colScore {
   white-space: normal;
+}
+
+.sessionTable th.colRound {
+  padding-inline: var(--proj-s-2) var(--proj-s-1);
 }
 
 .row {
@@ -625,7 +639,7 @@
 
 /* H4: round columns muted, total in ink. */
 .sessionTable .colRound {
-  inline-size: 4.2em;
+  inline-size: calc(var(--proj-row) * 3.6);
   color: var(--text-muted);
 }
 
@@ -692,6 +706,8 @@
   justify-content: space-around;
   gap: var(--proj-s-2);
   min-block-size: 0;
+  /* room for the labels under the last track */
+  padding-block-end: calc(var(--proj-eyebrow) * 1.4);
 }
 
 .strip {
@@ -708,7 +724,7 @@
 
 .stripTrack {
   position: relative;
-  block-size: calc(var(--proj-row) * 2.4);
+  block-size: calc(var(--proj-row) * 2);
   border: var(--line-width) solid var(--line);
   border-radius: var(--proj-radius);
   background: var(--surface);
@@ -729,9 +745,18 @@
   background: var(--text);
 }
 
+.stripScale {
+  position: relative;
+}
+
+.stripScaleAxis {
+  position: absolute;
+  inset: 0;
+}
+
 .stripAxis {
   position: absolute;
-  inset-block-start: 100%;
+  inset-block-end: 0;
   inset-inline-start: 50%;
   transform: translateX(-50%);
   font-size: var(--proj-eyebrow);
@@ -784,6 +809,10 @@
   gap: var(--proj-s-2);
 }
 
+.winner .chevron {
+  inline-size: var(--proj-s-3);
+}
+
 .winnerBody {
   display: flex;
   flex-direction: column;
@@ -795,7 +824,7 @@
   font-size: var(--proj-heading);
   font-weight: var(--weight-bold);
   line-height: var(--leading-tight);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .winnerScore {
@@ -809,8 +838,13 @@
 
 .mergeStage {
   display: flex;
-  flex: 1;
+  grid-column: 1 / -1;
   min-block-size: 0;
+}
+
+/* H5: tabs in the side column (4), the board in the other 8. */
+.mergeStageBoard {
+  grid-column: span 8;
 }
 
 .dayboard {
@@ -819,10 +853,11 @@
 }
 
 .tabs {
+  grid-column: span 4;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--proj-s-4);
-  border-block-end: var(--line-width) solid var(--line);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--proj-s-2);
 }
 
 .tab {
@@ -836,6 +871,7 @@
   color: var(--text-muted);
   font-size: var(--proj-row);
   font-weight: var(--weight-medium);
+  text-align: start;
 }
 
 .tabOn {
@@ -874,8 +910,9 @@
 
 .actionWithHint {
   display: flex;
-  align-items: center;
-  gap: var(--proj-s-2);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--proj-s-1);
 }
 
 .primary,
@@ -968,7 +1005,7 @@
 
 .segments {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   border: var(--line-width) solid var(--line-strong);
   border-radius: var(--r-control);
   background: var(--surface);
@@ -1074,9 +1111,9 @@
 
 .nextGames {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
+  align-items: baseline;
+  gap: var(--proj-s-2);
+  white-space: nowrap;
   min-block-size: var(--touch-target-floor);
   padding-inline: var(--proj-s-1);
   border: none;
@@ -1144,7 +1181,8 @@
   }
 
   .qrWrap svg {
-    inline-size: min(calc(var(--proj-qr) * 0.8), 100%);
+    inline-size: calc(var(--proj-qr) * 0.8);
+    block-size: calc(var(--proj-qr) * 0.8);
   }
 
   .split .side {
@@ -1160,4 +1198,58 @@
   .winnerScore {
     font-size: var(--proj-row);
   }
+
+  /* The operator bar may take two lines; the next lineup shows in its popover. */
+  .operator {
+    flex-wrap: wrap;
+    row-gap: var(--proj-s-1);
+  }
+
+  .segments {
+    flex-wrap: wrap;
+  }
+
+  .nextGames .summary {
+    display: none;
+  }
+
+  .slot:nth-child(n + 3) {
+    display: none;
+  }
+
+  .winner .chevron {
+    inline-size: var(--proj-s-1);
+  }
+
+  .colRank {
+    inline-size: calc(var(--proj-row) * 1.5);
+  }
+
+  .colScore {
+    inline-size: calc(var(--proj-row) * 2.8);
+  }
+
+  .sessionTable .colRound {
+    inline-size: calc(var(--proj-row) * 2.6);
+  }
+
+  .sessionTable th.colRound {
+    padding-inline: var(--proj-s-1) 0;
+  }
+}
+
+
+/* Extra label lanes for guesses that land on top of each other. */
+.revealNameAbove2 {
+  padding-block-end: calc(var(--proj-s-1) + var(--proj-eyebrow) * 1.3);
+}
+
+.revealNameBelow2 {
+  padding-block-start: calc(var(--proj-s-1) + var(--proj-eyebrow) * 1.3);
+}
+
+/* Sized by height only; never stretched by the form's column (DESIGN_SYSTEM §5). */
+.signinLogo {
+  align-self: center;
+  inline-size: auto;
 }

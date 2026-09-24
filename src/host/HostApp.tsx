@@ -125,7 +125,7 @@ export function SignIn({
         <img
           src={logo}
           alt={t('app.name')}
-          className={`${ui.logo} ${SHATTER_LOGO_CLASS}`}
+          className={`${ui.logo} ${SHATTER_LOGO_CLASS} ${styles.signinLogo}`}
           data-testid="logo"
         />
         <h1 className={styles.signinTitle}>{t('host.signin.title')}</h1>

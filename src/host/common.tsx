@@ -62,7 +62,8 @@ export function HostHeader({ title, withLogo, end }: { title?: ReactNode; withLo
         {withLogo ? (
           <img src={logo} alt={t('app.name')} className={`${ui.projLogo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
         ) : (
-          <span className={styles.logoSlot} aria-hidden="true" />
+          // An invisible copy holds the exact space the floating logo covers (HostShell).
+          <img src={logo} alt="" aria-hidden="true" className={`${ui.projLogo} ${SHATTER_LOGO_CLASS} ${styles.logoSlot}`} />
         )}
         <span className={styles.brandRule} aria-hidden="true" />
         {title ?? <span className={styles.tagline}>{t('host.header.tagline')}</span>}

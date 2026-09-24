@@ -31,8 +31,10 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   const t = useT();
   const { session, players } = data;
   const joined = useMemo(() => players.filter((p) => p.status === 'joined'), [players]);
+  // Newest first: a guest who just joined finds their name at the top; a long list scrolls in its panel.
+  const shown = useMemo(() => [...joined].reverse(), [joined]);
   // Name tags shatter in as they join (SCREENS H1, DESIGN_SYSTEM §6.2).
-  const chipsRef = useRevealRows<HTMLUListElement>(joined.map((p) => p.id));
+  const chipsRef = useRevealRows<HTMLUListElement>(shown.map((p) => p.id));
   const [confirmRemove, setConfirmRemove] = useState<PlayerRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,13 +50,6 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   useEffect(() => {
     setLastSeen((prev) => updateLastSeen(prev, host.presentIds, joinedIds ? joinedIds.split(',') : [], Date.now()));
   }, [host.presentIds, joinedIds, now]);
-
-  // A long list scrolls inside its panel; the newest name is always in view.
-  const count = joined.length;
-  useEffect(() => {
-    const list = chipsRef.current;
-    if (list) list.scrollTop = list.scrollHeight;
-  }, [count, chipsRef]);
 
   // Start needs the saved lineup to be valid (the picker saves valid picks at once).
   const [pickerSynced, setPickerSynced] = useState(true);
@@ -91,8 +86,7 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
     <>
       <HostHeader withLogo />
       <main className={`${styles.body} ${styles.lobby}`} data-testid="host-lobby">
-        <section className={`${styles.panel} ${styles.join}`}>
-          <Bilingual k="host.lobby.join_title" className={styles.eyebrow} />
+        <section className={styles.join} aria-label={t('host.lobby.join_title')}>
           <div className={styles.qrWrap}>
             <QrCode value={url} label={t('host.lobby.scan')} />
           </div>
@@ -143,10 +137,11 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
                 ))}
               </div>
               <p className={styles.emptyText}>{t('host.lobby.empty')}</p>
+              <p className={styles.eyebrow}>{t('host.start_disabled_hint')}</p>
             </div>
           ) : (
             <ul ref={chipsRef} className={`${styles.tags} ${styles.tagList}`} data-testid="host-players">
-              {joined.map((p) => {
+              {shown.map((p) => {
                 const dot = presenceDot(p.player_id, host.presentIds, lastSeen, now);
                 const name = displayName(p.name, p.display_suffix);
                 return (
@@ -160,7 +155,9 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
                     data-reveal-key={p.id}
                   >
                     <span className={`${styles.dot} ${dot === 'on' ? styles.dotOn : styles.dotOff}`} aria-hidden="true" />
-                    <bdi className={styles.tagName}>{name}</bdi>
+                    <span className={styles.tagName}>
+                      <bdi>{name}</bdi>
+                    </span>
                     <button
                       type="button"
                       className={styles.remove}
@@ -191,8 +188,6 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
             <span className={styles.eyebrow} role="alert">
               {t(error)}
             </span>
-          ) : joined.length === 0 ? (
-            <span className={styles.eyebrow}>{t('host.start_disabled_hint')}</span>
           ) : null}
           <button
             type="button"
@@ -307,8 +302,7 @@ export function HostRound({ host, data, preview }: { host: HostController; data:
           </div>
           {lineup.length > 1 ? <LineupSummary games={lineup} current={round?.round_no} /> : null}
         </aside>
-        <section className={styles.boardArea}>
-          <h2 className={styles.eyebrow}>{t('round.board_title')}</h2>
+        <section className={styles.boardArea} aria-label={t('round.board_title')}>
           {board && board.length > 0 ? (
             // New #1 → celebrate shatter on that row (SCREENS H2).
             <BoardTable rows={board} celebrateLeader testId="host-round-board" />

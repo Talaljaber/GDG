@@ -245,9 +245,9 @@ export function HostSessionEnd({
         }
         end={<CornerCode pending={data.pending} joined={data.pendingPlayers} />}
       />
-      <main className={`${styles.body} ${styles.stack}`}>
+      <main className={styles.body}>
         {view === 'dayboard' ? (
-          <nav className={styles.tabs} role="tablist" data-testid="host-dayboard-tabs">
+          <nav className={styles.tabs} role="tablist" aria-orientation="vertical" data-testid="host-dayboard-tabs">
             {lineup.map((g, i) => (
               <button
                 key={g}
@@ -266,7 +266,7 @@ export function HostSessionEnd({
         <DayBoardMerge
           trigger={mergeRun}
           games={lineup.map((id) => ({ id, targets }))}
-          className={styles.mergeStage}
+          className={`${styles.mergeStage} ${view === 'dayboard' ? styles.mergeStageBoard : ''}`}
           data-testid="host-merge-stage"
           onFragmented={() => setView('dayboard')}
           onGameStart={(_, i) => setTab(i)}
@@ -332,7 +332,7 @@ function SessionResultsBoard({
   // Rows shatter in top to bottom as the board appears (DESIGN_SYSTEM §6.2).
   const bodyRef = useRevealRows<HTMLTableSectionElement>((board ?? []).map((r) => r.playerRowId));
   return (
-    <div className={`${styles.split} ${styles.fill}`} data-testid="host-results">
+    <div className={`${styles.split} ${styles.results} ${styles.fill}`} data-testid="host-results">
       <aside className={styles.side}>
         {winner ? (
           <div className={styles.winner} data-testid="host-winner">

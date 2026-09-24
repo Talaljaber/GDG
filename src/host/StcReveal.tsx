@@ -17,10 +17,47 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatNumber, useT } from '../i18n';
 import { fetchRoundReveal, type RevealRow } from '../lib/api';
 import { STC_TARGETS_MS } from '../games/stop-the-clock/scoring';
-import { revealStrips } from './reveal';
+import { revealStrips, type RevealDot } from './reveal';
 import { RevealIn } from '../components/RevealIn';
 import { revealSchedule } from '../effects/shatter';
 import styles from './host.module.css';
+
+/**
+ * Which labels go below the track: greedy in position order, each label on the
+ * side whose previous label ends before it starts (label widths estimated from
+ * the text length; the track is about three quarters of the screen wide).
+ */
+type Lane = 'above' | 'below' | 'above2' | 'below2';
+const LANES: Lane[] = ['above', 'below', 'above2', 'below2'];
+
+function labelLanes(dots: readonly RevealDot[]): Map<string, Lane> {
+  const vh = window.innerHeight / 100;
+  const trackPx = window.innerWidth * 0.75;
+  const widthPct = (label: string) => ((label.length * 0.55 * 3.2 * vh + 2 * vh) / trackPx) * 100;
+  const end: Record<Lane, number> = {
+    above: -Infinity,
+    below: -Infinity,
+    above2: -Infinity,
+    below2: -Infinity,
+  };
+  const lanes = new Map<string, Lane>();
+  for (const d of [...dots].filter((x) => x.label).sort((a, b) => a.pos - b.pos)) {
+    const w = widthPct(d.label ?? '');
+    const start = d.pos - w / 2;
+    const lane =
+      LANES.find((l) => end[l] <= start) ?? LANES.reduce((a, b) => (end[b] < end[a] ? b : a));
+    end[lane] = d.pos + w / 2;
+    lanes.set(d.playerRowId, lane);
+  }
+  return lanes;
+}
+
+const LANE_CLASS: Record<Lane, string> = {
+  above: '',
+  below: styles.revealNameBelow,
+  above2: styles.revealNameAbove2,
+  below2: `${styles.revealNameBelow} ${styles.revealNameBelow2}`,
+};
 
 /** One tick per second across the ±5 s window (geometry, never mirrored). */
 const TICKS = [10, 20, 30, 40, 60, 70, 80, 90];
@@ -53,27 +90,47 @@ export function StcReveal({
   const rows = previewRows ?? fetched;
 
   const strips = useMemo(() => (rows ? revealStrips(rows) : null), [rows]);
-  const plan = useMemo(() => (strips ? revealSchedule(strips.map((dots) => dots.length)) : null), [strips]);
+  const plan = useMemo(
+    () => (strips ? revealSchedule(strips.map((dots) => dots.length)) : null),
+    [strips],
+  );
   if (!strips || !plan) return null;
 
   return (
     <div className={styles.reveal} data-testid="stc-reveal">
-      <h2 className={styles.eyebrow}>{t('game.stop_the_clock.reveal_title')}</h2>
+      <div className={styles.strip}>
+        <span />
+        <div className={styles.stripScale}>
+          <h2 className={styles.eyebrow}>{t('game.stop_the_clock.reveal_title')}</h2>
+          <span className={styles.stripScaleAxis} dir="ltr">
+            <span className={styles.stripAxis}>{t('game.stop_the_clock.reveal_axis')}</span>
+          </span>
+        </div>
+      </div>
       {strips.map((dots, i) => {
         const s = STC_TARGETS_MS[i] / 1000;
-        let labelled = 0;
+        const lanes = labelLanes(dots);
         return (
-          <section key={i} className={styles.strip} data-testid="stc-strip" data-target={STC_TARGETS_MS[i]}>
-            <p className={styles.stripLabel}>{t('game.stop_the_clock.target', { s: formatNumber(s), count: s })}</p>
+          <section
+            key={i}
+            className={styles.strip}
+            data-testid="stc-strip"
+            data-target={STC_TARGETS_MS[i]}
+          >
+            <p className={styles.stripLabel}>
+              {t('game.stop_the_clock.target', { s: formatNumber(s), count: s })}
+            </p>
             <div className={styles.stripTrack} dir="ltr">
               {TICKS.map((p) => (
-                <span key={p} className={styles.stripTick} style={{ insetInlineStart: `${p}%` }} aria-hidden="true" />
+                <span
+                  key={p}
+                  className={styles.stripTick}
+                  style={{ insetInlineStart: `${p}%` }}
+                  aria-hidden="true"
+                />
               ))}
               <span className={styles.stripCentre} aria-hidden="true" />
-              <span className={styles.stripAxis}>{t('game.stop_the_clock.reveal_axis')}</span>
               {dots.map((d, j) => {
-                // Labels alternate above/below the track so neighbours don't collide.
-                const below = d.label ? labelled++ % 2 === 1 : false;
                 return (
                   <RevealIn
                     key={d.playerRowId}
@@ -87,9 +144,12 @@ export function StcReveal({
                     data-player={d.playerRowId}
                   >
                     {d.label ? (
-                      <bdi className={`${styles.revealName} ${below ? styles.revealNameBelow : ''}`} data-testid="stc-dot-label">
-                        {d.label}
-                      </bdi>
+                      <span
+                        className={`${styles.revealName} ${LANE_CLASS[lanes.get(d.playerRowId) ?? 'above']}`}
+                      >
+                        {/* The positioned span keeps the track's LTR geometry; the name keeps its own direction. */}
+                        <bdi data-testid="stc-dot-label">{d.label}</bdi>
+                      </span>
                     ) : null}
                   </RevealIn>
                 );
