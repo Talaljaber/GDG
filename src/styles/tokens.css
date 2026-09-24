@@ -52,7 +52,27 @@
   --proj-header-height: 9vh;
   --proj-operator-height: 10vh;
   --proj-rank-rule: 0.6vh;
+  --proj-control-height: 5.6vh; /* host operator-bar buttons (never below --touch-target-floor) */
   --dash-max-width: 1200px;
+  /* v2 dashboard (DESIGN_SYSTEM §0.4): side-nav width, sign-in panel width */
+  --dash-nav-width: 240px;
+  --dash-signin-width: 400px;
+  /* v2 foundations (DESIGN_SYSTEM §2.3, §3, §4): base type, controls, board rule, scrim */
+  --type-heading-size: 24px;
+  --type-lead-size: 20px;
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --leading-body-ar: 1.65;
+  --leading-tight-ar: 1.4;
+  --button-height-small: 36px;
+  --phone-bar-height: 56px;
+  --rank-rule: 3px;
+  --focus-offset: 2px;
+  --primary-hover: color-mix(in srgb, var(--gdg-blue-strong) 85%, var(--gdg-ink));
+  --scrim: color-mix(in srgb, var(--gdg-ink) 45%, transparent);
+  --proj-row-pad: 0.4vh;
+  --highlight-tint: var(--gdg-amber-tint);
+  --primary-tint: var(--gdg-blue-tint);
 
   /* Simon only exception (§2.3) */
   --simon-blue: #4285f4;
@@ -162,6 +182,10 @@
   --surface-2: color-mix(in srgb, white 4%, var(--gdg-ink));
   --line: color-mix(in srgb, var(--gdg-paper) 15%, transparent);
   --line-strong: color-mix(in srgb, var(--gdg-paper) 30%, transparent);
+  --primary-hover: color-mix(in srgb, var(--gdg-blue) 85%, var(--gdg-paper));
+  --scrim: color-mix(in srgb, black 60%, transparent);
+  --highlight-tint: color-mix(in srgb, var(--gdg-amber) 22%, var(--gdg-ink));
+  --primary-tint: color-mix(in srgb, var(--gdg-blue) 22%, var(--gdg-ink));
 }
 
 /* ---- §6.2 Reduced motion: zero every duration ----

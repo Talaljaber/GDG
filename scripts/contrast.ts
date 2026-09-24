@@ -17,20 +17,66 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const tokensPath = path.resolve(__dirname, '../src/styles/tokens.css');
 
 type Rgb = [number, number, number];
+type Rgba = [number, number, number, number];
+type Theme = 'light' | 'dark';
 
-function parseHexVars(css: string): Record<string, Rgb> {
-  const vars: Record<string, Rgb> = {};
-  const re = /--([\w-]+):\s*#([0-9a-fA-F]{6})\b/g;
+/** Custom-property declarations of one top-level block (`:root {` or `:root[data-theme='dark'] {`). */
+function declarations(css: string, selector: string): Record<string, string> {
+  const start = css.indexOf(`${selector} {`);
+  if (start < 0) return {};
+  const body = css.slice(start, css.indexOf('}', start));
+  const out: Record<string, string> = {};
+  const re = /--([\w-]+):\s*([^;]+);/g;
   let match: RegExpExecArray | null;
-  while ((match = re.exec(css))) {
-    const [, name, hex] = match;
-    vars[name] = [
-      parseInt(hex.slice(0, 2), 16),
-      parseInt(hex.slice(2, 4), 16),
-      parseInt(hex.slice(4, 6), 16),
-    ];
-  }
-  return vars;
+  while ((match = re.exec(body))) out[match[1]] = match[2].trim();
+  return out;
+}
+
+/**
+ * Resolves a token to sRGB + alpha: hex values, white/black/transparent, var() references and
+ * `color-mix(in srgb, A p%, B)` (premultiplied, as CSS mixes), so the v2 tints and surfaces
+ * (--surface-2, --gdg-amber-tint, ...) are checked from tokens.css too.
+ */
+function makeResolver(css: string) {
+  const light = declarations(css, ':root');
+  const dark = declarations(css, ":root[data-theme='dark']");
+  const parse = (value: string, theme: Theme, depth: number): Rgba => {
+    if (depth > 20) throw new Error(`token cycle at ${value}`);
+    const v = value.trim();
+    const hex = /^#([0-9a-fA-F]{6})$/.exec(v);
+    if (hex) {
+      const h = hex[1];
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), 1];
+    }
+    if (v === 'white') return [255, 255, 255, 1];
+    if (v === 'black') return [0, 0, 0, 1];
+    if (v === 'transparent') return [0, 0, 0, 0];
+    const ref = /^var\(--([\w-]+)\)$/.exec(v);
+    if (ref) return resolve(ref[1], theme, depth + 1);
+    const mix = /^color-mix\(in srgb,\s*(.+?)\s+(\d+(?:\.\d+)?)%\s*,\s*(.+)\)$/.exec(v);
+    if (mix) {
+      const p = Number(mix[2]) / 100;
+      const a = parse(mix[1], theme, depth + 1);
+      const b = parse(mix[3], theme, depth + 1);
+      const alpha = a[3] * p + b[3] * (1 - p);
+      if (alpha === 0) return [0, 0, 0, 0];
+      const ch = (i: number) => (a[i] * a[3] * p + b[i] * b[3] * (1 - p)) / alpha;
+      return [ch(0), ch(1), ch(2), alpha];
+    }
+    throw new Error(`can't resolve colour value "${v}"`);
+  };
+  const resolve = (name: string, theme: Theme, depth = 0): Rgba => {
+    if (name === 'white') return [255, 255, 255, 1];
+    const raw = (theme === 'dark' ? dark[name] : undefined) ?? light[name];
+    if (raw === undefined) throw new Error(`--${name} is not defined in tokens.css`);
+    return parse(raw, theme, depth);
+  };
+  return resolve;
+}
+
+/** Composites a (possibly translucent) colour over an opaque one. */
+function over([r, g, b, a]: Rgba, [br, bg, bb]: Rgb): Rgb {
+  return [r * a + br * (1 - a), g * a + bg * (1 - a), b * a + bb * (1 - a)];
 }
 
 /** WCAG relative luminance. */
@@ -52,8 +98,7 @@ function contrastRatio(a: Rgb, b: Rgb): number {
 }
 
 const css = readFileSync(tokensPath, 'utf-8');
-const vars = parseHexVars(css);
-vars['white'] = [255, 255, 255];
+const resolve = makeResolver(css);
 
 type Category = 'any' | 'large' | 'skip';
 
@@ -63,6 +108,8 @@ interface Pair {
   bg: string;
   category: Category;
   note: string;
+  /** Theme whose token values are used (default light). */
+  theme?: Theme;
 }
 
 // Mirrors docs/DESIGN_SYSTEM.md §2.4 exactly.
@@ -174,6 +221,27 @@ const pairs: Pair[] = [
     category: 'skip',
     note: 'pads carry shapes, not text',
   },
+  // v2 "quiet scoreboard" pairs (DESIGN_SYSTEM §2.4, ADR-131): semantic tokens as components use them.
+  { label: 'on-primary on primary-text (primary button)', fg: 'on-primary', bg: 'primary-text', category: 'any', note: 'button labels at any size' },
+  { label: 'on-primary on primary-hover', fg: 'on-primary', bg: 'primary-hover', category: 'any', note: 'hovered primary button' },
+  { label: 'text on surface', fg: 'text', bg: 'surface', category: 'any', note: 'panels, boards' },
+  { label: 'text-muted on surface', fg: 'text-muted', bg: 'surface', category: 'any', note: 'ranks, helper text on panels' },
+  { label: 'primary-text on surface', fg: 'primary-text', bg: 'surface', category: 'any', note: 'link buttons on panels' },
+  { label: 'text on surface-2', fg: 'text', bg: 'surface-2', category: 'any', note: 'operator bar, callouts, badges' },
+  { label: 'text-muted on surface-2', fg: 'text-muted', bg: 'surface-2', category: 'any', note: 'operator-bar eyebrows, hovered rows' },
+  { label: 'primary-text on surface-2', fg: 'primary-text', bg: 'surface-2', category: 'any', note: 'link buttons in the operator bar' },
+  { label: 'text on highlight-tint', fg: 'text', bg: 'highlight-tint', category: 'any', note: '#1 row' },
+  { label: 'text-muted on highlight-tint', fg: 'text-muted', bg: 'highlight-tint', category: 'any', note: 'muted text inside the #1 row' },
+  { label: 'text on primary-tint', fg: 'text', bg: 'primary-tint', category: 'any', note: 'own row, new/improved row' },
+  { label: 'text-muted on primary-tint', fg: 'text-muted', bg: 'primary-tint', category: 'any', note: 'rank in the own row' },
+  { label: 'bg on text (offline banner)', fg: 'bg', bg: 'text', category: 'any', note: 'system banner' },
+  { label: 'dark: on-primary on primary-text', fg: 'on-primary', bg: 'primary-text', category: 'any', note: 'primary button', theme: 'dark' },
+  { label: 'dark: on-primary on primary-hover', fg: 'on-primary', bg: 'primary-hover', category: 'any', note: 'hovered primary button', theme: 'dark' },
+  { label: 'dark: text on surface', fg: 'text', bg: 'surface', category: 'any', note: 'panels, boards', theme: 'dark' },
+  { label: 'dark: text-muted on surface', fg: 'text-muted', bg: 'surface', category: 'any', note: 'ranks, helper text', theme: 'dark' },
+  { label: 'dark: text-muted on surface-2', fg: 'text-muted', bg: 'surface-2', category: 'any', note: 'operator bar', theme: 'dark' },
+  { label: 'dark: text on highlight-tint', fg: 'text', bg: 'highlight-tint', category: 'any', note: '#1 row', theme: 'dark' },
+  { label: 'dark: text on primary-tint', fg: 'text', bg: 'primary-tint', category: 'any', note: 'own row', theme: 'dark' },
 ];
 
 const THRESHOLD: Record<Exclude<Category, 'skip'>, number> = {
@@ -186,10 +254,16 @@ let failed = false;
 console.log('Contrast check (docs/DESIGN_SYSTEM.md §2.4)\n');
 
 for (const pair of pairs) {
-  const fg = vars[pair.fg];
-  const bg = vars[pair.bg];
-  if (!fg || !bg) {
-    console.error(`✗ ${pair.label}: could not resolve --${pair.fg} or --${pair.bg} in tokens.css`);
+  const theme = pair.theme ?? 'light';
+  let fg: Rgb;
+  let bg: Rgb;
+  try {
+    // Translucent tokens sit on the page background (--bg) of their theme.
+    const page = over(resolve('bg', theme), [255, 255, 255]);
+    bg = over(resolve(pair.bg, theme), page);
+    fg = over(resolve(pair.fg, theme), bg);
+  } catch (e) {
+    console.error(`✗ ${pair.label}: ${(e as Error).message}`);
     failed = true;
     continue;
   }

@@ -4,10 +4,12 @@ import { useRevealRows } from './useRevealRows';
 import styles from './ui.module.css';
 
 /**
- * A leaderboard: rank, name (in <bdi>, DESIGN_SYSTEM §8), score. The own row
- * is outlined; #1 gets the amber tint. `projector` switches to the big-screen
- * scale (max 10 rows, DESIGN_SYSTEM §3.2). `highlightIds` marks rows that
- * entered or rose this session (H5).
+ * A leaderboard, drawn as a table (DESIGN_SYSTEM §0.2, §4): rank (muted, 1–3
+ * in ink), name (in <bdi>, §8), score at the inline end, 1 px separators. #1
+ * gets the amber tint, an amber inline-start rule and 700; the own row is
+ * outlined in blue. It draws its own panel (don't wrap it in `.panel`).
+ * `projector` switches to the big-screen scale (max 10 rows, §3.2).
+ * `highlightIds` marks rows that entered or rose this session (H5).
  *
  * Effects (DESIGN_SYSTEM §6.2, via RevealIn.tsx), big screen only by default:
  * `reveal` (default = `projector`) assembles rows from shards when the board
@@ -53,7 +55,7 @@ export function Leaderboard({
             data-own={r.isOwn ? 'true' : undefined}
             data-highlight={highlighted ? 'true' : undefined}
           >
-            <span className={styles.rank}>{formatNumber(r.rank)}</span>
+            <span className={`${styles.rank} ${r.rank <= 3 ? styles.rankTop : ''}`}>{formatNumber(r.rank)}</span>
             <span className={styles.name}>
               <bdi data-testid="board-name">{displayName(r.name, r.displaySuffix)}</bdi>
             </span>

@@ -91,6 +91,15 @@ Ink and paper are our proposal, pending chapter-lead approval (OQ-07).
 | `--highlight` | `--gdg-amber` | `--gdg-amber` |
 | `--on-highlight` | `--gdg-ink` | `--gdg-ink` |
 | `--focus` | `--gdg-blue-strong`, 3 px ring | `--gdg-amber` |
+| `--surface-2` (v2) | ink at 4 % over paper | white at 4 % over ink |
+| `--line` (v2) | `--gdg-line` (ink at 15 %) | paper at 15 % |
+| `--line-strong` (v2) | ink at 30 % | paper at 30 % |
+| `--primary-hover` (v2) | blue-strong 85 % + ink | blue 85 % + paper |
+| `--highlight-tint` (v2) | `--gdg-amber-tint` | amber at 22 % over ink |
+| `--primary-tint` (v2) | `--gdg-blue-tint` | blue at 22 % over ink |
+| `--scrim` (v2) | ink at 45 % | black at 60 % |
+
+How v2 uses them (§0.1): text is `--text` on `--bg`; panels and boards are `--surface` with a 1 px `--line` border; the operator bar, callouts, badges and hovered rows are `--surface-2`; outline buttons and inputs use `--line-strong`. **Primary buttons are `--primary-text` filled with `--on-primary` labels** (5.86:1, any label size; hover `--primary-hover`), so the old "white on blue only at ≥ 20 px bold" limit no longer shapes buttons. Tinted rows use the semantic tints, never `--gdg-amber-tint` / `--gdg-blue-tint` directly, so the dark theme keeps its text readable: `--highlight-tint` = the #1 row, `--primary-tint` = the own row and H5's new/improved rows. `--scrim` sits behind dialogs.
 
 Simon only: `--simon-blue #4285F4`, `--simon-red #EA4335`, `--simon-yellow #FBBC05`, `--simon-green #34A853` (commonly used Google values; confirm against Google's brand resources with the chapter lead).
 
@@ -113,26 +122,50 @@ Simon only: `--simon-blue #4285F4`, `--simon-red #EA4335`, `--simon-yellow #FBBC
 | ink on Simon yellow | 10.52 | Simon labels |
 | white on Simon red / green / blue | 3.92 / 3.06 / 3.56 | pads carry shapes, not text |
 
-`npm run contrast` re-checks these pairs from `tokens.css`.
+v2 semantic pairs (light theme unless marked; translucent tokens composited on `--bg`):
+
+| Pair | Ratio | Allowed for |
+|---|---|---|
+| `--on-primary` on `--primary-text` | 5.86 | primary button labels, any size |
+| `--on-primary` on `--primary-hover` | 7.04 | hovered primary button |
+| `--text` / `--text-muted` on `--surface` | 17.96 / 6.26 | panels, boards (ranks, helper text) |
+| `--primary-text` on `--surface` | 5.86 | link buttons on panels |
+| `--text` / `--text-muted` on `--surface-2` | 15.52 / 5.41 | operator bar, callouts, badges, hovered rows |
+| `--primary-text` on `--surface-2` | 5.06 | link buttons in the operator bar |
+| `--text` / `--text-muted` on `--highlight-tint` | 15.04 / 5.24 | #1 row |
+| `--text` / `--text-muted` on `--primary-tint` | 14.64 / 5.10 | own row, new/improved rows |
+| `--bg` on `--text` | 16.81 | offline banner |
+| dark: `--on-primary` on `--primary-text` / `--primary-hover` | 4.70 / 5.74 | primary button |
+| dark: `--text` / `--text-muted` on `--surface` | 13.54 / 7.42 | panels, boards |
+| dark: `--text-muted` on `--surface-2` | 8.09 | operator bar |
+| dark: `--text` on `--highlight-tint` / `--primary-tint` | 10.71 / 12.79 | #1 row / own row |
+
+`npm run contrast` re-checks all of these pairs from `tokens.css` (it resolves `var()` and `color-mix()` for both themes). Add a pair there whenever a component puts text on a new background.
 
 ## 3. Typography
 
 - **Latin: Roboto.** **Arabic: Cairo** (Tajawal as fallback if Cairo's Arabic looks too wide in testing). Both from Google Fonts, `display=swap`, subsets `latin` and `arabic` only, weights 400, 500, 700 (Cairo 400, 600, 700).
 - Font stack: `"Roboto", "Cairo", system-ui, sans-serif` in EN; `"Cairo", "Roboto", system-ui, sans-serif` in AR (so Latin brand names inside Arabic text use Roboto).
-- Numbers: `font-variant-numeric: tabular-nums` on scores, timers and ranks. Western digits in both languages (ADR-123).
-- Arabic line height is larger (Cairo has tall ascenders): Latin 1.3, Arabic 1.6.
+- Numbers: `font-variant-numeric: tabular-nums` on scores, timers and ranks (utility `.tabular-nums`). Western digits in both languages (ADR-123).
+- **Weights (v2, §0.1):** `--weight-regular` 400 for body text, `--weight-medium` 500 for headings, labels, buttons, tabs and names, `--weight-bold` 700 **only** for hero numbers and the #1 board row (global class `.hero`). `base.css` sets h1–h6, `b`, `strong` and `th` to 500, so nothing is bold by default. Cairo is currently requested at 400/600/700 (`index.html`), so Arabic at 500 renders at 400 until 500 is added to the font request.
+- **Line heights** (tokens, inherited from `<html>`): body `--leading-body` 1.45 (Arabic `--leading-body-ar` 1.65, because Cairo has tall ascenders), headings and single-line UI (buttons, inputs, board rows) `--leading-tight` 1.2 (Arabic headings `--leading-tight-ar` 1.4).
+- Links are `--primary-text` with a 1 px underline (2 px on hover); text selection is `--gdg-blue-tint` with ink text.
 
 ### 3.1 Phone scale (CSS px, base 17)
 
 | Token | Size / weight | Use |
 |---|---|---|
-| `--type-caption` | 14 / 500 | chips, "n of 3" |
-| `--type-body` | 17 / 400 | body text |
-| `--type-button` | 20 / 700 | buttons |
-| `--type-question` | 20 / 500 | trivia questions |
-| `--type-title` | 28 / 700 | screen titles |
-| `--type-target` | 64 / 700 | Stop the Clock target, code input |
-| `--type-score` | 88 / 700 | own score hero |
+| `--type-eyebrow-size` / `-weight` | 12 / 500 (Arabic 14), Latin uppercase with `--tracking-eyebrow` 0.08em | section labels (`.eyebrow`) |
+| `--type-caption-size` | 14 / 500 | badges, "n of 3" |
+| `--type-small-size` | 15 / 400–500 | helper text, field labels, errors, small buttons, dashboard tables |
+| `--type-body-size` | 17 / 400 | body text; button labels at 500 |
+| `--type-lead-size` | 20 / 400 | dialog message, input text, lead lines; h2 |
+| `--type-question-size` | 20 / 500 | trivia questions |
+| `--type-heading-size` | 24 / 500 | screen titles (`.title`, h1) |
+| `--type-target-size` | 64 / 700 | Stop the Clock target, code input |
+| `--type-score-size` | 88 / 700 | own score hero |
+
+`--type-title-size` / `--type-title-weight` (28 / 700) and `--type-button-size` / `--type-button-weight` (20 / 700) are the v1 values, kept because game internals still use them (their specs don't change); v2 chrome uses `--type-heading-size` at `--weight-medium` for titles and `--type-body-size` at `--weight-medium` for buttons.
 
 Supports the phone's text-size setting up to 130 % without clipping (test in `TESTING.md` §6).
 
@@ -142,29 +175,79 @@ Designed for a ≥ 2 m wide projection read from 6–8 m.
 
 | Token | Size | Use |
 |---|---|---|
-| `--proj-min` | 3.2vh (35 px) | smallest text allowed on the big screen |
-| `--proj-row` | 4.6vh (50 px) / 700 for scores | leaderboard rows |
-| `--proj-heading` | 7vh (76 px) / 700 | screen headings |
-| `--proj-code` | 20vh (216 px) / 700, letter-spacing 0.08em | session code in the lobby |
-| `--proj-code-corner` | 6vh (65 px) | next-session code during play |
+| `--proj-min` | 3.2vh (35 px) | smallest text allowed on the big screen (operator bar, secondary text) |
+| `--proj-eyebrow` | 2.4vh (26 px) / 500, Latin uppercase + tracking | section eyebrows (`.eyebrow.eyebrowProj`); the one size below `--proj-min`, only for uppercase labels next to large content |
+| `--proj-row` | 4.6vh (50 px) / 500; #1 row 700 | leaderboard rows (name and score) |
+| `--proj-heading` | 7vh (76 px) / 500 | board titles, screen headings |
+| `--proj-code` | 20vh (216 px) / 700, letter-spacing 0.08em | session code in the lobby (the hero) |
+| `--proj-code-corner` | 6vh (65 px) / 500 | next-session code during play |
 | `--proj-qr` | 40vh square, quiet zone ≥ 4 modules, dark modules ink on white | QR |
-| `--proj-timer` | 9vh | round time left |
+| `--proj-timer` | 9vh / 500 | round time left |
 
-Leaderboards on the big screen show at most **10 rows** so each row stays ≥ 4.6vh.
+`--proj-heading-weight` and `--proj-row-weight` (700) are the v1 values; v2 uses `--weight-medium` for headings and rows and `--weight-bold` only for the code, hero numbers and the #1 row.
+
+Layout tokens: `--proj-header-height` 9vh (header strip), `--proj-operator-height` 10vh (operator bar), `--proj-rank-rule` 0.6vh (#1 row's inline-start rule), `--proj-row-pad` 0.4vh (board row block padding). A board row is ≈ 6.4vh tall (4.6vh × 1.2 + padding + 1 px line), so **10 rows take ≈ 64vh**; leaderboards on the big screen show at most **10 rows** so each row stays ≥ 4.6vh.
 
 ## 4. Spacing, shape, layout
 
 - Spacing scale (4 px base): `--s-1: 4`, `--s-2: 8`, `--s-3: 12`, `--s-4: 16`, `--s-5: 24`, `--s-6: 32`, `--s-7: 48`, `--s-8: 64`.
 - Phone gutter 16 px; min supported width 320 px; design width 360–430 px; portrait only.
-- Radii: `--r-button: 14`, `--r-card: 20`, `--r-chip: 999`.
+- Radii (v2): `--r-panel` 12 px (panels, boards, dialogs), `--r-control` 10 px (buttons, inputs, code cells), `--r-tag` 8 px (name tags, badges, callouts); projector `--proj-radius` 1.4vh. **No pills:** `--r-chip` (999) is only for true circles (presence dots, spinner); `--r-button` 14 / `--r-card` 20 are v1 values kept for game internals.
+- Lines: `--line-width` 1 px (borders, separators), `--line-width-strong` 2 px (tab underline, own-row outline, dashed breaks), `--focus-width` 3 px + `--focus-offset` 2 px (focus ring), `--rank-rule` 3 px (phone #1 / own row inline-start rule).
+- Control sizes: `--button-height` 52 px (phone buttons and inputs), `--button-height-small` 36 px (dashboard and dense desktop rows only: below the touch floor), `--code-cell-height` 56 px (join code cells), `--phone-bar-height` 56 px (phone top bar).
+- Dashboard: `--dash-max-width` 1200 px, `--dash-nav-width` 240 px (side nav), `--dash-signin-width` 400 px (sign-in panel).
 - Touch targets ≥ **48 × 48** CSS px (hard floor 44 × 44 for the densest grid, see Odd One Out).
 - Big screen: 16:9 layout, 5vh safe margins (projectors crop edges).
 - Layout helper tokens in `tokens.css` (added with the Phase 1 screens): `--phone-max-width` 430 px, `--logo-phone-height` 32 px / `--logo-proj-height` 8vh (§5 minimums), `--line-width` 1 px / `--line-width-strong` 2 px / `--focus-width` 3 px, `--dot-size` / `--proj-dot-size` (presence dots), projector spacing `--proj-s-1…4` (1, 2, 3, 5vh) and `--proj-radius`, `--dialog-max-width`, `--qr-light` (QR background, always white), the layers below, and durations `--dur-spin` (busy spinner) and `--dur-countdown` (one 3-2-1 step, §6.3).
 - Layers (z-index tokens, lowest first): `--z-shatter` **40** (every shard overlay, `.gdg-shatter-layer`, fixed and click-through) < `--z-shatter-logo` **45** (the logo, class `gdg-shatter-logo-safe` / `SHATTER_LOGO_CLASS`, §5) < `--z-banner` **50** (offline / reconnecting banners) < `--z-dialog` **100** (confirm dialogs). Defined in `tokens.css`; `src/effects/shatter/shatter.css` only references them.
 
+### 4.1 Shared component patterns (v2, `src/components/ui.module.css`)
+
+Import as `ui` from `src/components/ui.module.css`. Flat, no shadows, no gradients, no pills.
+
+| Pattern | Classes | Look |
+|---|---|---|
+| Primary button | `button` (+ `buttonBlock` for full width) | `--primary-text` fill, `--on-primary` 17 / 500 label, `--button-height`, `--r-control`; hover `--primary-hover`; press scale 0.97; disabled 40 % opacity |
+| Secondary button | `button buttonSecondary` | `--surface` with a 1 px `--line-strong` outline, ink label; hover `--surface-2` |
+| Text / quiet button | `button buttonText` | no fill or border, ink label, hover `--surface-2`; full touch target |
+| Link button | `linkButton` | inline `--primary-text` 500 text, underline on hover |
+| Small button | add `buttonSmall` | `--button-height-small`, `--type-small-size` (desktop only) |
+| Field | `field` > `label` + `input` + `helper` (with `counter`) | label above (15 / 500), input 52 px with a 1 px `--line-strong` border and `--r-control`, blue border + focus ring on focus, `aria-invalid="true"` turns the border ink; helper 15 muted with the counter at the inline end |
+| Error / notice | `error` | a text-first callout: `--surface-2`, 1 px line, 3 px ink inline-start rule, 15 / 500 ink text (no colour-only meaning, no amber) |
+| Panel | `panel` (+ `panelProj` on the big screen) | `--surface`, 1 px `--line`, `--r-panel`, padding `--s-5` (projector `--proj-s-3`, `--proj-radius`) |
+| Eyebrow | `eyebrow` (+ `eyebrowProj`) | 12 / 500 muted, Latin uppercase + tracking, Arabic 14 and never transformed |
+| Title | `title` | `--type-heading-size` 24 / 500 |
+| Name tag | `nameTag` > `dot` + `<bdi className={ui.nameTagText}>` | `--surface`, 1 px line, `--r-tag`, 500 name with ellipsis |
+| Presence dot | `dot` (+ `dotAway`, `dotProj`) | live = filled `--primary`; away = hollow `--line-strong` ring (shape differs, not only colour) |
+| Tabs | `tabs` > `tab` with `aria-selected="true"` / `aria-current="page"` (or `tabActive`) | text tabs on a 1 px bottom line; selected = ink text + 2 px `--primary` underline |
+| Badge | `badge` (+ `badgeHighlight` for #1 / new best) | squared `--r-tag`, `--surface-2`, 14 / 500 tabular; highlight = `--highlight-tint` with an amber border, ink text |
+| Label · value list | `keyValues` on a `<dl>` | two columns, muted label, 500 tabular value at the inline end, 1 px separators |
+| Number-only text | `counter`, `ltrNumber` | `direction: ltr; unicode-bidi: isolate`, so "3 / 12" never reorders under `dir="rtl"` |
+| Muted / small text | `muted`, `small` | `--text-muted`; `--type-small-size` |
+| Phone top bar | `TopBar` (`topBar`, `logo`, `langToggle`) | `--phone-bar-height`, 1 px bottom line, logo at `--logo-phone-height` sized by height only and never framed (no box, background, padding or border), language toggle as a quiet muted text button inline-end |
+| Logo on the big screen | `projLogo` | `--logo-proj-height`, height only, unframed |
+| Dialog | `ConfirmDialog` (`backdrop`, `dialog`, `dialogActions`) | `--scrim` backdrop; `--surface` panel, 1 px line, `--r-panel`, padding `--s-6`, message 20 / 400; Cancel (secondary) then Yes (primary) at the inline end |
+| System banner | `OfflineBanner` (`banner`, `bannerOk`) | sticky, `--z-banner`; offline = `--text` bar with `--bg` text, 15 / 500; back online = `--primary-text` bar with `--on-primary` text |
+| Spinner | `Spinner` | 32 px 2 px ring in `--line` with a `--primary` arc; static under reduced motion |
+
+Global utilities (`src/styles/base.css`): `.hero` (700 + tabular, the only bold), `.tabular-nums`, `.visually-hidden`, `.material-symbols-rounded`. `base.css` also resets buttons (no UA border, background or padding), so a button without a class is plain text.
+
+### 4.2 The board (table) pattern
+
+`Leaderboard` (and any board-like table: H4 session results, dashboard tables) is a table, not cards:
+
+- One `--surface` panel with a 1 px `--line` border and `--r-panel` (projector `--proj-radius`); the board draws its own panel, so don't nest it in `.panel`.
+- Columns: rank (3ch, tabular, 400 `--text-muted`; ranks 1–3 in `--text`), name (`<bdi>`, 500, one line with ellipsis, clipped only on the inline axis so Cairo glyphs are never cut), score (tabular, 500, inline-end aligned). Extra per-round columns sit between name and total, also tabular and inline-end aligned.
+- Rows are separated by 1 px `--line` lines; no zebra, no gaps. Every row reserves an inline-start rule (`--rank-rule` 3 px, projector `--proj-rank-rule`) so columns stay aligned.
+- **#1 row:** `--highlight-tint` background, amber rule, name and score at 700.
+- **Own row:** `--primary-tint` background and a blue rule; if it is also #1 it keeps the amber row and gets a 2 px blue outline. The own row appended below the top 10 (`detached`) is set off by a 2 px dashed `--line-strong` separator.
+- **New or improved row (H5):** `--primary-tint` with a 2 px dashed `--primary` outline.
+- Phone: 17 px rows, `--s-3` / `--s-4` padding. Projector: `--proj-row` text, `--proj-row-pad` / `--proj-s-3` padding (≈ 6.4vh per row, §3.2).
+
 ## 5. Chevrons and the logo
 
 - **Logo**: `assets/logo.png` (667 × 406 raster; ask for a vector version for crisp big-screen use, OQ-08). The two chevrons point away from each other (blue `<` left, amber `>` right) and the crystalline mosaic breaks off their **outer** points. Clear space on all sides = the height of one chevron. Minimum size: 32 px tall on phones, 8vh on the big screen. Only on `--bg` paper (or the official dark variant if the logo pack has one). Never animated, never under the shatter layer while it plays (the shatter overlay is always below the logo's z-index, or the logo is hidden for the transition). In code every logo `<img>` (phone top bar, host H0/H1/H4/H5 headers, dashboard) carries `SHATTER_LOGO_CLASS` (z 45 > the shard layer's 40), is never inside an element an effect hides or fades (the merge stage is the board area only), and on the phone sits outside the screen transitions. On the host the logo screens (H1, H4/H5) swap instantly instead of crossfading under reduced motion, so the logo never fades. Always sized by height only (`--logo-phone-height` / `--logo-proj-height`) so it is never stretched.
+- **App logo files**: `src/assets/logo.png` / `logo.webp` are a transparent cut of `assets/logo.png` (670 × 281 incl. a 5 px transparent pad): the white is removed by un-matting against white, the mark's pixels and colours are unchanged (the four flat tones are bit-identical).
 - **Chevron shape** (for game tiles, buttons, pads, versus framing): a separate simple SVG path of one chevron, drawn from the logo's proportions but without the mosaic, in `--gdg-blue` or `--gdg-amber`.
 - **Versus frame**: the blue `<` enters from the inline-start edge and the amber `>` from the inline-end, meeting around the content (round intro "Next: Simon", player cards). 400 ms, emphasized easing.
 
@@ -240,8 +323,11 @@ During a transition's 320 ms fly-in the previous screen stays on screen under th
 - [ ] No information by colour alone (Simon shapes, Trivia ✓/✗ icons, countdown number + bar, Odd One Out grid 1 differs by lightness too).
 - [ ] Touch targets ≥ 48 px (44 px floor in Odd One Out 6 × 6).
 - [ ] Reduced motion honoured everywhere (§6.2).
-- [ ] Visible focus ring (`--focus`) for keyboard users on the host and dashboard.
-- [ ] `lang`/`dir` set; names in `<bdi>`; standalone signed numbers in `<bdi dir="ltr">`.
+- [ ] Every new text/background pair is in `scripts/contrast.ts` and passes `npm run contrast` (§2.4, both themes).
+- [ ] Visible focus ring for keyboard users on the host and dashboard: 3 px `--focus` outline with a 2 px `--focus-offset` (`base.css` `:focus-visible`); inputs add a blue border.
+- [ ] Meaning never by colour alone in the v2 primitives: presence = filled vs hollow dot; #1 row = rank "1" + bold + rule; own row = rule (+ outline when also #1); new/improved rows = dashed outline; errors = text in a callout with an ink rule.
+- [ ] `lang`/`dir` set; names in `<bdi>`; standalone signed numbers in `<bdi dir="ltr">`; number-only strings ("3 / 12") in `.counter` / `.ltrNumber`.
+- [ ] Small buttons (`buttonSmall`, 36 px) only on the dashboard and desktop rows, never on phones.
 - [ ] Modal dialogs (`ConfirmDialog`) trap Tab/Shift+Tab, default focus to the safe/cancel action, close on Escape, and return focus to the opener on close.
 - [ ] Phone text scaling to 130 % works.
 - [ ] Screen-reader labels for game controls (listed in each game doc) and live regions only where specified (never during Stop the Clock's hidden timer).

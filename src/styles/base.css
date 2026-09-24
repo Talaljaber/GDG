@@ -1,6 +1,8 @@
 /**
- * Reset + base element styles. Source of truth: docs/DESIGN_SYSTEM.md §3, §8
- * and .claude/rules/ui-i18n.md.
+ * Reset + base element styles, v2 "quiet scoreboard" (docs/DESIGN_SYSTEM.md §0, §3, §8
+ * and .claude/rules/ui-i18n.md). Tokens only; logical properties only.
+ *
+ * Weights: 400 body, 500 headings/labels/UI, 700 only via `.hero` (hero numbers, the #1 row).
  */
 
 *,
@@ -18,6 +20,12 @@ body,
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Line heights inherit (a container that sets its own passes it to its children). */
+  line-height: var(--leading-body);
+}
+
+html:lang(ar) {
+  line-height: var(--leading-body-ar);
 }
 
 body {
@@ -25,14 +33,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font-size: var(--type-body-size);
-  font-weight: var(--type-body-weight);
-  line-height: 1.3;
+  font-weight: var(--weight-regular);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 /* Font stacks per language (§3): Latin brand names inside Arabic text still
-   render in Roboto because it's listed second in the AR stack. */
+   render in Roboto because it's listed second in the AR stack. Per element, so
+   a `lang="en"` island inside Arabic (the language toggle) gets its own stack. */
 :lang(en) {
   font-family:
     'Roboto',
@@ -47,7 +56,54 @@ body {
     'Roboto',
     system-ui,
     sans-serif;
-  line-height: 1.6;
+}
+
+/* ---- Headings: medium weight, calm sizes (§3.1). 700 only via .hero. ---- */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+:where(:lang(ar)) :is(h1, h2, h3, h4, h5, h6) {
+  line-height: var(--leading-tight-ar);
+}
+
+h1 {
+  font-size: var(--type-heading-size);
+}
+
+h2 {
+  font-size: var(--type-lead-size);
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--type-body-size);
+}
+
+p {
+  margin: 0;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--weight-medium);
+}
+
+/* The only bold: hero numbers and the #1 row (§0.1). */
+.hero {
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
 }
 
 img,
@@ -57,16 +113,29 @@ svg {
   display: block;
 }
 
+/* ---- Form controls: inherit type, no UA chrome (components style them) ---- */
+
 button,
 input,
 select,
 textarea {
   font: inherit;
   color: inherit;
+  letter-spacing: inherit;
 }
 
 button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 ul,
@@ -76,16 +145,22 @@ ol {
   list-style: none;
 }
 
-h1,
-h2,
-h3,
-h4,
-p {
-  margin: 0;
-}
+/* ---- Links: blue text (--primary-text passes for any size), thin underline ---- */
 
 a {
-  color: inherit;
+  color: var(--primary-text);
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--line-width);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-thickness: var(--line-width-strong);
+}
+
+::selection {
+  background: var(--gdg-blue-tint);
+  color: var(--gdg-ink);
 }
 
 /* Western digits everywhere, tabular so scores/timers/ranks don't jiggle. */
@@ -93,10 +168,23 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
-/* Visible focus ring (host/dashboard keyboard users, §2.3 --focus). */
+/* Visible focus ring (host/dashboard keyboard users, §2.3 --focus): blue 3 px with offset. */
 :focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+/* Text for screen readers only. */
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Material Symbols Rounded baseline config (§7). */

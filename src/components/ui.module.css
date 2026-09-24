@@ -1,57 +1,116 @@
-/* Shared UI pieces for the player and host apps. Tokens only
-   (docs/DESIGN_SYSTEM.md §2-§6); logical properties only (RTL). */
+/* Shared UI primitives for the player, host and dashboard apps: v2 "quiet
+   scoreboard" (docs/DESIGN_SYSTEM.md §0, §2-§4). Tokens only; logical
+   properties only (RTL). No pills, no shadows, no gradients; 700 only on the
+   #1 board row (and .hero in base.css). */
+
+/* ---- Phone top bar (§0.3): 56 px, bottom line, logo inline-start ---- */
 
 .topBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-3);
-  padding-block: var(--s-3);
+  min-block-size: var(--phone-bar-height);
   padding-inline: var(--phone-gutter);
+  border-block-end: var(--line-width) solid var(--line);
 }
 
+/* The logo is sized by height only and never framed: no box, background,
+   padding or border (§5). */
 .logo {
+  display: block;
   block-size: var(--logo-phone-height);
   inline-size: auto;
 }
 
 .projLogo {
+  display: block;
   block-size: var(--logo-proj-height);
   inline-size: auto;
 }
 
+/* Quiet text button; the label is in the other language (lang attr on the button). */
 .langToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-block-size: var(--touch-target-min);
   min-inline-size: var(--touch-target-min);
-  padding-inline: var(--s-4);
-  border: var(--line-width) solid var(--gdg-line);
-  border-radius: var(--r-chip);
-  background: var(--surface);
-  color: var(--primary-text);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
+  margin-inline-end: calc(-1 * var(--s-3));
+  padding-inline: var(--s-3);
+  border-radius: var(--r-control);
+  color: var(--text-muted);
+  font-size: var(--type-small-size);
+  font-weight: var(--weight-medium);
 }
 
-.title {
-  font-size: var(--type-title-size);
-  font-weight: var(--type-title-weight);
+.langToggle:hover {
+  color: var(--text);
+  background: var(--surface-2);
 }
+
+/* ---- Type ---- */
+
+.title {
+  font-size: var(--type-heading-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+/* Section label (§0.1.5): small, medium, muted; Latin uppercase + tracking, Arabic untouched. */
+.eyebrow {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  line-height: var(--leading-tight);
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+}
+
+.eyebrow:lang(en) {
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+}
+
+/* Big-screen eyebrow (§3.2). */
+.eyebrow.eyebrowProj {
+  font-size: var(--proj-eyebrow);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.small {
+  font-size: var(--type-small-size);
+}
+
+/* ---- Buttons (§0.3): primary solid, secondary outline, text/quiet, small ---- */
 
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--s-2);
-  min-block-size: var(--touch-target-min);
-  padding-block: var(--s-3);
+  min-block-size: var(--button-height);
+  padding-block: var(--s-2);
   padding-inline: var(--s-5);
-  border: none;
-  border-radius: var(--r-button);
-  background: var(--gdg-blue-deep);
+  border: var(--line-width) solid transparent;
+  border-radius: var(--r-control);
+  background: var(--primary-text);
   color: var(--on-primary);
-  font-size: var(--type-button-size);
-  font-weight: var(--type-button-weight);
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  text-align: center;
   transition: transform var(--dur-fast) var(--ease-standard);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--primary-hover);
 }
 
 .button:active:not(:disabled) {
@@ -59,8 +118,7 @@
 }
 
 .button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .buttonBlock {
@@ -68,31 +126,104 @@
 }
 
 .buttonSecondary {
+  border-color: var(--line-strong);
   background: var(--surface);
-  color: var(--primary-text);
-  border: var(--line-width-strong) solid var(--primary);
+  color: var(--text);
 }
 
+.buttonSecondary:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+/* Text / quiet button: no fill, no border, full touch target. */
+.buttonText {
+  padding-inline: var(--s-3);
+  background: transparent;
+  color: var(--text);
+}
+
+.buttonText:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+/* Small (dashboard, dense operator rows). Desktop only: below the 48 px touch floor. */
+.buttonSmall {
+  min-block-size: var(--button-height-small);
+  padding-block: var(--s-1);
+  padding-inline: var(--s-3);
+  font-size: var(--type-small-size);
+}
+
+/* Inline blue text action ("Back", "Change name"). */
 .linkButton {
+  display: inline-flex;
+  align-items: center;
   min-block-size: var(--touch-target-min);
   padding-inline: 0;
-  border: none;
-  background: none;
   color: var(--primary-text);
   font-size: var(--type-body-size);
-  font-weight: var(--type-caption-weight);
+  font-weight: var(--weight-medium);
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+  text-decoration-thickness: var(--line-width);
+  text-underline-offset: 0.2em;
+}
+
+/* ---- Fields (§0.3): label above, control, helper/counter below ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.label {
+  color: var(--text);
+  font-size: var(--type-small-size);
+  font-weight: var(--weight-medium);
+}
+
+.helper {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  color: var(--text-muted);
+  font-size: var(--type-small-size);
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A number-only string ("3 / 12", "1 / 3") keeps its order under dir="rtl". */
+.counter,
+.ltrNumber {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .input {
   inline-size: 100%;
-  min-block-size: var(--touch-target-min);
-  padding-block: var(--s-3);
+  min-block-size: var(--button-height);
+  padding-block: var(--s-2);
   padding-inline: var(--s-4);
-  border: var(--line-width-strong) solid var(--gdg-line);
-  border-radius: var(--r-button);
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
   background: var(--surface);
   color: var(--text);
-  font-size: var(--type-title-size);
+  font-size: var(--type-lead-size);
+  line-height: var(--leading-tight);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:hover {
+  border-color: var(--text-muted);
 }
 
 .input:focus-visible {
@@ -101,20 +232,162 @@
   border-color: var(--primary);
 }
 
-.error {
-  color: var(--text);
-  font-size: var(--type-body-size);
-  font-weight: var(--type-caption-weight);
-  padding-block: var(--s-2);
-  padding-inline: var(--s-3);
-  border-inline-start: var(--focus-width) solid var(--highlight);
-  background: var(--gdg-amber-tint);
-  border-radius: var(--s-1);
+.input[aria-invalid='true'] {
+  border-color: var(--text);
 }
 
-.muted {
+/* Errors and inline notices are text first (never colour alone): a quiet callout. */
+.error {
+  padding-block: var(--s-2);
+  padding-inline: var(--s-3);
+  border: var(--line-width) solid var(--line);
+  border-inline-start: var(--rank-rule) solid var(--text);
+  border-radius: var(--r-tag);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--type-small-size);
+  font-weight: var(--weight-medium);
+}
+
+/* ---- Panels, tags, dots, tabs, badges ---- */
+
+/* Flat panel (§0.1.2): white surface, 1 px line, small radius, no shadow. */
+.panel {
+  padding: var(--s-5);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface);
+}
+
+.panelProj {
+  padding: var(--proj-s-3);
+  border-radius: var(--proj-radius);
+}
+
+/* A player's name with an optional presence dot. Put the name in <bdi>. */
+.nameTag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding-block: var(--s-1);
+  padding-inline: var(--s-3);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-tag);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.nameTagText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Presence dot: live = filled blue, away = hollow ring (shape differs, not colour alone). */
+.dot {
+  flex: none;
+  inline-size: var(--dot-size);
+  block-size: var(--dot-size);
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.dotAway {
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--line-width-strong) var(--line-strong);
+}
+
+.dotProj {
+  inline-size: var(--proj-dot-size);
+  block-size: var(--proj-dot-size);
+}
+
+/* Text tabs with a blue underline on the selected one (aria-selected / aria-current). */
+.tabs {
+  display: flex;
+  gap: var(--s-5);
+  border-block-end: var(--line-width) solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  flex: none;
+  min-block-size: var(--touch-target-min);
+  margin-block-end: calc(-1 * var(--line-width));
+  padding-inline: 0;
+  border-block-end: var(--line-width-strong) solid transparent;
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected='true'],
+.tab[aria-current='page'],
+.tabActive {
+  border-block-end-color: var(--primary);
+  color: var(--text);
+}
+
+/* Small label / count. Squared, never a pill. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding-block: 0;
+  padding-inline: var(--s-2);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-tag);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-body);
+  white-space: nowrap;
+}
+
+/* Rank 1 / new best only (amber is a fill; the text stays ink). */
+.badgeHighlight {
+  border-color: var(--highlight);
+  background: var(--highlight-tint);
+}
+
+/* Two-column label · value list (P7 breakdown, dashboard details). */
+.keyValues {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  margin: 0;
+}
+
+.keyValues > * {
+  margin: 0;
+}
+
+.keyValues > * {
+  padding-block: var(--s-2);
+  border-block-end: var(--line-width) solid var(--line);
+}
+
+.keyValues > :nth-child(odd) {
+  padding-inline-end: var(--s-4);
   color: var(--text-muted);
 }
+
+.keyValues > :nth-child(even) {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+  text-align: end;
+}
+
+/* ---- System banner (offline / back online) ---- */
 
 .banner {
   position: sticky;
@@ -126,17 +399,19 @@
   gap: var(--s-2);
   padding-block: var(--s-2);
   padding-inline: var(--phone-gutter);
-  background: var(--gdg-ink);
-  color: var(--gdg-paper);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
+  background: var(--text);
+  color: var(--bg);
+  font-size: var(--type-small-size);
+  font-weight: var(--weight-medium);
   text-align: center;
 }
 
 .bannerOk {
-  background: var(--gdg-blue-deep);
+  background: var(--primary-text);
   color: var(--on-primary);
 }
+
+/* ---- Spinner ---- */
 
 .spinnerWrap {
   display: flex;
@@ -149,7 +424,7 @@
   inline-size: var(--s-6);
   block-size: var(--s-6);
   border-radius: 50%;
-  border: var(--focus-width) solid var(--gdg-blue-tint);
+  border: var(--line-width-strong) solid var(--line);
   border-block-start-color: var(--primary);
   animation: spin var(--dur-spin) linear infinite;
 }
@@ -166,79 +441,121 @@
   }
 }
 
-/* ---- Leaderboard ---- */
+/* ---- Leaderboard: a table, not cards (§0.2) ----
+   rank | name | score. 1 px separators, no zebra. Rank 1: amber tint + amber
+   inline-start rule, 700. Every row reserves the rule's width so columns stay
+   aligned. The board draws its own panel: don't nest it in .panel. */
 
 .board {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
   inline-size: 100%;
+  overflow: hidden;
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface);
 }
 
 .row {
   display: grid;
-  grid-template-columns: 2.5em 1fr auto;
+  grid-template-columns: 3ch minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--s-3);
-  padding-block: var(--s-2);
-  padding-inline: var(--s-3);
-  border-radius: var(--s-2);
-  background: var(--surface);
+  column-gap: var(--s-3);
+  padding-block: var(--s-3);
+  padding-inline-start: calc(var(--s-4) - var(--rank-rule));
+  padding-inline-end: var(--s-4);
+  border-inline-start: var(--rank-rule) solid transparent;
   font-size: var(--type-body-size);
+  line-height: var(--leading-tight);
+}
+
+.row + .row {
+  border-block-start: var(--line-width) solid var(--line);
 }
 
 .rowFirst {
-  background: var(--gdg-amber-tint);
-  border-inline-start: var(--s-1) solid var(--highlight);
+  border-inline-start-color: var(--highlight);
+  background: var(--highlight-tint);
+}
+
+.rowFirst .name,
+.rowFirst .score {
+  font-weight: var(--weight-bold);
 }
 
 .rowOwn {
+  border-inline-start-color: var(--primary);
+  background: var(--primary-tint);
+}
+
+/* Own row that is also #1: the amber row keeps its tint and rule, plus a blue outline. */
+.rowOwn.rowFirst {
+  border-inline-start-color: var(--highlight);
+  background: var(--highlight-tint);
   outline: var(--line-width-strong) solid var(--primary);
   outline-offset: calc(-1 * var(--line-width-strong));
 }
 
-.rowDetached {
-  margin-block-start: var(--s-2);
+/* The own row appended below the top rows (not in the top N): a dashed break. */
+.row.rowDetached {
+  border-block-start: var(--line-width-strong) dashed var(--line-strong);
 }
 
 .rank {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  font-weight: var(--type-button-weight);
+  font-weight: var(--weight-regular);
+}
+
+.rankTop {
+  color: var(--text);
 }
 
 .name {
+  /* Clip only the inline axis so Cairo's tall glyphs are never cut at the top or bottom
+     (browsers without overflow: clip fall back to hidden). */
   overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: var(--type-caption-weight);
+  font-weight: var(--weight-medium);
 }
 
 .score {
   font-variant-numeric: tabular-nums;
-  font-weight: var(--type-button-weight);
+  font-weight: var(--weight-medium);
+  text-align: end;
 }
 
 .ownMark {
   color: var(--primary-text);
 }
 
-/* Projector variant (DESIGN_SYSTEM §3.2): rows >= --proj-row, max 10 rows. */
+/* Projector variant (§3.2): rows at --proj-row, max 10 rows. */
 .boardProj {
-  gap: var(--proj-s-1);
+  border-radius: var(--proj-radius);
 }
 
 .boardProj .row {
+  column-gap: var(--proj-s-2);
+  padding-block: var(--proj-row-pad);
+  padding-inline-start: calc(var(--proj-s-3) - var(--proj-rank-rule));
+  padding-inline-end: var(--proj-s-3);
+  border-inline-start-width: var(--proj-rank-rule);
   font-size: var(--proj-row);
-  font-weight: var(--proj-row-weight);
-  padding-block: var(--proj-s-1);
-  padding-inline: var(--proj-s-2);
-  border-radius: var(--proj-radius);
-  grid-template-columns: 2.2em 1fr auto;
+  line-height: var(--leading-tight);
 }
 
-.boardProj .rank {
-  font-size: var(--proj-row);
+/* Rows that entered or rose this session (H5): blue tint + dashed outline. */
+.rowHighlight {
+  background: var(--primary-tint);
+  outline: var(--line-width-strong) dashed var(--primary);
+  outline-offset: calc(-1 * var(--line-width-strong));
+}
+
+.rowFirst.rowHighlight {
+  background: var(--highlight-tint);
 }
 
 /* ---- Dialog ---- */
@@ -251,20 +568,21 @@
   align-items: center;
   justify-content: center;
   padding: var(--phone-gutter);
-  background: color-mix(in srgb, var(--gdg-ink) 55%, transparent);
+  background: var(--scrim);
 }
 
 .dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--s-5);
+  gap: var(--s-6);
   inline-size: min(100%, var(--dialog-max-width));
   padding: var(--s-6);
-  border-radius: var(--r-card);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-panel);
   background: var(--surface);
   color: var(--text);
-  font-size: var(--type-title-size);
-  font-weight: var(--type-caption-weight);
+  font-size: var(--type-lead-size);
+  font-weight: var(--weight-regular);
 }
 
 .dialogActions {
@@ -280,7 +598,7 @@
   display: block;
   inline-size: var(--proj-qr);
   block-size: var(--proj-qr);
-  background: var(--surface);
+  background: var(--qr-light);
 }
 
 .qrDark {
@@ -289,14 +607,6 @@
 
 .qrLight {
   fill: var(--qr-light);
-}
-
-/* ---- Rows that entered or rose this session (H5), and screen transitions ---- */
-
-.rowHighlight {
-  background: var(--gdg-blue-tint);
-  outline: var(--line-width-strong) dashed var(--primary);
-  outline-offset: calc(-1 * var(--line-width-strong));
 }
 
 /* Screen transitions (ScreenTransition.tsx, DESIGN_SYSTEM §6.2): the shatter
