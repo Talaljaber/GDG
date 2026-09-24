@@ -19,9 +19,9 @@ import {
   SIMON_START_LEVEL,
   SIMON_SUCCESS_MS,
   SIMON_TAP_TIMEOUT_MS,
+  buildRaw,
   onTimeMs,
   scoreSimon,
-  totalTapsForLevel,
   type SimonEnded,
   type SimonRaw,
 } from './scoring';
@@ -119,11 +119,7 @@ export function Simon({ seed, roundStartEpoch, roundEnded, snapshot, onProgress,
     if (finishedRef.current) return;
     finishedRef.current = true;
     const current = stateRef.current;
-    const level = current.completedLevel;
-    const gaps = current.gaps;
-    const avgGapMs = level >= SIMON_START_LEVEL && gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : null;
-    const taps = totalTapsForLevel(level) + (ended === 'mistake' ? 1 : 0);
-    const raw: SimonRaw = { level, avg_gap_ms: avgGapMs, taps, ended };
+    const raw: SimonRaw = buildRaw(current.completedLevel, current.gaps, ended);
     const score = scoreSimon(raw);
     const durationMs = Math.min(120_000, Date.now() - roundStartEpochRef.current);
     onFinishRef.current({ score, raw, durationMs });

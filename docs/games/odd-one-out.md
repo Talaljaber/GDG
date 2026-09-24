@@ -48,7 +48,7 @@ stateDiagram-v2
 
 - `find_ms` is measured from the first animation frame where the grid is painted (`requestAnimationFrame` after render) to the `pointerdown` on the odd tile, via `performance.now()`.
 - The 0.6 s "found" transition is not counted.
-- Worst case: 3 × 20 s + transitions ≈ 62 s.
+- Worst case: 1.5 s intro + 3 × 20 s + 3 × 0.6 s transitions ≈ 64 s.
 
 ## 4. Scoring
 

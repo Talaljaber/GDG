@@ -70,6 +70,20 @@ export function totalTapsForLevel(level: number): number {
   return (level * (level + 1)) / 2 - 3;
 }
 
+/**
+ * The `raw` object for a finished Simon turn (§5): the longest completed
+ * length, the mean tap gap over every completed sequence (null below
+ * length 3 or without gaps), the tap count a legitimate run makes (plus the
+ * one wrong tap on a mistake), and why it ended.
+ */
+export function buildRaw(completedLevel: number, gaps: readonly number[], ended: SimonEnded): SimonRaw {
+  const level = completedLevel;
+  const avgGapMs =
+    level >= SIMON_START_LEVEL && gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : null;
+  const taps = totalTapsForLevel(level) + (ended === 'mistake' ? 1 : 0);
+  return { level, avg_gap_ms: avgGapMs, taps, ended };
+}
+
 /** Time bonus B = round(40 x clamp((1200 - g) / 950, 0, 1)) when level >= 3, else 0 (§4). */
 export function timeBonus(level: number, avgGapMs: number | null): number {
   if (level < SIMON_START_LEVEL || avgGapMs === null) return 0;

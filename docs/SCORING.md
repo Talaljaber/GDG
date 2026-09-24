@@ -23,7 +23,7 @@ Every game fits inside the 120 s round cap even in the worst case.
 
 | Game | Attempts | Per-attempt timeout | Worst-case round length (incl. transitions) |
 |---|---|---|---|
-| Odd One Out | 3 grids | 20 s per grid | 3 × 20 + 2 × 0.6 ≈ **62 s** |
+| Odd One Out | 3 grids | 20 s per grid | 1.5 intro + 3 × 20 + 3 × 0.6 ≈ **64 s** |
 | Stop the Clock | 3 guesses | 10 s to tap Start; auto-stop at target + 10 s | (10 + 15) + (10 + 20) + (10 + 17) + 2 × 1.5 ≈ **85 s** |
 | Simon | sequences of length 3…15 | 5 s per tap | capped by the 120 s round cap (a perfect run to length 15 takes ~117 s) |
 | Perfect Circle | 1 scored stroke (+ ≤ 3 invalid) | 30 s for the whole attempt; 10 s per stroke | 1.5 intro + 30 ≈ **32 s** |

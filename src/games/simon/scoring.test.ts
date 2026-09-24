@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildRaw,
   onTimeMs,
   minPlaybackMs,
   scoreSimon,
@@ -160,5 +161,19 @@ describe('validateSimonRaw: shape and bounds', () => {
     const r = raw({ level: 15, avg_gap_ms: 250, taps: totalTapsForLevel(15), ended: 'cap' });
     const score = scoreSimon(r);
     expect(validateSimonRaw(r, score, minPlaybackMs(15))).toBe('simon.won');
+  });
+});
+
+describe('buildRaw (the payload the phone submits, §5)', () => {
+  it('reports the completed length, mean gap and legitimate tap count', () => {
+    const r = buildRaw(4, [500, 600, 700, 400, 500, 600, 700], 'mistake');
+    expect(r).toEqual({ level: 4, avg_gap_ms: 571, taps: totalTapsForLevel(4) + 1, ended: 'mistake' });
+    expect(validateSimonRaw(r, scoreSimon(r), 30_000)).toBeNull();
+  });
+
+  it('has no gap below length 3 and no extra tap without a mistake', () => {
+    expect(buildRaw(0, [], 'timeout')).toEqual({ level: 0, avg_gap_ms: null, taps: 0, ended: 'timeout' });
+    expect(buildRaw(0, [], 'mistake').taps).toBe(1);
+    expect(buildRaw(3, [800, 800, 800], 'cap')).toEqual({ level: 3, avg_gap_ms: 800, taps: 3, ended: 'cap' });
   });
 });
