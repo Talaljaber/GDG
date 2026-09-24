@@ -1,18 +1,32 @@
-import { StrictMode } from 'react';
+import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/tokens.css';
 import './styles/base.css';
 import { PlayerApp } from './player/PlayerApp';
-import { HostApp } from './host/HostApp';
-import { DashboardApp } from './dashboard/DashboardApp';
+import { Spinner } from './components/Spinner';
+
+// Host and dashboard are only opened on the booth's laptop, never on a guest's phone: lazy-load
+// them so the phone route's initial chunk excludes host/dashboard/qrcode/CSV code (PRD §6).
+const HostApp = lazy(() => import('./host/HostApp').then((m) => ({ default: m.HostApp })));
+const DashboardApp = lazy(() =>
+  import('./dashboard/DashboardApp').then((m) => ({ default: m.DashboardApp })),
+);
 
 // No router library (ADR-107): three paths switched by location.pathname.
 function App() {
   switch (window.location.pathname) {
     case '/host':
-      return <HostApp />;
+      return (
+        <Suspense fallback={<Spinner />}>
+          <HostApp />
+        </Suspense>
+      );
     case '/dashboard':
-      return <DashboardApp />;
+      return (
+        <Suspense fallback={<Spinner />}>
+          <DashboardApp />
+        </Suspense>
+      );
     case '/':
     default:
       return <PlayerApp />;
