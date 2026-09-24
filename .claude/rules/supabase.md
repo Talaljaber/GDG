@@ -28,7 +28,7 @@ Loaded when working on the database or the client's data layer. The schema spec 
 
 ## Keys and environments
 - The browser uses the **publishable** key only. The secret key never goes in code, `.env` files committed to git, Netlify, CI or scripts.
-- Migrations go to `gdg-booth-dev` first, run `supabase test db`, then `gdg-booth-prod`. No migrations on event days.
+- One cloud project serves dev and prod (ADR-127): run `supabase test db` locally, then `supabase db push` and `supabase test db --linked`. No migrations on event days.
 
 ## Tests
 - Every policy and function change comes with pgTAP tests in `supabase/tests/` covering guest, anon and admin (TESTING §3).

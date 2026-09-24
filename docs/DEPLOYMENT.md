@@ -8,16 +8,15 @@ Last updated: 2026-09-24
 
 ## 1. Environments
 
-| | Dev | Prod |
+| | Local | Cloud |
 |---|---|---|
-| Supabase project | `gdg-booth-dev` | `gdg-booth-prod` (ADR-127) |
-| Netlify | deploy previews + branch deploys (free) | production deploy of `main` (15 credits each, ADR-126) |
-| Used by | development, load tests, rehearsals | dry run and event only |
-| Region | `eu-central-1` Frankfurt | `eu-central-1` Frankfurt |
+| Supabase | `supabase start` (CLI stack on this machine) | one project, `efujkyahxteycysrcgkl`, for dev and prod (ADR-127) |
+| Netlify | `npm run dev` | deploy previews + branch deploys (free) and the production deploy of `main` (15 credits each, ADR-126) |
+| Used by | development, unit/pgTAP/e2e tests, load tests | deploy previews, rehearsals, dry run, event |
 
-The Supabase Free plan allows two active projects (https://supabase.com/pricing).
+Because the cloud project is also the event database, test data from previews and rehearsals lands in it; run "Start new event day" before each event day so the day boards start clean (ADR-109). The e2e suite and the load test refuse the cloud unless explicitly targeted (TESTING §5).
 
-## 2. Supabase setup (do for dev, then prod)
+## 2. Supabase setup (the one cloud project)
 
 ### 2.1 Project
 1. Create the project in `eu-central-1`. Save the database password in the team password manager.
@@ -33,6 +32,8 @@ The Supabase Free plan allows two active projects (https://supabase.com/pricing)
 Authentication → Rate Limits: set **anonymous sign-ins to 1,000 per hour** (default is 30 per hour per IP; burst equals the hourly limit; configurable in the dashboard or via the Management API field `rate_limit_anonymous_users`: https://supabase.com/docs/guides/auth/rate-limits). Whether the Free plan caps this value is not documented; confirm the saved value in the dashboard and re-check at the dry run.
 
 ### 2.4 Admin account
+Shortcut for steps 1–2: paste `scripts/cloud-admin.sql` into the SQL editor, replace its two placeholders, run it (creates or repairs the confirmed admin with `role = 'admin'`; no secret key needed), then delete the saved snippet so the password isn't kept in the query history. Or by hand:
+
 1. Authentication → Users → Add user: the shared admin email and a strong password (password manager).
 2. SQL editor, run once (maintainer only):
    ```sql
@@ -57,12 +58,12 @@ Apply migrations (§5). Then check: Database → Publications → `supabase_real
 
 | Variable | Production context | Deploy previews / branch deploys |
 |---|---|---|
-| `VITE_SUPABASE_URL` | prod project URL | dev project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | prod publishable key | dev publishable key |
+| `SUPABASE_URL` | the cloud project URL | same (one project, ADR-127) |
+| `SUPABASE_PUBLISHABLE_KEY` | the cloud publishable key | same |
 | `VITE_PUBLIC_SHORT_URL` | the short URL shown under the QR | the preview URL |
 | `VITE_APP_VERSION` | set by the build to the commit SHA | same |
 
-`VITE_` variables are embedded in the public bundle by Vite; only public values go there. **Never** put the secret key or the DB password in Netlify.
+`VITE_` variables, `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are embedded in the public bundle by Vite (`envPrefix` in `vite.config.ts` names those two in full, so `SUPABASE_SECRET_KEY` and `SUPABASE_JWKS_URL` are never exposed); only public values go there. **Never** put the secret key or the DB password in Netlify.
 
 5. Short URL and QR: the QR encodes `VITE_PUBLIC_SHORT_URL` (the site root). Use the Netlify subdomain (e.g. `gdg-booth.netlify.app`) or a custom short domain if the chapter has one (OQ-09). The QR never changes (ADR-002).
 
@@ -81,9 +82,9 @@ Source: https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for
 
 - `.github/workflows/keepalive.yml`, schedule `17 */6 * * *` (every 6 hours at minute 17; GitHub runs schedules at most every 5 minutes and delays top-of-hour jobs: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 - The job sends one `POST {SUPABASE_URL}/rest/v1/rpc/keepalive` with the publishable key in the `apikey` header. `keepalive()` updates one row, which is real database activity (a plain API ping may not count).
-- Repository secrets: `SUPABASE_URL_PROD`, `SUPABASE_PUBLISHABLE_KEY_PROD`, and the same for dev. Publishable keys are not secret, but keeping them in secrets avoids hard-coding.
+- Repository secrets: `SUPABASE_URL_PROD`, `SUPABASE_PUBLISHABLE_KEY_PROD` for the one cloud project (ADR-127). The `_DEV` pair stays unset and the dev leg of the job logs "Skipping dev". Publishable keys are not secret, but keeping them in secrets avoids hard-coding.
 - The job fails loudly (non-2xx → failed run → GitHub email to the repo owner).
-- **Keep the repository private**: GitHub disables schedules in public repositories after 60 days without activity (same source). Private repos use a few Actions minutes per month.
+- The repository is **public** (team decision, ADR-128): GitHub disables scheduled workflows in public repositories after 60 days without repository activity and emails the owner first (https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow, checked 2026-09-24). Any commit resets the clock; if it was disabled, re-enable it in Actions → Keepalive → Enable workflow. Before the event, make sure the last commit is less than 60 days before the last event day.
 - Check: the latest run is green (weekly, and on dry-run day); `select pinged_at from keepalive` is < 6 h old.
 
 ## 5. Migrations
@@ -92,18 +93,18 @@ Source: https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for
   - New migration: `supabase migration new <name>` → edit the SQL file in `supabase/migrations/`.
   - Local: `supabase start`, `supabase db reset` (re-applies all migrations), `supabase test db` (pgTAP tests in `supabase/tests/`, https://supabase.com/docs/guides/local-development/testing/overview).
   - A local `db reset` also wipes auth users: run `npm run dev:admin` afterwards. It creates (or repairs) the local admin from `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` in `.env.local` (non-`VITE_`, never bundled) with `app_metadata.role = 'admin'`, reading the CLI's local secret key at runtime from `supabase status -o env` (never stored anywhere); it refuses any non-localhost API URL.
-  - Remote: `supabase link --project-ref <ref>` then `supabase db push` (dev first, then prod).
+  - Remote: `supabase link --project-ref efujkyahxteycysrcgkl`, `supabase migration list --linked`, then `supabase db push` and `supabase test db --linked`.
 - Rules (`.claude/rules/supabase.md`):
   - Every schema change is a migration; never edit the schema in the dashboard.
   - Never edit an applied migration; add a new one.
   - Never disable RLS; every new table gets RLS + policies in the same migration.
   - No destructive changes once prod has real data: no `DROP TABLE`, `DROP COLUMN`, `TRUNCATE`, or type narrowing. Deprecate columns instead.
   - `DATA_MODEL.md` changes in the same commit.
-- Order: dev push → run the pgTAP suite against dev → deploy preview test → prod push → production deploy.
+- Order: `supabase db reset` + `supabase test db` locally → `supabase db push` to the cloud project → `supabase test db --linked` → deploy preview test → production deploy. The cloud project is the event database (ADR-127): never push on event days (ADR-119).
 
 ## 6. Release process
 
-1. PR → CI (typecheck, unit tests, `check:trivia`, `check:i18n`) → deploy preview on the dev project.
+1. PR → CI (typecheck, unit tests, `check:trivia`, `check:i18n`) → deploy preview on the cloud project.
 2. Test on the preview with real phones for anything touching gameplay.
 3. Merge to `main` → production deploy (counts against the credit budget).
 4. Tag the release (`vYYYY.MM.DD-n`) and note it in `PROGRESS.md`.

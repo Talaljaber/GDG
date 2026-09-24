@@ -254,11 +254,11 @@ Decision: the site uses Supabase's publishable key (`sb_publishable_…`), not t
 **Proposed**
 Context: the Netlify Free plan (credit-based, accounts since Sept 2025) has a hard 300 credits/month; each production deploy costs 15; bandwidth 20 credits/GB; when credits run out, **every site on the account is paused**. Rollbacks and deploy previews cost nothing. Decision: day-to-day testing uses deploy previews / branch deploys; production deploys are batched (target ≤ 8 per month, none in the event week except the final one); the booth site lives on a Netlify account used for nothing else; credit usage is checked at the dry run. Consequences: `DEPLOYMENT.md` §3; open question OQ-14 (which plan the team's account is on).
 
-### ADR-127 Two Supabase projects
-**Proposed**
-Decision: `gdg-booth-dev` (development, deploy previews, load tests) and `gdg-booth-prod` (event only), the Free plan's limit of two active projects. Migrations are applied to dev first, then prod. The keepalive runs against both (dev pausing is harmless but annoying).
+### ADR-127 One Supabase project for dev and prod
+**Accepted** · changed in chat 2026-09-24 (replaces "two projects, `gdg-booth-dev` and `gdg-booth-prod`")
+Decision: a single cloud project (`efujkyahxteycysrcgkl`) serves development, deploy previews, the dry run and the event. Everyday development and the e2e/load tests run on the local stack (`supabase start`); the load test only touches the cloud with an explicit `--target` (TESTING §5). Consequences: every migration goes straight to the event database, so it must pass `supabase test db` locally first, then `supabase test db --linked`, and never on event days (ADR-119). Deploy previews write test sessions into the event database; they stay in dashboard history, and "Start new event day" before each event day gives clean day boards (ADR-109). The keepalive has one target (the `_PROD` secrets; the dev leg skips).
 
 ### ADR-128 Keepalive cadence and repository
-**Proposed**
-Decision: the GitHub Actions job calls `keepalive()` (a real database write) every 6 hours at minute 17 (avoiding top-of-hour delays). The repository is **private**, because GitHub disables schedules in public repositories after 60 days without activity. The job's success is checked weekly and on the dry-run day.
+**Proposed** · repository visibility changed in chat 2026-09-24 (the team keeps it public)
+Decision: the GitHub Actions job calls `keepalive()` (a real database write) every 6 hours at minute 17 (avoiding top-of-hour delays). The repository stays **public**. GitHub disables scheduled workflows in public repositories after 60 days without repository activity (it emails the repo owner first); any commit resets that clock, and re-enabling is one click in the Actions tab. The job's success is checked weekly and on the dry-run day, and the 60-day clock is checked before the event. Consequences: the docs, trivia pool and blocklist seed are public (the trivia answers already ship in the bundle, ADR-116); no secret is ever committed (AC0.7).
 
