@@ -1,0 +1,940 @@
+{
+  "_meta": {
+    "purpose": "Family test set: 30 general-knowledge questions for all ages (everyday life & food, world & nature, science & fun facts, language & culture), used only when the build sets TRIVIA_POOL=family. The event pool is trivia-questions.json. Format: see format_doc.",
+    "last_updated": "2026-09-25",
+    "format_doc": "docs/content/trivia-format.md",
+    "schema_version": 1
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "easy",
+      "question": {
+        "en": "How many legs does a spider have?",
+        "ar": "كم رِجلًا للعنكبوت؟"
+      },
+      "options": [
+        {
+          "en": "8",
+          "ar": "8"
+        },
+        {
+          "en": "6",
+          "ar": "6"
+        },
+        {
+          "en": "10",
+          "ar": "10"
+        },
+        {
+          "en": "12",
+          "ar": "12"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q02",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "easy",
+      "question": {
+        "en": "Which colour do you get by mixing blue and yellow?",
+        "ar": "ما اللون الناتج عن مزج الأزرق والأصفر؟"
+      },
+      "options": [
+        {
+          "en": "Green",
+          "ar": "الأخضر"
+        },
+        {
+          "en": "Purple",
+          "ar": "البنفسجي"
+        },
+        {
+          "en": "Orange",
+          "ar": "البرتقالي"
+        },
+        {
+          "en": "Brown",
+          "ar": "البني"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q03",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "easy",
+      "question": {
+        "en": "How many days are there in a leap year?",
+        "ar": "كم يومًا في السنة الكبيسة؟"
+      },
+      "options": [
+        {
+          "en": "366",
+          "ar": "366"
+        },
+        {
+          "en": "365",
+          "ar": "365"
+        },
+        {
+          "en": "364",
+          "ar": "364"
+        },
+        {
+          "en": "360",
+          "ar": "360"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q04",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "easy",
+      "question": {
+        "en": "Which animal is called the \"ship of the desert\"?",
+        "ar": "أي حيوان يُلقَّب بـ«سفينة الصحراء»؟"
+      },
+      "options": [
+        {
+          "en": "The camel",
+          "ar": "الجمل"
+        },
+        {
+          "en": "The horse",
+          "ar": "الحصان"
+        },
+        {
+          "en": "The donkey",
+          "ar": "الحمار"
+        },
+        {
+          "en": "The elephant",
+          "ar": "الفيل"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q05",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "medium",
+      "question": {
+        "en": "Tahini, used in hummus, is made from which seeds?",
+        "ar": "الطحينة المستخدمة في الحمّص، من أي بذور تُصنع؟"
+      },
+      "options": [
+        {
+          "en": "Sesame",
+          "ar": "السمسم"
+        },
+        {
+          "en": "Sunflower",
+          "ar": "دوّار الشمس"
+        },
+        {
+          "en": "Pumpkin",
+          "ar": "اليقطين"
+        },
+        {
+          "en": "Flax",
+          "ar": "الكتّان"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q06",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "medium",
+      "question": {
+        "en": "How many players does one football team have on the pitch?",
+        "ar": "كم لاعبًا لفريق كرة القدم الواحد داخل الملعب؟"
+      },
+      "options": [
+        {
+          "en": "11",
+          "ar": "11"
+        },
+        {
+          "en": "10",
+          "ar": "10"
+        },
+        {
+          "en": "9",
+          "ar": "9"
+        },
+        {
+          "en": "12",
+          "ar": "12"
+        }
+      ],
+      "source": "Laws of the Game (IFAB), Law 3",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q07",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "hard",
+      "question": {
+        "en": "Saffron comes from which part of a flower?",
+        "ar": "من أي جزء من الزهرة يُستخرج الزعفران؟"
+      },
+      "options": [
+        {
+          "en": "The stigma",
+          "ar": "الميسم"
+        },
+        {
+          "en": "The petal",
+          "ar": "البتلة"
+        },
+        {
+          "en": "The root",
+          "ar": "الجذر"
+        },
+        {
+          "en": "The seed",
+          "ar": "البذرة"
+        }
+      ],
+      "source": "Encyclopaedia Britannica: saffron (dried stigmas of Crocus sativus)",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q08",
+      "status": "ready",
+      "bucket": "family_everyday",
+      "difficulty": "hard",
+      "question": {
+        "en": "How many minutes are there in one day?",
+        "ar": "كم دقيقة في اليوم الواحد؟"
+      },
+      "options": [
+        {
+          "en": "1440",
+          "ar": "1440"
+        },
+        {
+          "en": "1240",
+          "ar": "1240"
+        },
+        {
+          "en": "1640",
+          "ar": "1640"
+        },
+        {
+          "en": "2400",
+          "ar": "2400"
+        }
+      ],
+      "source": "24 × 60 = 1440",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q09",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "easy",
+      "question": {
+        "en": "What is the largest ocean on Earth?",
+        "ar": "ما أكبر محيط على الأرض؟"
+      },
+      "options": [
+        {
+          "en": "The Pacific",
+          "ar": "المحيط الهادئ"
+        },
+        {
+          "en": "The Atlantic",
+          "ar": "المحيط الأطلسي"
+        },
+        {
+          "en": "The Indian",
+          "ar": "المحيط الهندي"
+        },
+        {
+          "en": "The Arctic",
+          "ar": "المحيط المتجمد الشمالي"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q10",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "easy",
+      "question": {
+        "en": "Which planet is known as the Red Planet?",
+        "ar": "أي كوكب يُعرف بالكوكب الأحمر؟"
+      },
+      "options": [
+        {
+          "en": "Mars",
+          "ar": "المريخ"
+        },
+        {
+          "en": "Venus",
+          "ar": "الزهرة"
+        },
+        {
+          "en": "Jupiter",
+          "ar": "المشتري"
+        },
+        {
+          "en": "Saturn",
+          "ar": "زحل"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q11",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "easy",
+      "question": {
+        "en": "What is the capital of Egypt?",
+        "ar": "ما عاصمة مصر؟"
+      },
+      "options": [
+        {
+          "en": "Cairo",
+          "ar": "القاهرة"
+        },
+        {
+          "en": "Alexandria",
+          "ar": "الإسكندرية"
+        },
+        {
+          "en": "Giza",
+          "ar": "الجيزة"
+        },
+        {
+          "en": "Luxor",
+          "ar": "الأقصر"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q12",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "medium",
+      "question": {
+        "en": "What is the longest river in Africa?",
+        "ar": "ما أطول نهر في أفريقيا؟"
+      },
+      "options": [
+        {
+          "en": "The Nile",
+          "ar": "النيل"
+        },
+        {
+          "en": "The Congo",
+          "ar": "الكونغو"
+        },
+        {
+          "en": "The Niger",
+          "ar": "النيجر"
+        },
+        {
+          "en": "The Zambezi",
+          "ar": "الزامبيزي"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q13",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "medium",
+      "question": {
+        "en": "Why do people float so easily in the Dead Sea?",
+        "ar": "لماذا يطفو الناس بسهولة في البحر الميت؟"
+      },
+      "options": [
+        {
+          "en": "Its water is very salty",
+          "ar": "لأن ماءه شديد الملوحة"
+        },
+        {
+          "en": "It is very shallow",
+          "ar": "لأنه ضحل جدًا"
+        },
+        {
+          "en": "Its water is warm",
+          "ar": "لأن ماءه دافئ"
+        },
+        {
+          "en": "Its waves are strong",
+          "ar": "لأن أمواجه قوية"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q14",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "medium",
+      "question": {
+        "en": "Which is the largest country in the world by area?",
+        "ar": "ما أكبر دولة في العالم من حيث المساحة؟"
+      },
+      "options": [
+        {
+          "en": "Russia",
+          "ar": "روسيا"
+        },
+        {
+          "en": "Canada",
+          "ar": "كندا"
+        },
+        {
+          "en": "China",
+          "ar": "الصين"
+        },
+        {
+          "en": "Brazil",
+          "ar": "البرازيل"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q15",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "hard",
+      "question": {
+        "en": "Which is the smallest planet in our solar system?",
+        "ar": "ما أصغر كوكب في مجموعتنا الشمسية؟"
+      },
+      "options": [
+        {
+          "en": "Mercury",
+          "ar": "عطارد"
+        },
+        {
+          "en": "Mars",
+          "ar": "المريخ"
+        },
+        {
+          "en": "Venus",
+          "ar": "الزهرة"
+        },
+        {
+          "en": "Earth",
+          "ar": "الأرض"
+        }
+      ],
+      "source": "NASA solar system facts",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q16",
+      "status": "ready",
+      "bucket": "family_world",
+      "difficulty": "hard",
+      "question": {
+        "en": "What is the capital of Australia?",
+        "ar": "ما عاصمة أستراليا؟"
+      },
+      "options": [
+        {
+          "en": "Canberra",
+          "ar": "كانبيرا"
+        },
+        {
+          "en": "Sydney",
+          "ar": "سيدني"
+        },
+        {
+          "en": "Melbourne",
+          "ar": "ملبورن"
+        },
+        {
+          "en": "Perth",
+          "ar": "بيرث"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q17",
+      "status": "ready",
+      "bucket": "family_science",
+      "difficulty": "easy",
+      "question": {
+        "en": "Which sweet food do bees make?",
+        "ar": "ما الطعام الحلو الذي يصنعه النحل؟"
+      },
+      "options": [
+        {
+          "en": "Honey",
+          "ar": "العسل"
+        },
+        {
+          "en": "Jam",
+          "ar": "المربّى"
+        },
+        {
+          "en": "Sugar",
+          "ar": "السكر"
+        },
+        {
+          "en": "Chocolate",
+          "ar": "الشوكولاتة"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q18",
+      "status": "ready",
+      "bucket": "family_science",
+      "difficulty": "easy",
+      "question": {
+        "en": "Which organ pumps blood around the body?",
+        "ar": "أي عضو يضخّ الدم في الجسم؟"
+      },
+      "options": [
+        {
+          "en": "The heart",
+          "ar": "القلب"
+        },
+        {
+          "en": "The lungs",
+          "ar": "الرئتان"
+        },
+        {
+          "en": "The liver",
+          "ar": "الكبد"
+        },
+        {
+          "en": "The stomach",
+          "ar": "المعدة"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q19",
+      "status": "ready",
+      "bucket": "family_science",
+      "difficulty": "easy",
+      "question": {
+        "en": "At what temperature does water boil at sea level?",
+        "ar": "عند أي درجة حرارة يغلي الماء عند مستوى سطح البحر؟"
+      },
+      "options": [
+        {
+          "en": "100 °C",
+          "ar": "100 درجة مئوية"
+        },
+        {
+          "en": "50 °C",
+          "ar": "50 درجة مئوية"
+        },
+        {
+          "en": "80 °C",
+          "ar": "80 درجة مئوية"
+        },
+        {
+          "en": "200 °C",
+          "ar": "200 درجة مئوية"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q20",
+      "status": "ready",
+      "bucket": "family_science",
+      "difficulty": "medium",
+      "question": {
+        "en": "Which gas do plants take in to make their food?",
+        "ar": "أي غاز تمتصّه النباتات لتصنع غذاءها؟"
+      },
+      "options": [
+        {
+          "en": "Carbon dioxide",
+          "ar": "ثاني أكسيد الكربون"
+        },
+        {
+          "en": "Oxygen",
+          "ar": "الأكسجين"
+        },
+        {
+          "en": "Nitrogen",
+          "ar": "النيتروجين"
+        },
+        {
+          "en": "Helium",
+          "ar": "الهيليوم"
+        }
+      ],
+      "source": "photosynthesis, common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q21",
+      "status": "ready",
+      "bucket": "family_science",
+      "difficulty": "medium",
+      "question": {
+        "en": "What is the closest star to Earth?",
+        "ar": "ما أقرب نجم إلى الأرض؟"
+      },
+      "options": [
+        {
+          "en": "The Sun",
+          "ar": "الشمس"
+        },
+        {
+          "en": "Sirius",
+          "ar": "الشِّعرى اليمانية"
+        },
+        {
+          "en": "The Moon",
+          "ar": "القمر"
+        },
+        {
+          "en": "Polaris",
+          "ar": "النجم القطبي"
+        }
+      ],
+      "source": "NASA: the Sun is the star at the centre of our solar system",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q22",
+      "status": "ready",
+      "bucket": "family_science",
+      "difficulty": "hard",
+      "question": {
+        "en": "How many bones are in an adult human body?",
+        "ar": "كم عظمة في جسم الإنسان البالغ؟"
+      },
+      "options": [
+        {
+          "en": "206",
+          "ar": "206"
+        },
+        {
+          "en": "106",
+          "ar": "106"
+        },
+        {
+          "en": "306",
+          "ar": "306"
+        },
+        {
+          "en": "186",
+          "ar": "186"
+        }
+      ],
+      "source": "common anatomy reference (206 bones in an adult)",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q23",
+      "status": "ready",
+      "bucket": "family_science",
+      "difficulty": "hard",
+      "question": {
+        "en": "About how long does sunlight take to reach Earth?",
+        "ar": "كم يستغرق ضوء الشمس تقريبًا ليصل إلى الأرض؟"
+      },
+      "options": [
+        {
+          "en": "About 8 minutes",
+          "ar": "نحو 8 دقائق"
+        },
+        {
+          "en": "About 8 seconds",
+          "ar": "نحو 8 ثوانٍ"
+        },
+        {
+          "en": "About 1 hour",
+          "ar": "نحو ساعة"
+        },
+        {
+          "en": "About 1 day",
+          "ar": "نحو يوم"
+        }
+      ],
+      "source": "NASA: about 8 minutes 20 seconds",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q24",
+      "status": "ready",
+      "bucket": "family_culture",
+      "difficulty": "easy",
+      "question": {
+        "en": "How many letters are in the Arabic alphabet?",
+        "ar": "كم حرفًا في الأبجدية العربية؟"
+      },
+      "options": [
+        {
+          "en": "28",
+          "ar": "28"
+        },
+        {
+          "en": "26",
+          "ar": "26"
+        },
+        {
+          "en": "24",
+          "ar": "24"
+        },
+        {
+          "en": "30",
+          "ar": "30"
+        }
+      ],
+      "source": "common knowledge (28 letters, hamza not counted)",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q25",
+      "status": "ready",
+      "bucket": "family_culture",
+      "difficulty": "easy",
+      "question": {
+        "en": "What is the Levant's famous group folk dance called?",
+        "ar": "ما اسم الرقصة الشعبية الجماعية المشهورة في بلاد الشام؟"
+      },
+      "options": [
+        {
+          "en": "Dabke",
+          "ar": "الدبكة"
+        },
+        {
+          "en": "Tango",
+          "ar": "التانغو"
+        },
+        {
+          "en": "Samba",
+          "ar": "السامبا"
+        },
+        {
+          "en": "Flamenco",
+          "ar": "الفلامنكو"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q26",
+      "status": "ready",
+      "bucket": "family_culture",
+      "difficulty": "medium",
+      "question": {
+        "en": "Knafeh Nabulsieh is named after which city?",
+        "ar": "الكنافة النابلسية منسوبة إلى أي مدينة؟"
+      },
+      "options": [
+        {
+          "en": "Nablus",
+          "ar": "نابلس"
+        },
+        {
+          "en": "Hebron",
+          "ar": "الخليل"
+        },
+        {
+          "en": "Jaffa",
+          "ar": "يافا"
+        },
+        {
+          "en": "Jericho",
+          "ar": "أريحا"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q27",
+      "status": "ready",
+      "bucket": "family_culture",
+      "difficulty": "medium",
+      "question": {
+        "en": "Complete the Arabic proverb: \"Patience is the key to …\"?",
+        "ar": "أكمل المثل: «الصبر مفتاح …»؟"
+      },
+      "options": [
+        {
+          "en": "relief",
+          "ar": "الفرج"
+        },
+        {
+          "en": "wealth",
+          "ar": "الغنى"
+        },
+        {
+          "en": "knowledge",
+          "ar": "العلم"
+        },
+        {
+          "en": "success",
+          "ar": "النجاح"
+        }
+      ],
+      "source": "common Arabic proverb «الصبر مفتاح الفرج»",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q28",
+      "status": "ready",
+      "bucket": "family_culture",
+      "difficulty": "medium",
+      "question": {
+        "en": "In One Thousand and One Nights, who tells the king the stories?",
+        "ar": "في «ألف ليلة وليلة»، من تروي الحكايات للملك؟"
+      },
+      "options": [
+        {
+          "en": "Scheherazade",
+          "ar": "شهرزاد"
+        },
+        {
+          "en": "Dunyazad",
+          "ar": "دنيازاد"
+        },
+        {
+          "en": "Qamar al-Zaman",
+          "ar": "قمر الزمان"
+        },
+        {
+          "en": "Sinbad",
+          "ar": "السندباد"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q29",
+      "status": "ready",
+      "bucket": "family_culture",
+      "difficulty": "hard",
+      "question": {
+        "en": "In the book Kalila wa Dimna, what animals are Kalila and Dimna?",
+        "ar": "في كتاب «كليلة ودمنة»، ما نوع كليلة ودمنة؟"
+      },
+      "options": [
+        {
+          "en": "Jackals",
+          "ar": "ابنا آوى"
+        },
+        {
+          "en": "Lions",
+          "ar": "أسدان"
+        },
+        {
+          "en": "Crows",
+          "ar": "غرابان"
+        },
+        {
+          "en": "Monkeys",
+          "ar": "قردان"
+        }
+      ],
+      "source": "Ibn al-Muqaffa', Kalila wa Dimna: two jackals",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    },
+    {
+      "id": "q30",
+      "status": "ready",
+      "bucket": "family_culture",
+      "difficulty": "hard",
+      "question": {
+        "en": "Which poet is known as the \"Prince of Poets\"?",
+        "ar": "من الشاعر الملقّب بـ«أمير الشعراء»؟"
+      },
+      "options": [
+        {
+          "en": "Ahmed Shawqi",
+          "ar": "أحمد شوقي"
+        },
+        {
+          "en": "Al-Mutanabbi",
+          "ar": "المتنبي"
+        },
+        {
+          "en": "Nizar Qabbani",
+          "ar": "نزار قباني"
+        },
+        {
+          "en": "Hafez Ibrahim",
+          "ar": "حافظ إبراهيم"
+        }
+      ],
+      "source": "Ahmed Shawqi, named Amir al-Shu'ara in 1927",
+      "reviewed_by": [],
+      "notes": "Family test set drafted 2026-09-25; needs a native-speaker and fact check before wider use."
+    }
+  ]
+}

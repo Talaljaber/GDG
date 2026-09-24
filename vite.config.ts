@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   // Only these names reach the browser bundle. SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY are listed
   // by full name so SUPABASE_SECRET_KEY and SUPABASE_JWKS_URL are never exposed (ADR-125).
-  envPrefix: ['VITE_', 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY'],
+  // TRIVIA_POOL=family picks the family test set (ADR-133).
+  envPrefix: ['VITE_', 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'TRIVIA_POOL'],
   build: {
     outDir: 'dist',
     rollupOptions: {

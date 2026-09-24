@@ -2,7 +2,7 @@
 
 Purpose: the complete spec for Trivia: rules, the per-player draw from the pool, timings, scoring with worked examples, rejection bounds, UI states, theming, accessibility, edge cases and test cases. The question file format and the writing guide are in `docs/content/trivia-format.md`. Shared rules are in `SCORING.md`; if they disagree, `SCORING.md` wins.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 Game id: `trivia` · One-line pitch (COPY `game.trivia.pitch`): "5 quick questions. Faster right answers score more."
 
@@ -17,12 +17,14 @@ Game id: `trivia` · One-line pitch (COPY `game.trivia.pitch`): "5 quick questio
 
 ## 2. The draw (on the phone, from the per-round seed)
 
-1. Take only questions with `status: "ready"` from `docs/content/trivia-questions.json`.
+1. Take only questions with `status: "ready"` from `docs/content/trivia-questions.json` (or, in a `TRIVIA_POOL=family` build, from the family test set, step 7).
 2. Draw **2** from bucket `google_dev`, **2** from `ai_basics`, **1** from `gdg_community`, uniformly without replacement.
 3. If a bucket has too few ready questions, fill the gap from the other buckets (any), still without replacement.
 4. Order the five by difficulty (`easy` → `medium` → `hard`), random within the same difficulty.
 5. Shuffle each question's 4 options (Fisher–Yates with the seed). In the file the correct answer is always option 0; after shuffling the phone keeps the correct index in memory only.
 6. If fewer than 5 ready questions exist in total, Trivia is unavailable in the lineup picker (shown greyed, "Needs 5+ ready questions").
+
+7. **Family test set** (ADR-133, `trivia-format.md` §7): when every ready question has a `family_*` bucket, steps 2–3 are replaced by a draw by difficulty: **2** `easy`, **2** `medium`, **1** `hard`, each pick preferring a bucket not yet picked (so the five cover all four family buckets), still without replacement. Steps 3–6 apply unchanged if a difficulty runs short. Scoring, timings and bounds are identical.
 
 The seed makes a reload show the same five questions in the same order with the same option order.
 
@@ -138,3 +140,5 @@ Big screen during Trivia: live round board only (questions aren't shown on the b
 | TRV-T7 | Correct answer with `answer_ms` 200 | `GD008 trivia.too_fast` |
 | TRV-T8 | All 5 correct at 250 ms | 988, accepted |
 | TRV-T9 | Same seed after reload | same questions, same option order |
+| TRV-T10 | 10 000 draws from the family set | 2 easy, 2 medium, 1 hard in that order; 5 unique ids; all 4 family buckets every time |
+| TRV-T11 | 2 000 draws from the family set | every one of the 30 questions appears |

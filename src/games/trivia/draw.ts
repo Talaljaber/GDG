@@ -5,7 +5,15 @@
  */
 import { Rng } from '../../lib/rng';
 
-export type TriviaBucket = 'google_dev' | 'ai_basics' | 'gdg_community';
+export type TriviaBucket =
+  | 'google_dev'
+  | 'ai_basics'
+  | 'gdg_community'
+  // the family test set (trivia-format.md §7, ADR-133)
+  | 'family_everyday'
+  | 'family_world'
+  | 'family_science'
+  | 'family_culture';
 export type TriviaDifficulty = 'easy' | 'medium' | 'hard';
 export type TriviaStatus = 'draft' | 'ready';
 
@@ -59,6 +67,21 @@ const BUCKET_TARGETS: ReadonlyArray<readonly [TriviaBucket, number]> = [
 
 const DIFFICULTY_ORDER: readonly TriviaDifficulty[] = ['easy', 'medium', 'hard'];
 
+/**
+ * Family test set draw targets (docs/games/trivia.md §2.7, ADR-133): by
+ * difficulty instead of bucket, so every player gets a mix, 2 easy, 2 medium, 1 hard.
+ */
+const FAMILY_DIFFICULTY_TARGETS: ReadonlyArray<readonly [TriviaDifficulty, number]> = [
+  ['easy', 2],
+  ['medium', 2],
+  ['hard', 1],
+];
+
+/** True for a pool whose ready questions come from the family test set. */
+export function isFamilyPool(ready: readonly TriviaPoolQuestion[]): boolean {
+  return ready.length > 0 && ready.every((q) => q.bucket.startsWith('family_'));
+}
+
 /** Minimum ready questions for Trivia to be offered in the lineup picker (§2.6). */
 export const TRIVIA_MIN_READY = 5;
 
@@ -100,13 +123,29 @@ export function drawTriviaQuestions(
   const picked: TriviaPoolQuestion[] = [];
   const pickedIds = new Set<string>();
 
-  // Step 1-2: 2 from google_dev, 2 from ai_basics, 1 from gdg_community, without replacement.
-  for (const [bucket, target] of BUCKET_TARGETS) {
-    const available = (byBucket.get(bucket) ?? []).filter((q) => !pickedIds.has(q.id));
-    const take = Math.min(target, available.length);
-    for (const q of rng.sampleWithoutReplacement(available, take)) {
-      picked.push(q);
-      pickedIds.add(q.id);
+  if (isFamilyPool(ready)) {
+    // Family set: 2 easy, 2 medium, 1 hard, preferring a bucket not picked yet.
+    const usedBuckets = new Set<TriviaBucket>();
+    for (const [difficulty, target] of FAMILY_DIFFICULTY_TARGETS) {
+      const candidates = rng.shuffle(ready.filter((q) => q.difficulty === difficulty));
+      for (let n = 0; n < target; n++) {
+        const open = candidates.filter((q) => !pickedIds.has(q.id));
+        const q = open.find((c) => !usedBuckets.has(c.bucket)) ?? open[0];
+        if (!q) break;
+        picked.push(q);
+        pickedIds.add(q.id);
+        usedBuckets.add(q.bucket);
+      }
+    }
+  } else {
+    // Step 1-2: 2 from google_dev, 2 from ai_basics, 1 from gdg_community, without replacement.
+    for (const [bucket, target] of BUCKET_TARGETS) {
+      const available = (byBucket.get(bucket) ?? []).filter((q) => !pickedIds.has(q.id));
+      const take = Math.min(target, available.length);
+      for (const q of rng.sampleWithoutReplacement(available, take)) {
+        picked.push(q);
+        pickedIds.add(q.id);
+      }
     }
   }
 

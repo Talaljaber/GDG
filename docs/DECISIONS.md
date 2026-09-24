@@ -2,7 +2,7 @@
 
 Purpose: the single record of what is decided for the GDG Booth Game and why, so nobody relitigates settled choices. **A decision not in this file is not decided.** Accepted entries are locked (from the team brief or confirmed by the team in chat) and change only with the team's explicit OK; Proposed entries are Fable's resolutions of implementation gaps and are binding for implementation unless the team overrides them. New decisions get a new entry before code depends on them. This file is imported into every Claude Code session, so each entry stays short; detail lives in the linked doc.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 Format: **Status** · Source · then Context / Decision / Consequences. "Changed in chat 2026-09-24" = the team (Talal) revised the original brief in the planning conversation; the revision is what's Accepted.
 
@@ -277,3 +277,7 @@ Decision: keep the palette, fonts, chevrons and logo rules (ADR-033) and the lig
 ### ADR-132 Stop the Clock: score each attempt, then average
 **Proposed** · requested in chat 2026-09-25 (two good attempts and one bad one scored 0)
 Context: `1000 × (1 − E/6000)` over the summed error lets one attempt that is 6 s off (or a missed start, counted as 10 s) zero the whole round. Decision: `s_i = max(0, 1 − e_i/2000)`, `score = round(1000 × (s_1 + s_2 + s_3)/3)`, with `e_i` as before (capped at 10 000; missed start or auto-stop = 10 000). When every attempt is within 2 s the result equals the old formula (worked examples A–C unchanged); one bad attempt now costs a third instead of everything (D: 617, E: 667). The server bound `score ≤ 990` still holds (it needs a summed error under 60 ms), so no migration. Consequences: `SCORING.md` §3.2, `games/stop-the-clock.md` §4, `src/games/stop-the-clock/scoring.ts`.
+
+### ADR-133 Family trivia test set, chosen at build time
+**Accepted** · requested in chat 2026-09-25 (Talal: test with family in Palestine, all ages, mixed difficulty; the expo keeps its tech pool)
+Context: the event pool (ADR-116) is tech and AI themed; testing with family needs general-knowledge questions. Decision: a second pool, `docs/content/trivia-questions-family.json` (30 questions, ids `q01`–`q30`, buckets `family_everyday`, `family_world`, `family_science`, `family_culture`; `trivia-format.md` §7), used only when the build sets `TRIVIA_POOL=family` (`envPrefix` in `vite.config.ts`, read once in `src/games/trivia/pool.ts`). Its draw is by difficulty (2 easy, 2 medium, 1 hard, preferring unused buckets; `games/trivia.md` §2 step 7). Consequences: production and the event always build the event pool (unset variable); a family build goes only to a local dev server or a Netlify branch deploy / deploy preview with the variable set for that context, never production (ADR-126 credits). The variable is inlined at build time, so each bundle contains only its own pool (checked with both builds). Scoring and server bounds are unchanged (same ids, same raw shape). `npm run check:trivia` checks both files; `--strict` applies to the event pool only.

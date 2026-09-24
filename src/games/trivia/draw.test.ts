@@ -79,8 +79,8 @@ describe('drawTriviaQuestions: TRV-T3 (10,000 draws from a full pool)', () => {
       const ids = drawn.map((q) => q.id);
       expect(new Set(ids).size).toBe(ids.length);
 
-      const counts: Record<TriviaBucket, number> = { google_dev: 0, ai_basics: 0, gdg_community: 0 };
-      for (const q of drawn) counts[q.bucket]++;
+      const counts: Partial<Record<TriviaBucket, number>> = { google_dev: 0, ai_basics: 0, gdg_community: 0 };
+      for (const q of drawn) counts[q.bucket] = (counts[q.bucket] ?? 0) + 1;
       expect(counts).toEqual({ google_dev: 2, ai_basics: 2, gdg_community: 1 });
     }
   });
@@ -162,5 +162,43 @@ describe('drawTriviaQuestions: pool fixture sanity', () => {
     // this just checks the draw degrades gracefully rather than throwing.
     expect(() => drawTriviaQuestions(pool, 'sanity-seed')).not.toThrow();
     expect(isTriviaAvailable(pool)).toBe(readyQuestions(pool).length >= 5);
+  });
+});
+
+describe('drawTriviaQuestions: family test set (ADR-133, trivia.md §2.7)', () => {
+  async function familyPool(): Promise<TriviaPoolQuestion[]> {
+    const poolFile = (await import('../../../docs/content/trivia-questions-family.json')).default;
+    return poolFile.questions as TriviaPoolQuestion[];
+  }
+
+  it('TRV-T10: 10,000 draws give 2 easy, 2 medium, 1 hard, unique ids, easy -> hard order', async () => {
+    const pool = await familyPool();
+    expect(isTriviaAvailable(pool)).toBe(true);
+    for (let i = 0; i < 10_000; i++) {
+      const drawn = drawTriviaQuestions(pool, `family-${i}`);
+      expect(drawn).toHaveLength(TRIVIA_QUESTIONS_PER_PLAYER);
+      expect(new Set(drawn.map((q) => q.id)).size).toBe(5);
+      expect(drawn.map((q) => q.difficulty)).toEqual(['easy', 'easy', 'medium', 'medium', 'hard']);
+      // 4 buckets, 5 questions: the bucket preference always reaches all 4.
+      expect(new Set(drawn.map((q) => q.bucket)).size).toBe(4);
+    }
+  });
+
+  it('TRV-T11: every family question is drawn at some point', async () => {
+    const pool = await familyPool();
+    const seen = new Set<string>();
+    for (let i = 0; i < 2_000; i++) {
+      for (const q of drawTriviaQuestions(pool, `cover-${i}`)) seen.add(q.id);
+    }
+    expect(seen.size).toBe(pool.length);
+  });
+
+  it('a mixed pool (event + family buckets) keeps the event draw', () => {
+    const pool = [...fullPool(), makeQuestion('f1', 'family_world', 'easy')];
+    const drawn = drawTriviaQuestions(pool, 'mixed');
+    const buckets = drawn.map((q) => q.bucket);
+    expect(buckets.filter((b) => b === 'google_dev')).toHaveLength(2);
+    expect(buckets.filter((b) => b === 'ai_basics')).toHaveLength(2);
+    expect(buckets.filter((b) => b === 'gdg_community')).toHaveLength(1);
   });
 });

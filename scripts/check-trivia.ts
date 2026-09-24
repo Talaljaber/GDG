@@ -1,6 +1,8 @@
 #!/usr/bin/env -S npx tsx
 /**
- * Validates docs/content/trivia-questions.json against the JSON Schema
+ * Validates docs/content/trivia-questions.json (the event pool) and
+ * docs/content/trivia-questions-family.json (the family test set, ADR-133)
+ * against the JSON Schema
  * documented in docs/content/trivia-format.md §2 (extracted from that doc's
  * first ```json block, so the schema has a single source of truth), plus
  * the extra checks listed right after it that JSON Schema can't express:
@@ -10,25 +12,45 @@
  *    same correct answer text (options[0].en).
  *
  * `--strict` (run before content freeze) additionally requires every
- * question to be `ready` with >= 2 names in `reviewed_by`.
+ * question of the EVENT pool to be `ready` with >= 2 names in `reviewed_by`
+ * (the family set never ships to the event).
  *
  * Run with `npm run check:trivia` (or `npx tsx scripts/check-trivia.ts
  * [--strict]`).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import Ajv2020 from 'ajv/dist/2020.js';
+import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 
 const ROOT = join(import.meta.dirname, '..');
 const FORMAT_DOC_PATH = join(ROOT, 'docs/content/trivia-format.md');
-const DATA_PATH = join(ROOT, 'docs/content/trivia-questions.json');
 
-/** Slot -> expected bucket, per trivia-format.md §1. */
-const SLOT_BUCKETS: Array<{ from: number; to: number; bucket: string }> = [
-  { from: 1, to: 12, bucket: 'google_dev' },
-  { from: 13, to: 24, bucket: 'ai_basics' },
-  { from: 25, to: 30, bucket: 'gdg_community' },
+type Slots = Array<{ from: number; to: number; bucket: string }>;
+
+/** Each pool file with its slot -> expected bucket map (trivia-format.md §1 and §7). */
+const POOLS: Array<{ label: string; path: string; slots: Slots; strictApplies: boolean }> = [
+  {
+    label: 'event',
+    path: join(ROOT, 'docs/content/trivia-questions.json'),
+    slots: [
+      { from: 1, to: 12, bucket: 'google_dev' },
+      { from: 13, to: 24, bucket: 'ai_basics' },
+      { from: 25, to: 30, bucket: 'gdg_community' },
+    ],
+    strictApplies: true,
+  },
+  {
+    label: 'family',
+    path: join(ROOT, 'docs/content/trivia-questions-family.json'),
+    slots: [
+      { from: 1, to: 8, bucket: 'family_everyday' },
+      { from: 9, to: 16, bucket: 'family_world' },
+      { from: 17, to: 23, bucket: 'family_science' },
+      { from: 24, to: 30, bucket: 'family_culture' },
+    ],
+    strictApplies: false,
+  },
 ];
 
 interface QuestionText {
@@ -74,8 +96,8 @@ function extractJsonSchema(markdownPath: string): unknown {
   }
 }
 
-function bucketForSlot(index1: number): string | null {
-  for (const slot of SLOT_BUCKETS) {
+function bucketForSlot(slots: Slots, index1: number): string | null {
+  for (const slot of slots) {
     if (index1 >= slot.from && index1 <= slot.to) return slot.bucket;
   }
   return null;
@@ -83,7 +105,6 @@ function bucketForSlot(index1: number): string | null {
 
 function main() {
   const strict = process.argv.includes('--strict');
-  const errors: string[] = [];
 
   // 1. Load and compile the schema from the format doc (single source of truth).
   let schema: unknown;
@@ -98,21 +119,47 @@ function main() {
   addFormats(ajv);
   const validate = ajv.compile(schema as Record<string, unknown>);
 
+  let failed = false;
+  for (const pool of POOLS) {
+    const errors: string[] = [];
+    const applyStrict = strict && pool.strictApplies;
+    const counts = checkPool(pool.path, pool.slots, applyStrict, validate, errors);
+    const mode = applyStrict ? ' (--strict)' : '';
+    if (errors.length > 0) {
+      failed = true;
+      console.error(`check-trivia FAILED${mode} for the ${pool.label} pool (${errors.length} issue(s)):\n`);
+      for (const error of errors) {
+        console.error(`- ${error}`);
+      }
+    } else {
+      console.log(`check-trivia passed${mode}: ${pool.label} pool, ${counts.total} questions, ${counts.ready} ready.`);
+    }
+  }
+  if (failed) process.exit(1);
+}
+
+function checkPool(
+  dataPath: string,
+  slots: Slots,
+  strict: boolean,
+  validate: ValidateFunction,
+  errors: string[],
+): { total: number; ready: number } {
   // 2. Load the data file.
   let raw: string;
   try {
-    raw = readFileSync(DATA_PATH, 'utf-8');
+    raw = readFileSync(dataPath, 'utf-8');
   } catch {
-    console.error(`check-trivia FAILED: could not read ${DATA_PATH}`);
-    process.exit(1);
+    errors.push(`could not read ${dataPath}`);
+    return { total: 0, ready: 0 };
   }
 
   let data: TriviaFile;
   try {
     data = JSON.parse(raw) as TriviaFile;
   } catch (err) {
-    console.error(`check-trivia FAILED: ${DATA_PATH} is not valid JSON: ${(err as Error).message}`);
-    process.exit(1);
+    errors.push(`${dataPath} is not valid JSON: ${(err as Error).message}`);
+    return { total: 0, ready: 0 };
   }
 
   // 3. JSON Schema validation.
@@ -134,7 +181,7 @@ function main() {
     if (q.id !== expectedId) {
       errors.push(`slot ${i + 1}: expected id "${expectedId}", found "${q.id ?? '(missing)'}"`);
     }
-    const expectedBucket = bucketForSlot(i + 1);
+    const expectedBucket = bucketForSlot(slots, i + 1);
     if (expectedBucket && q.bucket !== expectedBucket) {
       errors.push(
         `${q.id ?? `slot ${i + 1}`}: expected bucket "${expectedBucket}" for this slot, found "${q.bucket}"`,
@@ -189,19 +236,7 @@ function main() {
     }
   }
 
-  if (errors.length > 0) {
-    console.error(
-      `check-trivia FAILED${strict ? ' (--strict)' : ''} (${errors.length} issue(s)):\n`,
-    );
-    for (const error of errors) {
-      console.error(`- ${error}`);
-    }
-    process.exit(1);
-  }
-
-  console.log(
-    `check-trivia passed${strict ? ' (--strict)' : ''}: ${questions.length} questions, ${readyQuestions.length} ready.`,
-  );
+  return { total: questions.length, ready: readyQuestions.length };
 }
 
 main();

@@ -2,7 +2,7 @@
 
 Purpose: how the 30 trivia questions are stored, tagged, translated and reviewed. It gives the JSON Schema that `trivia-questions.json` must pass, the bucket and difficulty tags, the answer-shuffling rule, a writing guide in the chapter's voice, and the review checklist the team uses before content freeze. Gameplay rules for Trivia are in `docs/games/trivia.md`.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ---
 
@@ -66,7 +66,8 @@ Last updated: 2026-09-24
       "properties": {
         "id":          { "type": "string", "pattern": "^q(0[1-9]|[12][0-9]|30)$" },
         "status":      { "enum": ["draft", "ready"] },
-        "bucket":      { "enum": ["google_dev", "ai_basics", "gdg_community"] },
+        "bucket":      { "enum": ["google_dev", "ai_basics", "gdg_community",
+                                  "family_everyday", "family_world", "family_science", "family_culture"] },
         "difficulty":  { "enum": ["easy", "medium", "hard"] },
         "question":    { "$ref": "#/$defs/text" },
         "options":     { "type": "array", "minItems": 4, "maxItems": 4, "items": { "$ref": "#/$defs/text" } },
@@ -130,3 +131,20 @@ Also checked by the content script (`npm run check:trivia`, a Phase 3 task), whi
 ## 6. Freeze
 
 Content freezes with the last production deploy before the event (ADR-032). After freeze, fixing a wrong question means a new deploy, which is not allowed on event days, so review early. Owner of the 30 questions: OQ-03.
+
+## 7. Family test set (ADR-133)
+
+A second pool, `docs/content/trivia-questions-family.json`, holds 30 general-knowledge questions for all ages, for testing with family and friends outside the expo. It never ships to the event: the build uses it only when `TRIVIA_POOL=family` is set (a local `.env.local`, or a branch deploy / deploy preview context on Netlify, never production).
+
+- Same schema, ids `q01`–`q30` (so the server's Trivia bounds are unchanged), same writing guide (§4) and field rules (§3).
+- Slots and buckets:
+
+| Slots | Bucket | Count | Difficulty mix |
+|---|---|---|---|
+| q01–q08 | `family_everyday`: everyday life & food | 8 | 4 easy · 2 medium · 2 hard |
+| q09–q16 | `family_world`: world & nature | 8 | 3 easy · 3 medium · 2 hard |
+| q17–q23 | `family_science`: science & fun facts | 7 | 3 easy · 2 medium · 2 hard |
+| q24–q30 | `family_culture`: Arabic language & culture | 7 | 2 easy · 3 medium · 2 hard |
+
+- The family draw is by difficulty, not bucket: each player gets 2 easy, 2 medium and 1 hard, from different buckets where possible (`docs/games/trivia.md` §2).
+- `npm run check:trivia` validates both files; `--strict` applies to the event pool only.
