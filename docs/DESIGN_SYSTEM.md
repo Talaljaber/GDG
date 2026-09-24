@@ -185,6 +185,7 @@ A standalone effect layer, never applied to the logo.
 - **Don't mirror**: numbers, scores, timers, the session code, the QR, game geometry (Odd One Out grids, Simon pad positions, Perfect Circle canvas), the logo.
 - Player names are wrapped in `<bdi>` so an Arabic name in an English board (or the reverse) keeps its own direction and doesn't reorder the score next to it.
 - Mixed strings (e.g. «Google» inside Arabic) rely on the Unicode bidi algorithm; COPY strings that embed Latin terms are checked in the RTL pass (Phase 5).
+- A standalone signed number (a leading `+`, e.g. Odd One Out's penalty chip, Trivia's points badge) is wrapped in `<bdi dir="ltr">` so the sign never floats to the wrong side under `dir="rtl"`.
 
 ## 9. Accessibility checklist
 
@@ -193,7 +194,8 @@ A standalone effect layer, never applied to the logo.
 - [ ] Touch targets ≥ 48 px (44 px floor in Odd One Out 6 × 6).
 - [ ] Reduced motion honoured everywhere (§6.2).
 - [ ] Visible focus ring (`--focus`) for keyboard users on the host and dashboard.
-- [ ] `lang`/`dir` set; names in `<bdi>`.
+- [ ] `lang`/`dir` set; names in `<bdi>`; standalone signed numbers in `<bdi dir="ltr">`.
+- [ ] Modal dialogs (`ConfirmDialog`) trap Tab/Shift+Tab, default focus to the safe/cancel action, close on Escape, and return focus to the opener on close.
 - [ ] Phone text scaling to 130 % works.
 - [ ] Screen-reader labels for game controls (listed in each game doc) and live regions only where specified (never during Stop the Clock's hidden timer).
 - [ ] Bright light: phones at max brightness under hall lighting pass the Odd One Out test (`TESTING.md` §6).

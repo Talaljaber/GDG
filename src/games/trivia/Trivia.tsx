@@ -324,7 +324,11 @@ export function Trivia({ seed, roundStartEpoch, roundEnded, snapshot, onProgress
             );
           })}
         </div>
-        {answer.correct ? <p className={styles.pointsBadge}>{t('game.trivia.correct_points', { p: points })}</p> : null}
+        {answer.correct ? (
+          <p className={styles.pointsBadge}>
+            <bdi dir="ltr">{t('game.trivia.correct_points', { p: points })}</bdi>
+          </p>
+        ) : null}
       </div>
     );
   }

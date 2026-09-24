@@ -346,7 +346,11 @@ export function OddOneOut({
                 mirrored={theme.mirrored}
                 rotationDeg={theme.rotationDeg}
               />
-              {isFlashing ? <span className={styles.penalty}>{t('game.odd_one_out.penalty')}</span> : null}
+              {isFlashing ? (
+                <span className={styles.penalty}>
+                  <bdi dir="ltr">{t('game.odd_one_out.penalty')}</bdi>
+                </span>
+              ) : null}
             </button>
           );
         })}
