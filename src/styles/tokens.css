@@ -32,6 +32,28 @@
   --on-highlight: var(--gdg-ink);
   --focus: var(--gdg-blue-strong);
 
+  /* ---- v2 "quiet scoreboard" (DESIGN_SYSTEM §0, ADR-131) ---- */
+  --surface-2: color-mix(in srgb, var(--gdg-ink) 4%, var(--gdg-paper));
+  --line: var(--gdg-line);
+  --line-strong: color-mix(in srgb, var(--gdg-ink) 30%, transparent);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+  --tracking-eyebrow: 0.08em;
+  --type-eyebrow-size: 12px;
+  --type-eyebrow-weight: 500;
+  --type-small-size: 15px;
+  --button-height: 52px;
+  --code-cell-height: 56px;
+  --r-panel: 12px;
+  --r-control: 10px;
+  --r-tag: 8px;
+  --proj-eyebrow: 2.4vh;
+  --proj-header-height: 9vh;
+  --proj-operator-height: 10vh;
+  --proj-rank-rule: 0.6vh;
+  --dash-max-width: 1200px;
+
   /* Simon only exception (§2.3) */
   --simon-blue: #4285f4;
   --simon-red: #ea4335;
@@ -137,6 +159,9 @@
   --highlight: var(--gdg-amber);
   --on-highlight: var(--gdg-ink);
   --focus: var(--gdg-amber);
+  --surface-2: color-mix(in srgb, white 4%, var(--gdg-ink));
+  --line: color-mix(in srgb, var(--gdg-paper) 15%, transparent);
+  --line-strong: color-mix(in srgb, var(--gdg-paper) 30%, transparent);
 }
 
 /* ---- §6.2 Reduced motion: zero every duration ----
