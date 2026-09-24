@@ -6,3 +6,23 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Security headers (docs/SECURITY.md section 7, T12/T17). The CSP must allow:
+#   - scripts and styles from the site itself (Vite emits no inline scripts or <style> tags;
+#     React's style props go through the CSSOM, which CSP does not block);
+#   - Google Fonts: the stylesheets on fonts.googleapis.com and the font files on fonts.gstatic.com;
+#   - Supabase: REST/Auth over https and Realtime over wss on the project host. connect-src uses
+#     *.supabase.co so the file needs no project ref; to pin it to our one project (ADR-127),
+#     replace both entries with https://<ref>.supabase.co wss://<ref>.supabase.co.
+#     A missing wss:// entry silently breaks Realtime (the lobby and round screens stop updating).
+# A local `vite preview` or `npm run dev` does not apply these headers; test on a deploy preview.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Strict-Transport-Security = "max-age=31536000"
