@@ -190,3 +190,46 @@ export function hostPresenceChannel(sessionId: string): ChannelSpec {
     },
   };
 }
+
+/**
+ * Host, while a session runs: `pending:<pending_sid>`: the pending session's
+ * row (its code and lineup, edited by the next-games picker) and its player
+ * rows (late joiners via the corner code, ADR-015/ADR-108). Its own topic, so
+ * it never shares bindings with `session:<sid>` once New session makes it
+ * the lobby.
+ */
+export function hostPendingChannel(pendingSessionId: string): ChannelSpec {
+  return {
+    topic: `pending:${pendingSessionId}`,
+    bind(channel, emit) {
+      channel
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${pendingSessionId}` },
+          changeEmitter('sessions', emit),
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'players', filter: `session_id=eq.${pendingSessionId}` },
+          changeEmitter('players', emit),
+        );
+    },
+  };
+}
+
+/**
+ * Host day boards (H5): `day:<event_day_id>`: every score insert of the day
+ * (`DATA_MODEL.md` §8). Hidden names arrive on the session channel.
+ */
+export function hostDayChannel(eventDayId: string): ChannelSpec {
+  return {
+    topic: `day:${eventDayId}`,
+    bind(channel, emit) {
+      channel.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'scores', filter: `event_day_id=eq.${eventDayId}` },
+        changeEmitter('scores', emit),
+      );
+    },
+  };
+}

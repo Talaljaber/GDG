@@ -356,26 +356,6 @@ export async function fetchSessionBoard(sessionId: string, ownPlayerRowId?: stri
   }
 }
 
-export interface OwnRoundScore {
-  roundId: string;
-  game: GameId;
-  score: number;
-}
-
-/** The caller's own visible round scores in a session (results breakdown). */
-export async function fetchOwnRoundScores(sessionId: string, playerRowId: string): Promise<OwnRoundScore[]> {
-  const rows = await run(() =>
-    supabase
-      .from('v_round_board')
-      .select('round_id, game, score')
-      .eq('session_id', sessionId)
-      .eq('player_row_id', playerRowId),
-  );
-  return (rows ?? [])
-    .filter((r) => r.round_id && r.game && r.score !== null)
-    .map((r) => ({ roundId: r.round_id as string, game: r.game as GameId, score: r.score as number }));
-}
-
 /** Host: the joinable session (`pending`/`lobby`), if any. At most one exists (unique index). */
 export async function fetchJoinableSession(): Promise<SessionRow | null> {
   return run(() =>
@@ -397,4 +377,195 @@ export async function fetchSessionRoundScores(sessionId: string): Promise<RoundS
   return (rows ?? [])
     .filter((r) => r.player_row_id && r.game && r.score !== null)
     .map((r) => ({ playerRowId: r.player_row_id as string, game: r.game as GameId, score: r.score as number }));
+}
+
+// ---------------------------------------------------------------- Phase 2: rounds, day boards, hidden names
+
+export type EventDayRow = Tables['event_days']['Row'];
+
+export async function adminStartRound(roundId: string): Promise<void> {
+  await run(() => supabase.rpc('admin_start_round', { p_round: roundId }));
+}
+
+export async function adminShowDayBoard(sessionId: string): Promise<void> {
+  await run(() => supabase.rpc('admin_show_day_board', { p_session: sessionId }));
+}
+
+/** The event day a session belongs to (phones: is it still current? E25). Any signed-in user can read days. */
+export async function fetchEventDay(eventDayId: string): Promise<EventDayRow | null> {
+  return run(() => supabase.from('event_days').select('*').eq('id', eventDayId).maybeSingle());
+}
+
+/** Hidden name keys (tiny table; readable by any signed-in user). Phones poll it on the day board (AC2.9). */
+export async function fetchHiddenKeys(): Promise<Set<string>> {
+  const rows = await run(() => supabase.from('hidden_names').select('name_key'));
+  return new Set((rows ?? []).map((r) => r.name_key));
+}
+
+export interface DayBoardRow {
+  nameKey: string;
+  /** Name without the display suffix (SCORING §6 rule 5). */
+  name: string;
+  score: number;
+  achievedAt: string;
+}
+
+export interface DayBoardPage {
+  top: DayBoardRow[];
+  /** The caller's best (by name key) with its rank, when it is not in `top`. */
+  own: { row: DayBoardRow; rank: number } | null;
+  total: number;
+}
+
+function toDayRow(r: { name_key: string | null; name: string | null; score: number | null; achieved_at: string | null }): DayBoardRow {
+  return { nameKey: r.name_key ?? '', name: r.name ?? '', score: r.score ?? 0, achievedAt: r.achieved_at ?? '' };
+}
+
+/**
+ * Day board for one game: best per name key today (`v_day_board`), ordered
+ * `score desc, achieved_at asc` (SCORING §5). Top 10, plus the caller's own
+ * row (matched by name key) and its rank if lower.
+ */
+export async function fetchDayBoard(eventDayId: string, game: GameId, ownNameKey?: string | null): Promise<DayBoardPage> {
+  try {
+    const cols = 'name_key, name, score, achieved_at';
+    const topRes = await supabase
+      .from('v_day_board')
+      .select(cols, { count: 'exact' })
+      .eq('event_day_id', eventDayId)
+      .eq('game', game)
+      .order('score', { ascending: false })
+      .order('achieved_at', { ascending: true })
+      .limit(BOARD_TOP_N);
+    if (topRes.error) throw toApiError(topRes.error, topRes.status);
+    const top = (topRes.data ?? []).map(toDayRow);
+    let own: DayBoardPage['own'] = null;
+    if (ownNameKey && !top.some((r) => r.nameKey === ownNameKey)) {
+      const ownRes = await supabase
+        .from('v_day_board')
+        .select(cols)
+        .eq('event_day_id', eventDayId)
+        .eq('game', game)
+        .eq('name_key', ownNameKey)
+        .maybeSingle();
+      if (ownRes.error) throw toApiError(ownRes.error, ownRes.status);
+      if (ownRes.data && ownRes.data.score !== null && ownRes.data.achieved_at) {
+        const row = toDayRow(ownRes.data);
+        const aheadRes = await supabase
+          .from('v_day_board')
+          .select('name_key', { count: 'exact', head: true })
+          .eq('event_day_id', eventDayId)
+          .eq('game', game)
+          .or(`score.gt.${row.score},and(score.eq.${row.score},achieved_at.lt.${q(row.achievedAt)})`);
+        if (aheadRes.error) throw toApiError(aheadRes.error, aheadRes.status);
+        own = { row, rank: (aheadRes.count ?? 0) + 1 };
+      }
+    }
+    return { top, own, total: topRes.count ?? top.length };
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
+export interface OwnScore {
+  roundId: string;
+  game: GameId;
+  score: number;
+}
+
+/**
+ * The phone's own score rows in a session, read from `scores` (today's rows
+ * are readable by any signed-in user), so a hidden player still sees their
+ * own total (ADR-115).
+ */
+export async function fetchOwnScores(sessionId: string, playerRowId: string): Promise<OwnScore[]> {
+  const rows = await run(() =>
+    supabase.from('scores').select('round_id, game, score').eq('session_id', sessionId).eq('player_row_id', playerRowId),
+  );
+  return (rows ?? []).map((r) => ({ roundId: r.round_id, game: r.game, score: r.score }));
+}
+
+/**
+ * The best earlier score today for a name key in a game, excluding one round
+ * (P7 `new_best`: did this round beat the player's day best?). Null if none.
+ */
+export async function fetchPreviousBest(
+  eventDayId: string,
+  game: GameId,
+  nameKey: string,
+  excludeRoundId: string,
+): Promise<number | null> {
+  const rows = await run(() =>
+    supabase
+      .from('scores')
+      .select('score')
+      .eq('event_day_id', eventDayId)
+      .eq('game', game)
+      .eq('name_key', nameKey)
+      .neq('round_id', excludeRoundId)
+      .order('score', { ascending: false })
+      .limit(1),
+  );
+  return rows && rows.length > 0 ? rows[0].score : null;
+}
+
+export interface RevealRow {
+  playerRowId: string;
+  name: string;
+  displaySuffix: number | null;
+  score: number;
+  raw: unknown;
+}
+
+/**
+ * Host: every visible score of a round with its raw evidence, in round-board
+ * order (the Stop the Clock guess reveal). Visibility comes from
+ * `v_round_board` (hidden names excluded); `raw` from `scores` (admin read).
+ */
+export async function fetchRoundReveal(roundId: string): Promise<RevealRow[]> {
+  const [board, raws] = await Promise.all([
+    run(() =>
+      supabase
+        .from('v_round_board')
+        .select('player_row_id, name, display_suffix, score, created_at')
+        .eq('round_id', roundId)
+        .order('score', { ascending: false })
+        .order('created_at', { ascending: true }),
+    ),
+    run(() => supabase.from('scores').select('player_row_id, raw').eq('round_id', roundId)),
+  ]);
+  const rawBy = new Map((raws ?? []).map((r) => [r.player_row_id, r.raw as unknown]));
+  return (board ?? [])
+    .filter((r) => r.player_row_id && rawBy.has(r.player_row_id))
+    .map((r) => ({
+      playerRowId: r.player_row_id as string,
+      name: r.name ?? '',
+      displaySuffix: r.display_suffix,
+      score: r.score ?? 0,
+      raw: rawBy.get(r.player_row_id as string),
+    }));
+}
+
+export interface SessionScoreRow {
+  playerRowId: string;
+  game: GameId;
+  score: number;
+  createdAt: string;
+  name: string;
+}
+
+/** Host H5: this session's visible scores (to highlight day-board rows that came from this session). */
+export async function fetchSessionScores(sessionId: string): Promise<SessionScoreRow[]> {
+  const rows = await run(() =>
+    supabase.from('v_round_board').select('player_row_id, game, score, created_at, name').eq('session_id', sessionId),
+  );
+  return (rows ?? [])
+    .filter((r) => r.player_row_id && r.game && r.score !== null && r.created_at)
+    .map((r) => ({
+      playerRowId: r.player_row_id as string,
+      game: r.game as GameId,
+      score: r.score as number,
+      createdAt: r.created_at as string,
+      name: r.name ?? '',
+    }));
 }
