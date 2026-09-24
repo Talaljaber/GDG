@@ -1,0 +1,176 @@
+/* Odd One Out screen. Tokens only (docs/DESIGN_SYSTEM.md §2-6); no raw
+   colours, sizes or durations. Logical properties only (no left/right).
+   Reduced motion zeroes --dur-fast/--dur-base/--dur-slow (tokens.css §6.2),
+   which is how the shake and the found/timeout rings fall back to static
+   (.claude/rules/games.md, docs/games/odd-one-out.md §8). */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  min-height: 100%;
+  padding-block: var(--s-6);
+  padding-inline: var(--phone-gutter);
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.title {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  margin: 0;
+}
+
+.pitch {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.gridLabel {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.timeoutCaption {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  color: var(--text);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  inline-size: var(--ooo-side);
+  block-size: var(--ooo-side);
+  gap: var(--ooo-gap);
+  margin-inline: auto;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--touch-target-floor);
+  min-block-size: var(--touch-target-floor);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-standard);
+}
+
+.tile:disabled {
+  cursor: default;
+}
+
+.tile:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chevron {
+  inline-size: 70%;
+  block-size: 70%;
+}
+
+.tileDimmed {
+  opacity: 0.4;
+}
+
+.tileFound::after,
+.tileTimedOut::after {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: var(--r-card);
+  border-width: 3px;
+  border-style: solid;
+  pointer-events: none;
+}
+
+.tileFound::after {
+  border-color: var(--gdg-amber);
+  animation: ooo-pulse var(--dur-slow) var(--ease-emphasized);
+}
+
+.tileTimedOut::after {
+  border-color: var(--gdg-ink);
+}
+
+.tileShake {
+  animation: ooo-shake var(--dur-fast) var(--ease-standard);
+}
+
+.penalty {
+  position: absolute;
+  inset-block-start: -8px;
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--gdg-ink);
+  background: var(--surface);
+  border-radius: var(--r-chip);
+  padding-inline: var(--s-2);
+  animation: ooo-float-up var(--dur-slow) var(--ease-standard);
+  pointer-events: none;
+}
+
+@keyframes ooo-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-6px);
+  }
+}
+
+@keyframes ooo-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ooo-float-up {
+  0% {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
