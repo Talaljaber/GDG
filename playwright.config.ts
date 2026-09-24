@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { localEnv } from './e2e/env';
 
 /**
  * Playwright e2e against the LOCAL Supabase stack (`.env.local`), chromium
@@ -28,6 +29,13 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 60_000,
-    env: { VITE_PUBLIC_SHORT_URL: `http://localhost:${PORT}` },
+    env: {
+      VITE_PUBLIC_SHORT_URL: `http://localhost:${PORT}`,
+      // no hot reload during a run (other edits must not reload the test pages)
+      E2E_NO_HMR: '1',
+      // the local stack's URL and publishable key (never the secret key)
+      SUPABASE_URL: localEnv().SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY: localEnv().SUPABASE_PUBLISHABLE_KEY,
+    },
   },
 });

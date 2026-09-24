@@ -1,12 +1,13 @@
 #!/usr/bin/env tsx
 // Load test CLI (docs/TESTING.md §5). Usage:
-//   tsx scripts/loadtest/run.ts --phones 15 --delay 5-60 --scenario L1
+//   tsx scripts/loadtest/run.ts --phones 15 --delay 5-60 --scenario L1 [--target <SUPABASE_URL>]
 //
 // Scenarios L1-L5 match the table in docs/TESTING.md §5. --phones/--delay override a scenario's
 // defaults (used to shrink L1/L2 runtime for local verification, per this task's step 4).
 //
-// Reads VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY / E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD from
-// .env.local (scripts/loadtest/env.ts, no dependency on `dotenv`).
+// Reads SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD from
+// .env.local (scripts/loadtest/env.ts, no dependency on `dotenv`). Runs against the local stack unless
+// --target names the remote project (it must equal SUPABASE_URL); see loadEnv.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -37,6 +38,7 @@ interface Args {
   phones?: number;
   delayMinMs?: number;
   delayMaxMs?: number;
+  target?: string;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -44,10 +46,12 @@ function parseArgs(argv: string[]): Args {
   let phones: number | undefined;
   let delayMinMs: number | undefined;
   let delayMaxMs: number | undefined;
+  let target: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--scenario") scenario = argv[++i] as ScenarioId;
     else if (arg === "--phones") phones = Number(argv[++i]);
+    else if (arg === "--target") target = argv[++i];
     else if (arg === "--delay") {
       const [min, max] = argv[++i].split("-").map(Number);
       delayMinMs = min * 1000;
@@ -57,7 +61,7 @@ function parseArgs(argv: string[]): Args {
   if (!scenario || !SCENARIOS[scenario]) {
     throw new Error(`--scenario is required and must be one of ${Object.keys(SCENARIOS).join(", ")}`);
   }
-  return { scenario, phones, delayMinMs, delayMaxMs };
+  return { scenario, phones, delayMinMs, delayMaxMs, target };
 }
 
 function percentile(values: number[], p: number): number | null {
@@ -172,15 +176,15 @@ async function main(): Promise<void> {
   const delayMinMs = args.delayMinMs ?? preset.delayMinMs;
   const delayMaxMs = args.delayMaxMs ?? preset.delayMaxMs;
 
-  const env = loadEnv();
+  const env = loadEnv(args.target);
   const log = (msg: string) => console.log(`[${new Date().toISOString()}] ${msg}`);
 
-  console.log(`\n=== Load test ${args.scenario}: ${preset.description} (override: ${phoneCount} phones, delay ${delayMinMs}-${delayMaxMs}ms) ===\n`);
+  console.log(`\n=== Load test ${args.scenario}: ${preset.description} (override: ${phoneCount} phones, delay ${delayMinMs}-${delayMaxMs}ms) against ${env.url} ===\n`);
 
   const host = new SimHost(env.url, env.publishableKey, log);
   await host.signIn(env.adminEmail, env.adminPassword);
   await host.tryNewSession(); // close a leftover 'results' session from a previous run, if any
-  const { sessionId, code } = await host.openLobby(["stop_the_clock"]);
+  const { sessionId, code } = await host.openLobby(["stop_the_clock", "odd_one_out", "simon"]);
   log(`lobby open, code=${code}, sessionId=${sessionId}`);
   const removed = await host.resetLobbyPlayers(sessionId);
   if (removed > 0) log(`removed ${removed} leftover joined players from a previous run`);

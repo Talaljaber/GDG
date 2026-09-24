@@ -1,7 +1,7 @@
 // SimHost: an admin-driven "big screen" host for headless load test runs (docs/SESSION_LIFECYCLE.md §3.1,
-// docs/DATA_MODEL.md §6, docs/TESTING.md §5). Signs in as the local admin, opens a lobby for exactly the
-// `stop_the_clock` game (ROUNDS_PER_SESSION = 1 during Phases 1-2, docs/DATA_MODEL.md note under §3),
-// waits for players, starts the session, watches scores arrive in real time, and ends the round.
+// docs/DATA_MODEL.md §6, docs/TESTING.md §5). Signs in as the local admin, opens a lobby with Stop the
+// Clock as round 1 (a session is exactly 3 games, ADR-012), waits for players, starts the session, watches
+// round 1's scores arrive in real time, ends it, then force-ends rounds 2-3 (they aren't measured).
 
 import { createClient, type SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
 
@@ -197,6 +197,25 @@ export class SimHost {
     this.record("round_ended", { reason });
   }
 
+  /**
+   * The scenarios measure round 1 only; sessions are 3 rounds (ADR-012), so the rest are started and
+   * force-ended at once, leaving the session in `results` for the next run's cleanup.
+   */
+  async finishRemainingRounds(sessionId: string): Promise<void> {
+    const { data: rounds, error } = await this.client
+      .from("rounds")
+      .select("id, round_no, status")
+      .eq("session_id", sessionId)
+      .order("round_no");
+    if (error) throw new Error(`rounds query failed: ${error.message}`);
+    for (const r of rounds ?? []) {
+      if (r.status !== "upcoming") continue;
+      const start = await this.client.rpc("admin_start_round", { p_round: r.id });
+      if (start.error) throw new Error(`admin_start_round failed: ${start.error.message}`);
+      await this.endRound(r.id, "force_end");
+    }
+  }
+
   async newSession(): Promise<void> {
     const { error } = await this.client.rpc("admin_new_session");
     if (error) throw new Error(`admin_new_session failed: ${error.message}`);
@@ -240,6 +259,7 @@ export class SimHost {
     await this.watchScores(sessionId, roundId);
     const reason = await this.runRoundUntilDone(roundId, roundRow.started_at, expectedPlayers);
     await this.endRound(roundId, reason);
+    await this.finishRemainingRounds(sessionId);
     return {
       sessionId,
       code,

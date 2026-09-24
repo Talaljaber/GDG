@@ -6,12 +6,13 @@
  */
 
 /**
- * Number of distinct games per session. The data model supports N; this is a
- * single config constant. 1 during Phases 1-2 (only Stop the Clock exists),
- * becomes 3 the moment three games pass their acceptance criteria and never
- * changes after Phase 3 (ADR-120).
+ * Number of distinct games per session (ADR-012). The data model supports N;
+ * this is a single config constant. It was 1 during the Phase 1 slice and is 3
+ * from Phase 3 on (three games pass their acceptance criteria), and never
+ * changes after that (ADR-120). The database enforces exactly 3 distinct
+ * games from migration 20260925000300.
  */
-export const ROUNDS_PER_SESSION = 1;
+export const ROUNDS_PER_SESSION = 3;
 
 /** Round start countdown (3-2-1), on phone and big screen. */
 export const COUNTDOWN_MS = 3000;
@@ -32,6 +33,18 @@ export const LATE_ACCEPT_MS = 15_000;
 export const INTERMISSION_ROUND_BOARD_MS = 7000;
 export const INTERMISSION_SESSION_TOTAL_MS = 5000;
 export const INTERMISSION_NEXT_GAME_MS = 3000;
+
+/** Day-board tabs on the big screen (H5) auto-rotate every this many ms. */
+export const DAYBOARD_ROTATE_MS = 8000;
+
+/** Phones poll hidden names this often on the day board (P10), so a hidden name goes within 3 s (AC2.9). */
+export const HIDDEN_POLL_MS = 3000;
+
+/** Top rows labelled with names on the Stop the Clock guess reveal (games/stop-the-clock.md §6). */
+export const STC_REVEAL_LABELLED = 5;
+
+/** Reveal window around each target: dots further than this are pinned to the strip's edge. */
+export const STC_REVEAL_WINDOW_MS = 5000;
 
 /** Presence grey-out: time without presence before a player is shown greyed out. */
 export const PRESENCE_GREY_MS = 10_000;

@@ -26,6 +26,11 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "e2e/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "src/lib/rng.ts",
+    "src/games/*/scoring.ts",
+    "src/games/perfect-circle/metric.ts",
+    "src/games/simon/sequence.ts",
+    "src/games/odd-one-out/grid.ts"
   ]
 }

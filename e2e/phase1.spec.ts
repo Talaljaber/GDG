@@ -4,10 +4,17 @@
  *
  * 1 host context + phone contexts, each its own browser context (own
  * storage, own anonymous user), like separate phones.
+ *
+ * Sessions are 3 rounds since Phase 3 (ROUNDS_PER_SESSION = 3). These slice
+ * tests play round 1 (Stop the Clock) for real, then the host force-ends
+ * rounds 2–3 (phones finish them with the timeout rule, score 0), so every
+ * Phase 1 assertion about round 1 and the results still holds.
  */
 import { expect, test, type Page } from '@playwright/test';
 import {
+  expectHostScreen,
   hostBoardRow,
+  hostFinishSession,
   hostPlayer,
   hostSignIn,
   hostToLobby,
@@ -154,16 +161,36 @@ test('Phase 1: join, presence, remove, play Stop the Clock on 3 phones, results'
       await expect(page.getByTestId('result-row')).toHaveCount(3);
       await expect(page.getByTestId('save-state')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
       const savedAt = Date.now();
-      await expect(hostBoardRow(host, name, expected)).toBeVisible({ timeout: 5000 });
-      const latency = Date.now() - savedAt;
-      console.log(`AC1.5 ${name}: guesses ${r.raw.attempts.map((x) => x.measured_ms).join(', ')} → ${expected}; host showed it ${latency} ms after the phone's save`);
+      // The last finisher ends the round (all_finished) within ~0.5 s; H3 then shows the Stop the
+      // Clock guess reveal (dots, no scores), so its row may never reach H2's live board. That case
+      // is checked on H3's session total below instead.
+      await expect
+        .poll(
+          async () =>
+            (await hostBoardRow(host, name, expected).count()) > 0 ||
+            (await host.getByTestId('host-root').getAttribute('data-screen')) === 'intermission',
+          { timeout: 5000, intervals: [50] },
+        )
+        .toBe(true);
+      const onH2 = (await hostBoardRow(host, name, expected).count()) > 0;
+      const latency = onH2 ? Date.now() - savedAt : null;
+      console.log(
+        `AC1.5 ${name}: guesses ${r.raw.attempts.map((x) => x.measured_ms).join(', ')} → ${expected}; ` +
+          (onH2 ? `host showed it ${latency} ms after the phone's save` : 'round ended first (shown on H3)'),
+      );
       return { name, score: expected, latency, roundId: r.roundId };
     }),
   );
-  for (const r of results) expect(r.latency, `${r.name} on the big screen within 1 s`).toBeLessThan(1000);
+  for (const r of results) {
+    if (r.latency !== null) expect(r.latency, `${r.name} on the big screen within 1 s`).toBeLessThan(1000);
+  }
+  expect(results.filter((r) => r.latency !== null).length, 'at least the first two on the live board').toBeGreaterThanOrEqual(2);
 
-  // ---- everyone finished → host ends the round itself (all_finished) → results
-  await expect(host.getByTestId('host-root')).toHaveAttribute('data-screen', 'results', { timeout: 10_000 });
+  // ---- everyone finished → host ends the round itself (all_finished) → intermission; rounds 2–3 forced
+  await expectHostScreen(host, 'intermission', 10_000);
+  // H3's session total (after round 1 = the round scores) lists all three
+  await expect(host.getByTestId('host-intermission')).toHaveAttribute('data-step', 'session_total', { timeout: 10_000 });
+  for (const r of results) await expect(hostBoardRow(host, r.name, r.score)).toBeVisible();
   const roundId = results[0].roundId;
   expect(sql(`select end_reason from public.rounds where id = '${roundId}'`)).toBe('all_finished');
   expect(sqlCount(`select count(*) from public.scores where round_id = '${roundId}'`)).toBe(3);
@@ -173,6 +200,9 @@ test('Phase 1: join, presence, remove, play Stop the Clock on 3 phones, results'
       `DB score for ${r.name}`,
     ).toBe(r.score);
   }
+
+  await hostFinishSession(host);
+  await expectHostScreen(host, 'results', 30_000);
 
   // host session board in rank order
   const sorted = [...results].sort((x, y) => y.score - x.score);
@@ -240,11 +270,11 @@ test('AC1.6: reload mid-attempt resumes the same attempt; a second submit is a s
   expect(r.raw.attempts[1].measured_ms).toBeLessThan(11_500);
   expect(r.score).toBe(stcScore(r.raw.attempts));
 
-  // host ends the round by itself (1/1 finished) → results
-  await expect(host.getByTestId('host-root')).toHaveAttribute('data-screen', 'results', { timeout: 10_000 });
-  await expect(e.page.getByTestId('screen-results')).toBeVisible({ timeout: 10_000 });
+  // host ends the round by itself (1/1 finished) → intermission (P8 on the phone)
+  await expectHostScreen(host, 'intermission', 10_000);
+  await expect(e.page.getByTestId('screen-intermission')).toBeVisible({ timeout: 10_000 });
 
-  // ---- second submit of the same payload (e.g. a retry after a lost ack): 23505 → treated as saved
+  // ---- second submit (within the 15 s late window of round 1) of the same payload (e.g. a retry after a lost ack): 23505 → treated as saved
   const insertStatuses: number[] = [];
   e.page.on('response', (res) => {
     if (res.url().includes('/rest/v1/scores') && res.request().method() === 'POST') insertStatuses.push(res.status());
@@ -262,8 +292,10 @@ test('AC1.6: reload mid-attempt resumes the same attempt; a second submit is a s
   const local = await readLocal(e.page);
   expect(local?.submittedRounds).toEqual([r.roundId]);
   expect(local?.saveFailedRound ?? null).toBeNull();
-  await expect(e.page.getByTestId('screen-results')).toBeVisible();
   expect(sqlCount(`select count(*) from public.scores where round_id = '${r.roundId}'`)).toBe(1);
+
+  await hostFinishSession(host);
+  await expect(e.page.getByTestId('screen-results')).toBeVisible({ timeout: 30_000 });
 
   await hostCtx.close();
   await e.context.close();
@@ -318,11 +350,13 @@ test('AC1.7 + AC1.3 + STC-T8: presence greys out, End round with one phone never
   await host.getByTestId('host-end-round').click();
   await expect(host.getByTestId('confirm-dialog')).toContainText('End this round now?');
   await host.getByTestId('confirm-yes').click();
-  await expect(host.getByTestId('host-root')).toHaveAttribute('data-screen', 'results', { timeout: 10_000 });
+  await expectHostScreen(host, 'intermission', 10_000);
+  const r = await lastResult(x.page);
+  await hostFinishSession(host);
+  await expectHostScreen(host, 'results', 30_000);
   await expect(host.getByTestId('host-session-board').getByTestId('board-row')).toHaveCount(1);
   await expect(host.getByTestId('host-winner')).toContainText('Xena');
 
-  const r = await lastResult(x.page);
   expect(sql(`select end_reason from public.rounds where id = '${r.roundId}'`)).toBe('force_end');
   expect(sqlCount(`select count(*) from public.scores where round_id = '${r.roundId}'`)).toBe(1);
   expect(sqlCount(`select count(*) from public.scores where round_id = '${r.roundId}' and name = 'Yuri'`)).toBe(0);

@@ -3,25 +3,14 @@
  * and page drivers for the host and phones.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { oddTileIndex } from '../src/games/odd-one-out/grid';
+import { generateSimonSequence, type SimonPad } from '../src/games/simon/sequence';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+import { localEnv } from './env';
 
-export function localEnv(): Record<string, string> {
-  const file = path.join(root, '.env.local');
-  const out: Record<string, string> = {};
-  if (existsSync(file)) {
-    for (const line of readFileSync(file, 'utf-8').split(/\r?\n/)) {
-      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-      if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, '');
-    }
-  }
-  return { ...out, ...(process.env as Record<string, string>) };
-}
+export { localEnv };
 
 const env = localEnv();
 export const ADMIN_EMAIL = env.E2E_ADMIN_EMAIL ?? '';
@@ -44,8 +33,8 @@ export function sqlCount(query: string): number {
 
 /** Admin client (publishable key + admin password; no secret key). */
 export async function adminClient() {
-  const url = env.VITE_SUPABASE_URL;
-  const key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const url = env.SUPABASE_URL;
+  const key = env.SUPABASE_PUBLISHABLE_KEY;
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error } = await client.auth.signInWithPassword({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   if (error) throw error;
@@ -96,32 +85,75 @@ export async function hostSignIn(page: Page): Promise<void> {
   await expect(page.getByTestId('host-root')).toBeVisible();
 }
 
-async function hostScreen(page: Page): Promise<string> {
+export type GameIdE2E = 'stop_the_clock' | 'odd_one_out' | 'simon' | 'perfect_circle' | 'trivia';
+
+/** The default e2e lineup: three games the tests can drive deterministically. */
+export const LINEUP: GameIdE2E[] = ['stop_the_clock', 'odd_one_out', 'simon'];
+
+export async function hostScreen(page: Page): Promise<string> {
   const root = page.getByTestId('host-root');
   await expect(root).not.toHaveAttribute('data-screen', 'loading', { timeout: 15_000 });
   return (await root.getAttribute('data-screen')) ?? 'loading';
 }
 
-/** Brings the host to H1 from whatever state it reconstructed, and returns the lobby code. */
-export async function hostToLobby(page: Page): Promise<string> {
-  let screen = await hostScreen(page);
-  if (screen === 'round') {
-    await page.getByTestId('host-end-round').click();
-    await page.getByTestId('confirm-yes').click();
-    await expect(page.getByTestId('host-root')).toHaveAttribute('data-screen', 'results', { timeout: 15_000 });
-    screen = 'results';
+export async function expectHostScreen(page: Page, screen: string, timeout = 15_000): Promise<void> {
+  await expect(page.getByTestId('host-root')).toHaveAttribute('data-screen', screen, { timeout });
+}
+
+/**
+ * From whatever screen the host reconstructed, drives the running session to
+ * `results` as fast as possible: End round (confirm) on every round,
+ * "Next round now" in every intermission. Phones that are still in a forced
+ * round finish it with the timeout rule.
+ */
+export async function hostFinishSession(page: Page): Promise<void> {
+  const deadline = Date.now() + 150_000;
+  for (;;) {
+    expect(Date.now(), 'host reached results in time').toBeLessThan(deadline);
+    const screen = await hostScreen(page);
+    if (screen === 'results' || screen === 'dayboard' || screen === 'lobby') return;
+    if (screen === 'round') {
+      const end = page.getByTestId('host-end-round');
+      if (await end.isEnabled().catch(() => false)) {
+        await end.click();
+        await page.getByTestId('confirm-yes').click();
+        await expect(page.getByTestId('host-root')).not.toHaveAttribute('data-screen', 'round', { timeout: 10_000 });
+      }
+      continue;
+    }
+    if (screen === 'intermission') {
+      const skip = page.getByTestId('host-skip');
+      if (await skip.isVisible().catch(() => false)) await skip.click().catch(() => {});
+      await page.waitForTimeout(500);
+      continue;
+    }
+    await page.waitForTimeout(300);
   }
-  if (screen === 'results') {
+}
+
+/** Sets the H1 lineup picker to exactly `lineup` (in order) and waits until it is saved. */
+export async function setLobbyLineup(page: Page, lineup: readonly GameIdE2E[], prefix = 'lineup'): Promise<void> {
+  const picker = page.getByTestId(`${prefix}-picker`);
+  // clear, then pick in order
+  const pressed = picker.locator('button[aria-pressed="true"]');
+  for (let n = await pressed.count(); n > 0; n = await pressed.count()) {
+    await pressed.first().click();
+    await expect(pressed).toHaveCount(n - 1);
+  }
+  for (const g of lineup) await page.getByTestId(`${prefix}-${g}`).click();
+  await expect(picker).toHaveAttribute('data-synced', 'true', { timeout: 10_000 });
+  await expect(picker).toHaveAttribute('data-valid', 'true');
+}
+
+/** Brings the host to H1 from whatever state it reconstructed, sets the lineup, and returns the lobby code. */
+export async function hostToLobby(page: Page, lineup: readonly GameIdE2E[] = LINEUP): Promise<string> {
+  await hostFinishSession(page);
+  const screen = await hostScreen(page);
+  if (screen === 'results' || screen === 'dayboard') {
     await page.getByTestId('host-new-session').click();
-    await expect(page.getByTestId('host-root')).toHaveAttribute('data-screen', 'lobby', { timeout: 15_000 });
+    await expectHostScreen(page, 'lobby');
   }
-  // The slice plays Stop the Clock: make sure it's the (only) game picked.
-  const stc = page.getByTestId('lineup-stop_the_clock');
-  if ((await stc.getAttribute('aria-pressed')) !== 'true') {
-    for (const other of await page.locator('[data-testid^="lineup-"][aria-pressed="true"]').all()) await other.click();
-    await stc.click();
-  }
-  await expect(stc).toHaveAttribute('aria-pressed', 'true');
+  await setLobbyLineup(page, lineup);
   const code = (await page.getByTestId('host-code').textContent())?.trim() ?? '';
   expect(code).toMatch(/^[1-9]\d{3}$/);
   return code;
@@ -197,4 +229,68 @@ export function hostBoardRow(host: Page, name: string, score: number) {
     .getByTestId('board-row')
     .filter({ has: host.getByTestId('board-name').getByText(name, { exact: true }) })
     .filter({ has: host.getByTestId('board-score').getByText(String(score), { exact: true }) });
+}
+
+/** The phone's per-round seed (`gdg.v1.current.seed`), which drives every layout and sequence. */
+export async function readSeed(page: Page): Promise<string> {
+  const local = await readLocal(page);
+  const seed = local?.seed;
+  expect(typeof seed === 'string' && seed.length > 0, 'phone persisted its round seed').toBe(true);
+  return seed as string;
+}
+
+/**
+ * Plays Odd One Out by tapping the seeded odd tile of each grid (grid.ts), after a
+ * human-looking pause (the server refuses a find faster than 250 ms, ooo.find_ms).
+ */
+export async function playOoo(page: Page, pauseMs = 450): Promise<void> {
+  await expect(page.getByTestId('screen-game')).toBeVisible({ timeout: 15_000 });
+  const seed = await readSeed(page);
+  const sizes = [4, 5, 6];
+  for (let i = 0; i < sizes.length; i++) {
+    const size = sizes[i];
+    const tiles = page.getByTestId('screen-game').locator('button:not([disabled])');
+    await expect(tiles).toHaveCount(size * size, { timeout: 15_000 });
+    await page.waitForTimeout(pauseMs);
+    await tiles.nth(oddTileIndex(seed, i, size)).click();
+    if (i < sizes.length - 1) await expect(tiles).not.toHaveCount(size * size, { timeout: 5000 });
+  }
+  await expect(page.getByTestId('screen-round-result').or(page.getByTestId('screen-intermission'))).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+const SIMON_LABEL: Record<SimonPad, string> = { up: 'Up', right: 'Right', down: 'Down', left: 'Left' };
+
+/**
+ * Plays Simon from the seeded sequence (sequence.ts): repeats every length up to
+ * `reach`, then taps a wrong pad on the next one (ended = mistake, level = reach).
+ */
+export async function playSimon(page: Page, reach = 3, gapMs = 300): Promise<void> {
+  await expect(page.getByTestId('screen-game')).toBeVisible({ timeout: 15_000 });
+  const seq = generateSimonSequence(await readSeed(page));
+  const game = page.getByTestId('screen-game');
+  const pad = (p: SimonPad) => game.getByRole('button', { name: SIMON_LABEL[p], exact: true });
+  for (let level = 3; level <= reach + 1; level++) {
+    await expect(game.getByText(`Length ${level}`, { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(game.getByText('Your turn', { exact: true })).toBeVisible({ timeout: 20_000 });
+    if (level === reach + 1) {
+      const wrong = (['up', 'right', 'down', 'left'] as SimonPad[]).find((p) => p !== seq[0])!;
+      await page.waitForTimeout(gapMs);
+      await pad(wrong).click();
+      break;
+    }
+    for (let i = 0; i < level; i++) {
+      await page.waitForTimeout(gapMs);
+      await pad(seq[i]).click();
+    }
+  }
+  await expect(page.getByTestId('screen-round-result').or(page.getByTestId('screen-results'))).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+/** Names on a board (in order), from a board's `board-name` cells. */
+export async function boardNames(scope: Page | ReturnType<Page['getByTestId']>, testId: string): Promise<string[]> {
+  return (scope as Page).getByTestId(testId).getByTestId('board-name').allTextContents();
 }
