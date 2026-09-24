@@ -96,8 +96,14 @@
   color: var(--primary-text);
 }
 
+/* Amber is a fill, never text on paper (docs/DESIGN_SYSTEM.md §2.4): an
+   ink-on-amber chip carries the "last 3 seconds" meaning, matching the bar's
+   fill colour, and the shrinking number itself is a second, non-colour cue. */
 .countdownNumberAmber {
-  color: var(--gdg-amber-deep);
+  color: var(--on-highlight);
+  background: var(--highlight);
+  border-radius: var(--r-chip);
+  padding-inline: var(--s-2);
 }
 
 .question {
@@ -168,10 +174,18 @@ button.option:active {
   margin: 0;
 }
 
+/* Amber is a fill, never text on paper (docs/DESIGN_SYSTEM.md §2.4); an
+   ink-on-amber chip keeps the "correct" meaning, matching .optionCorrect. */
 .pointsBadge {
+  display: inline-flex;
+  align-items: center;
   font-size: var(--type-title-size);
   font-weight: var(--type-title-weight);
-  color: var(--gdg-amber-deep);
+  color: var(--on-highlight);
+  background: var(--highlight);
+  border-radius: var(--r-chip);
+  padding-block: var(--s-1);
+  padding-inline: var(--s-4);
   margin: 0;
 }
 

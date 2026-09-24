@@ -65,6 +65,10 @@
 
 .grid {
   display: grid;
+  /* Pad geometry is fixed and never mirrored in RTL (see file header):
+     without this, CSS Grid would honour the inherited `direction` and
+     visually swap the pad columns under dir="rtl". */
+  direction: ltr;
   grid-template-columns: repeat(2, minmax(120px, 1fr));
   grid-template-rows: repeat(2, minmax(120px, 1fr));
   gap: var(--s-4);
@@ -80,7 +84,7 @@
   min-block-size: 120px;
   border: none;
   border-radius: var(--r-card);
-  color: #ffffff;
+  color: var(--on-primary);
   cursor: pointer;
   transition:
     transform var(--dur-fast) var(--ease-standard),
@@ -135,7 +139,7 @@
   min-inline-size: 120px;
   min-block-size: 120px;
   border-radius: var(--r-card);
-  color: #ffffff;
+  color: var(--on-primary);
   animation: shake var(--dur-slow) var(--ease-standard);
 }
 

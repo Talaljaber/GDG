@@ -54,6 +54,10 @@
 
 .grid {
   display: grid;
+  /* Game geometry is not mirrored in RTL (docs/DESIGN_SYSTEM.md §8,
+     docs/games/odd-one-out.md §8): without this, CSS Grid would honour the
+     inherited `direction` and visually swap column order under dir="rtl". */
+  direction: ltr;
   inline-size: var(--ooo-side);
   block-size: var(--ooo-side);
   gap: var(--ooo-gap);
