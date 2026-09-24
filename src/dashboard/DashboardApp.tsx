@@ -10,6 +10,7 @@ import type { Session } from '@supabase/supabase-js';
 import { LangProvider, useLang, useT } from '../i18n';
 import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
+import { SHATTER_LOGO_CLASS } from '../effects/shatter';
 import { Spinner } from '../components/Spinner';
 import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
@@ -110,7 +111,7 @@ function SignIn({
   const shown = error ?? notice;
   return (
     <form className={styles.main} onSubmit={submit} data-testid="dash-signin">
-      <img src={logo} alt={t('app.name')} width={160} />
+      <img src={logo} alt={t('app.name')} className={`${ui.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
       <h1 className={styles.sectionTitle}>{t('host.signin.title')}</h1>
       <label className={styles.field}>
         <span>{t('host.signin.email')}</span>
@@ -171,7 +172,7 @@ function DashboardMain() {
     <div className={styles.root} data-testid="dashboard-root">
       <header className={styles.header}>
         <div className={styles.row}>
-          <img src={logo} alt={t('app.name')} width={32} height={32} />
+          <img src={logo} alt={t('app.name')} className={`${ui.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
           <span className={styles.sectionTitle}>{t('dash.title')}</span>
         </div>
         <div className={styles.headerActions}>
