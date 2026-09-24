@@ -125,11 +125,12 @@ Leaderboards on the big screen show at most **10 rows** so each row stays ≥ 4.
 - Radii: `--r-button: 14`, `--r-card: 20`, `--r-chip: 999`.
 - Touch targets ≥ **48 × 48** CSS px (hard floor 44 × 44 for the densest grid, see Odd One Out).
 - Big screen: 16:9 layout, 5vh safe margins (projectors crop edges).
-- Layout helper tokens in `tokens.css` (added with the Phase 1 screens): `--phone-max-width` 430 px, `--logo-phone-height` 32 px / `--logo-proj-height` 8vh (§5 minimums), `--line-width` 1 px / `--line-width-strong` 2 px / `--focus-width` 3 px, `--dot-size` / `--proj-dot-size` (presence dots), projector spacing `--proj-s-1…4` (1, 2, 3, 5vh) and `--proj-radius`, `--dialog-max-width`, `--qr-light` (QR background, always white), layers `--z-banner` / `--z-dialog`, and durations `--dur-spin` (busy spinner) and `--dur-countdown` (one 3-2-1 step, §6.3).
+- Layout helper tokens in `tokens.css` (added with the Phase 1 screens): `--phone-max-width` 430 px, `--logo-phone-height` 32 px / `--logo-proj-height` 8vh (§5 minimums), `--line-width` 1 px / `--line-width-strong` 2 px / `--focus-width` 3 px, `--dot-size` / `--proj-dot-size` (presence dots), projector spacing `--proj-s-1…4` (1, 2, 3, 5vh) and `--proj-radius`, `--dialog-max-width`, `--qr-light` (QR background, always white), the layers below, and durations `--dur-spin` (busy spinner) and `--dur-countdown` (one 3-2-1 step, §6.3).
+- Layers (z-index tokens, lowest first): `--z-shatter` **40** (every shard overlay, `.gdg-shatter-layer`, fixed and click-through) < `--z-shatter-logo` **45** (the logo, class `gdg-shatter-logo-safe` / `SHATTER_LOGO_CLASS`, §5) < `--z-banner` **50** (offline / reconnecting banners) < `--z-dialog` **100** (confirm dialogs). Defined in `tokens.css`; `src/effects/shatter/shatter.css` only references them.
 
 ## 5. Chevrons and the logo
 
-- **Logo**: `assets/logo.png` (667 × 406 raster; ask for a vector version for crisp big-screen use, OQ-08). The two chevrons point away from each other (blue `<` left, amber `>` right) and the crystalline mosaic breaks off their **outer** points. Clear space on all sides = the height of one chevron. Minimum size: 32 px tall on phones, 8vh on the big screen. Only on `--bg` paper (or the official dark variant if the logo pack has one). Never animated, never under the shatter layer while it plays (the shatter overlay is always below the logo's z-index, or the logo is hidden for the transition).
+- **Logo**: `assets/logo.png` (667 × 406 raster; ask for a vector version for crisp big-screen use, OQ-08). The two chevrons point away from each other (blue `<` left, amber `>` right) and the crystalline mosaic breaks off their **outer** points. Clear space on all sides = the height of one chevron. Minimum size: 32 px tall on phones, 8vh on the big screen. Only on `--bg` paper (or the official dark variant if the logo pack has one). Never animated, never under the shatter layer while it plays (the shatter overlay is always below the logo's z-index, or the logo is hidden for the transition). In code every logo `<img>` (phone top bar, host H0/H1/H4/H5 headers, dashboard) carries `SHATTER_LOGO_CLASS` (z 45 > the shard layer's 40), is never inside an element an effect hides or fades (the merge stage is the board area only), and on the phone sits outside the screen transitions. On the host the logo screens (H1, H4/H5) swap instantly instead of crossfading under reduced motion, so the logo never fades. Always sized by height only (`--logo-phone-height` / `--logo-proj-height`) so it is never stretched.
 - **Chevron shape** (for game tiles, buttons, pads, versus framing): a separate simple SVG path of one chevron, drawn from the logo's proportions but without the mosaic, in `--gdg-blue` or `--gdg-amber`.
 - **Versus frame**: the blue `<` enters from the inline-start edge and the amber `>` from the inline-end, meeting around the content (round intro "Next: Simon", player cards). 400 ms, emphasized easing.
 
@@ -152,7 +153,7 @@ Animate only `transform` and `opacity`. Target 60 fps on a low-end Android (`TES
 
 A standalone effect layer, never applied to the logo.
 
-**Shards.** A seeded Delaunay triangulation of a jittered point grid covering the target rectangle: **24 shards on phones, 48 on the big screen** (hard caps). Each shard is filled with one of `--gdg-blue`, `--gdg-blue-deep`, `--gdg-amber`, `--gdg-amber-deep`, `--gdg-blue-tint`, `--gdg-paper`, with a 1 px `--gdg-paper` edge, which gives the crystalline look of the logo's shattered outer points. Weights: blue 25 %, blue-deep 20 %, amber 15 %, amber-deep 10 %, tint 20 %, paper 10 %. Rendered on one `<canvas>` overlay or as absolutely positioned `clip-path: polygon()` elements; the implementation picks whichever holds 60 fps.
+**Shards.** A seeded Delaunay triangulation of a jittered point grid covering the target rectangle: **24 shards on phones, 48 on the big screen** (hard caps). Each shard is filled with one of `--gdg-blue`, `--gdg-blue-deep`, `--gdg-amber`, `--gdg-amber-deep`, `--gdg-blue-tint`, `--gdg-paper`, with a 1 px `--gdg-paper` edge, which gives the crystalline look of the logo's shattered outer points. Weights: blue 25 %, blue-deep 20 %, amber 15 %, amber-deep 10 %, tint 20 %, paper 10 %. Rendered as one fixed, click-through overlay per play holding one small inline `<svg>` polygon per shard, animated with the Web Animations API on `transform` and `opacity` only (compositor-driven, so it keeps 60 fps while the main thread handles Realtime; reasoning in `src/effects/shatter/README.md`). Effects never block input (`pointer-events: none`) and never touch game timing.
 
 | Variant | Where | Timeline | Easing |
 |---|---|---|---|
@@ -162,7 +163,19 @@ A standalone effect layer, never applied to the logo.
 | **Day-board merge** | big screen, after **Show day board** | ~15 s: 0–1.5 s session results fragment; 1.5–13.5 s for each of the 3 games in the lineup (4 s each): its day-board tab appears, shards stream to rows that are new or improved, those rows reassemble and slide to their rank; 13.5–15 s settle on the first game's tab (tabs then auto-rotate every 8 s) | standard |
 | **Stop the Clock reveal** | big screen intermission | guess dots appear in shatter bursts per strip, 5 s total | emphasized |
 
-**Reduced motion** (`prefers-reduced-motion: reduce`, or the host's toggle on the big screen): every variant becomes a 200 ms crossfade; celebrate becomes a static amber ring; the day-board merge becomes a crossfade to the day board.
+**Reduced motion** (`prefers-reduced-motion: reduce`, or the host's **Reduce motion** toggle on the big screen, SCREENS H6): every variant becomes a 200 ms crossfade (board rows and reveal dots: a 200 ms fade-in); celebrate becomes a static amber ring; the day-board merge becomes a crossfade to the day board. Host screens that show the logo (H1, H4/H5) swap instantly instead (§5). The host toggle is remembered on the laptop and also sets `data-motion="reduced"` on `<html>`, which zeroes `--dur-fast/base/slow` like the OS setting.
+
+**Where it's wired** (Phase 5):
+
+| Variant | Phone (density `phone`, ≤ 24 shards) | Big screen (density `projector`, ≤ 48 shards) | Code |
+|---|---|---|---|
+| Screen transition | join ↔ member flow; lobby → round intro, round → intermission, intermission → next round intro, → results, → day board, removed/ended. **Never into a game**: a round's intro, game and own result share one key; reload/loading swaps are instant; intermission steps don't transition on phones | H1 → H2 (round start), H2 → H3, each H3 step, H3 "Next" → H2, H3 → H4; H4 → H5 is the merge | `src/components/ScreenTransition.tsx`, `src/player/screenKey.ts`, `src/host/screenKey.ts` |
+| Celebrate | P7 `new_best` line (after the phone's round is over) | H2: the row that takes #1 (not on first load) | `RevealIn variant="celebrate"`, `useRevealRows({ leaderKey })` |
+| Round results shatter-in | none (phones keep plain boards: lighter on low-end phones) | H1 player chips as they join; H2 rows as they appear; H3 round/total boards; H4 session table; H5 boards on each tab rotation | `src/components/useRevealRows.ts` (one budgeted batch per list) |
+| Day-board merge | none (P10 gets a screen transition) | H4 → H5 after **Show day board**; the stage is the board area only; a reload onto H5 skips it; New session mid-merge cancels it | `src/host/Results.tsx` |
+| Stop the Clock reveal | none | H3 round board of a Stop the Clock round: dots burst in strip by strip within 5 s (`revealSchedule`) | `src/host/StcReveal.tsx` via `RevealIn variant="dot"` |
+
+During a transition's 320 ms fly-in the previous screen stays on screen under the shards, frozen and not clickable; the host's `data-screen` (and anything that says "the current screen") follows the screen actually shown, not the state that triggered the change. Board rows are always in the DOM with their text; the shatter-in only sets their opacity.
 
 ### 6.3 Other motion
 

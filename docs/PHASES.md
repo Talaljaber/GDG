@@ -173,6 +173,8 @@ Acceptance criteria:
 - [ ] AC5.5 Bright-light check passes; OOO rotation value recorded.
 - [ ] AC5.6 Chapter lead has reviewed the look (OQ-07) or given written feedback that's been applied.
 
+Status (2026-09-24): shatter variants wired into every screen that `DESIGN_SYSTEM.md` §6.2 names (table "Where it's wired"), incl. the ~15 s day-board merge with the ADR-010 flow unchanged, the host's Reduce motion toggle and the logo z-order (`SHATTER_LOGO_CLASS` on every logo). Unit-tested: reduced-motion paths (OS and host toggle), ≤ 48 shards on the projector, no effect into a game screen, the merge timeline, the logo never hidden or animated. Still open: **AC5.3** needs the fps measurement on the low-end Android and a projector look (TESTING §6); AC5.1 waits on a vector logo (OQ-08); AC5.6 on brand approval (OQ-07); AC5.2/AC5.4/AC5.5 not started here.
+
 Depends on: Phases 3 and 4; logo file in `/assets`.
 
 ## Phase 6: Hardening and event prep · M

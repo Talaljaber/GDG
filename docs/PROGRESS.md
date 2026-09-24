@@ -47,6 +47,7 @@ Last updated: 2026-09-24
 
 ## Done
 
+- 2026-09-24: **Phase 5 shatter wiring**: screen transitions on phone and big screen (`src/components/ScreenTransition.tsx`, keys in `src/player/screenKey.ts` / `src/host/screenKey.ts`; never into a game), board shatter-in + H2 new-#1 celebrate (`src/components/useRevealRows.ts`), P7 new-best celebrate and Stop the Clock dot bursts (`RevealIn.tsx`), the ~15 s H4 → H5 merge (`src/host/Results.tsx`, H4/H5 now one screen), host **Reduce motion** toggle (`src/host/motion.tsx`), `SHATTER_LOGO_CLASS` on every logo, z tokens in `tokens.css`. Phone initial JS +7.1 kB gzip. Details: DESIGN_SYSTEM §6.2 "Where it's wired"; AC status in PHASES Phase 5.
 - 2026-09-24: **Phase 0 cloud (partial)**: one project `gdg-booth` (`ppikklvltpfdwbxtilme`, eu-central-1, ADR-127; the Seoul project is retired) with all 9 migrations via `supabase db push`; catalog checked: RLS on all 8 tables, anon executes only `keepalive()`, realtime publication correct. Supabase's automatic-RLS event trigger is on; pgTAP 01 skips event-trigger functions. Status: `DEPLOYMENT.md` §2.7.
 - 2026-09-24: **Phase 2 + Phase 3 integration** (this session): multi-round host loop with intermissions anchored on `ended_at` (`src/host/useHost.ts`, `schedule.ts`), pending session corner code + next-games picker (`common.tsx`), H3 with the Stop the Clock guess reveal (`StcReveal.tsx`, `reveal.ts`; shatter hook `src/components/RevealIn.tsx`), H4 table with round columns, H5 rotating day boards (`Results.tsx`); phones P3b, P7 `new_best`, P8, P9 from own rows, P10, P11 by event day, landscape overlay (E16) (`src/player/`); board ordering helpers (`src/lib/boards.ts`); API for rounds, day boards, hidden keys (`src/lib/api.ts`); `pending:` and `day:` channels (`realtime.ts`); `ROUNDS_PER_SESSION = 3` + migration `20260925000300`; pgTAP `07_boards.sql`; e2e `phase2.spec.ts`, `payloads.spec.ts`; Phase 1 e2e adapted to 3 rounds.
 
@@ -61,7 +62,8 @@ Last updated: 2026-09-24
 1. Real-device checks: Phase 1 AC1.2 (iPhone + Android) and AC1.3 (airplane mode); Phase 2 on a projector: H3 reveal and H4/H5 readability, the P8 steps next to the big screen, the landscape overlay (E16) and screen lock (E15) on real phones.
 2. Phase 3 sign-off per game (AC3.1, AC3.6, AC3.7) and E2E-2 (reload mid-round) for the four newer games in the browser (unit-tested today).
 3. Team answers the blocking open questions: OQ-01 (dates), OQ-02 (roles), OQ-03 (trivia writers), OQ-14 (Netlify account), and reviews Proposed ADRs (OQ-19).
-4. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), keepalive secrets (AC0.3), Netlify (AC0.4).
+4. Phase 5 real-hardware checks for the shatter (AC5.3): ≥ 45 fps on the low-end Android (transitions, P7 celebrate), and on the projector the H3 shatter-in/dot bursts and the H4 → H5 merge (TESTING §6); compare with Reduce motion on.
+5. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), keepalive secrets (AC0.3), Netlify (AC0.4).
 
 ## Blockers
 
