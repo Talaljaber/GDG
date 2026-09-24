@@ -80,6 +80,32 @@ Note: all simulated sign-ins come from one IP, so the anonymous rate limit (§2.
 
 Record results in `PROGRESS.md`. If L3 fails, note the ceiling in `OPEN_QUESTIONS.md` (OQ-16) and in the runbook; if L1/L2 fail, switch state events to database Broadcast (ADR-112 upgrade path).
 
+Note: each run measures **round 1 only** (the game the scenarios care about); the toolkit then force-ends rounds 2–3 so the 3-round session (ADR-012) reaches `results` and a clean lobby is left for the next run. `run.ts` also force-sets the lineup after opening the lobby (`admin_set_lineup`), since `admin_open_lobby` reuses an existing joinable session's lineup as-is and a leftover session from an earlier run could otherwise carry forward a different game order.
+
+The local stack doesn't enforce the cloud Realtime Free-plan quotas (100 msg/s total, 20 presence msg/s, `ARCHITECTURE.md` §6), so each run also reports an **estimated burst rate**: the largest number of messages landing in any 1 s window, from the actual timestamps each phone/host observed, for (a) the round-start state fan-out (one `rounds` UPDATE fanned to every subscribed phone), (b) presence `track()` on join, (c) the scores INSERT fan-out to the host's one subscription, and for L5 (d) presence re-`track()` after the mass reconnect. This is informational only — it is not one of the pass/fail criteria above.
+
+### Results — 2026-09-24, local stack (`supabase start`, API `http://127.0.0.1:56321`)
+
+All four runs below used the current toolkit (after two tooling fixes made during this session, see below). L2 was previously run and passed (round-start p95 319 ms); not re-run this session.
+
+| Scenario | Phones | Round start ms (p50/p95/max) | Submit ms (p50/p95) | Board-visible / host-complete | Errors | Est. msg/s (limit) | Result |
+|---|---|---|---|---|---|---|---|
+| L1 (smoke) | 15 | 306 / 328 / 328 | 24 / 44 | worst 568 ms | 0 | round-start 15/100, presence-join 15/20, scores→host 6/100 | **PASS** |
+| L3 | 60 | 463 / 539 / 549 | 24 / 39 | n/a (host board only tracked for L1/L4) | 0 disconnects, 0 `too_many_*` | round-start 60/100, presence-join **38/20 (over)**, scores→host 5/100 | **PASS** (p95 539 ms < 2 s) |
+| L4 | 30, submit within 2 s | 182 / 216 / 218 | 19 / 30 | complete within 521 ms | 0 dropped | round-start 30/100, presence-join **26/20 (over)**, scores→host 22/100 | **PASS** |
+| L5 | 30, 10 s socket drop | 139 / 163 / 165 | 24 / 184 | presence recovered 30/30, worst 340 ms | 0 dropped, 0 duplicates | round-start 30/100, presence-join **29/20 (over)**, scores→host 3/100, **reconnect re-track 30/20 (over)** | **PASS** |
+
+All four scenarios met their `docs/TESTING.md` §5 pass criteria on the local stack. The presence-track burst (join, and L5's mass reconnect) estimates over the cloud's 20 msg/s Free-plan limit from 30–60 phones onward; this matches `ARCHITECTURE.md` §6's own prediction ("a mass reconnect can be throttled briefly; dots recover") and is not itself a pass/fail criterion, but it is the one place where a cloud run could see brief throttling that the local stack can't reproduce (see risks below). The round-start fan-out and the scores→host rate stayed comfortably under the 100 msg/s limit even at 60 phones.
+
+**Tooling fixes made this session** (`scripts/loadtest/`):
+- `run.ts` never called the already-written `SimHost.finishRemainingRounds`, so after a run's measured round 1 ended, the session stayed `playing` (rounds 2–3 `upcoming`) and blocked every later `admin_start_session`/`admin_new_session` call (ADR-108: at most one running session). Fixed by calling it before the end-of-run cleanup, and added `SimHost.closeLeftoverRunningSession()` (called at the start of a run) to recover a session left stuck this way by an earlier aborted run.
+- `SimHost.openLobby` now also calls `admin_set_lineup` after `admin_open_lobby`, because `admin_open_lobby` intentionally reuses an existing joinable session's lineup unchanged (ADR-108's "last lineup if untouched" is meant for the real host UI) — without this, a leftover session from an earlier run could hand round 1 a different game than Stop the Clock, which is what the score payload builder assumes.
+- `sim-phone.ts`'s `join()` now checks for `{error, retry_after_s?}` in `join_session`'s successful return, per ADR-130 (migration `20260925000400_join_throttle.sql`, applied mid-session): a wrong or throttled code no longer raises, it returns as ordinary data, so treating any non-error RPC response as a successful join would have silently "succeeded" with `session_id`/`player_row_id` both undefined. The load test only ever uses a freshly-opened real code, so this path isn't expected to fire in a run, but a phone now fails its join loudly (once, not retried) if it ever does.
+- Score-insert failure logs now include the Postgres `detail`/`hint` (e.g. `stc.range`, `ooo.shape`), which is what made the lineup-order bug (above) diagnosable in the first place.
+- Added a realtime message-rate estimate (see above) to both the console summary and the JSON report (`aggregates` → new `realtimeRates` array).
+
+**App-side risk found, not changed** (per this task's scope — reported, not fixed): none. The one score-shape rejection seen (`GD008 impossible_score`, detail `ooo.shape`) during triage was caused by the load test submitting a Stop the Clock payload for a round whose actual game was Odd One Out (the lineup-order tooling bug above), not by an app/database bug — once the tooling fix landed, all four scenarios ran with zero `errorsByCode` and zero `realtimeErrorsByType`.
+
 ## 6. Device and environment matrix
 
 | Device class | Browser | Must pass |
