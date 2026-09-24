@@ -15,10 +15,13 @@ export const STC_AUTO_STOP_EXTRA_MS = 10_000;
 /** Per-attempt error is capped here (a missed start or auto-stop hits exactly this). */
 export const STC_ERROR_CAP_MS = 10_000;
 
-/** Total error at which the score reaches zero. */
-export const STC_E_ZERO_MS = 6000;
+/** Per-attempt error at which that attempt's share reaches zero (ADR-132). */
+export const STC_ATTEMPT_ZERO_MS = 2000;
 
-/** The server-enforced score ceiling: total error must be >= 60 ms (SCORING §4). */
+/**
+ * The server-enforced score ceiling (SCORING §4). A score above 990 needs every
+ * attempt within 2 s and a summed error under 60 ms.
+ */
 export const STC_MAX_ACCEPTED_SCORE = 990;
 
 export interface StopTheClockAttempt {
@@ -37,11 +40,17 @@ export function buildRaw(attempts: StopTheClockAttempt[]): StopTheClockRaw {
   return { attempts };
 }
 
-function attemptError(attempt: StopTheClockAttempt): number {
+/** e_i = min(10000, |measured - target|); a missed start or auto-stop is 10000. */
+export function attemptError(attempt: StopTheClockAttempt): number {
   if (attempt.missed_start || attempt.measured_ms === null) {
     return STC_ERROR_CAP_MS;
   }
   return Math.min(STC_ERROR_CAP_MS, Math.abs(attempt.measured_ms - attempt.target_ms));
+}
+
+/** s_i = max(0, 1 - e_i / 2000): one attempt's share, 0..1 (unrounded; for tests and display). */
+export function attemptShare(attempt: StopTheClockAttempt): number {
+  return Math.max(0, 1 - attemptError(attempt) / STC_ATTEMPT_ZERO_MS);
 }
 
 /** Total error across all attempts, in ms. Exported for tests and diagnostics. */
@@ -50,7 +59,8 @@ export function totalError(raw: StopTheClockRaw): number {
 }
 
 /**
- * score = round(1000 x max(0, 1 - E / 6000)), clamped to [0, 1000].
+ * score = round(1000 x (s_1 + s_2 + s_3) / 3), clamped to [0, 1000] (ADR-132).
+ * When every attempt is within 2 s this equals round(1000 x (1 - E / 6000)).
  *
  * This is the value computed on the phone; the server independently rejects
  * (but never recomputes) values outside docs/SCORING.md §4's bounds, e.g.
@@ -58,8 +68,13 @@ export function totalError(raw: StopTheClockRaw): number {
  */
 export function scoreStopTheClock(raw: unknown): number {
   const { attempts } = raw as StopTheClockRaw;
-  const e = attempts.reduce((sum, attempt) => sum + attemptError(attempt), 0);
-  const score = Math.round(1000 * Math.max(0, 1 - e / STC_E_ZERO_MS));
+  // Integer form of 1000 x mean(s_i), so halves round the same on every device:
+  // sum of (2000 - min(e_i, 2000)) over the attempts, x 1000 / (3 x 2000).
+  const kept = attempts.reduce(
+    (sum, attempt) => sum + STC_ATTEMPT_ZERO_MS - Math.min(STC_ATTEMPT_ZERO_MS, attemptError(attempt)),
+    0,
+  );
+  const score = Math.round((1000 * kept) / (STC_TARGETS_MS.length * STC_ATTEMPT_ZERO_MS));
   return Math.min(1000, Math.max(0, score));
 }
 

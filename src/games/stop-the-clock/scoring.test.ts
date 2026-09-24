@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   STC_TARGETS_MS,
+  attemptShare,
   buildRaw,
   scoreStopTheClock,
   totalError,
@@ -37,20 +38,21 @@ describe('scoreStopTheClock: worked examples (docs/games/stop-the-clock.md §4)'
     expect(scoreStopTheClock(raw)).toBe(317);
   });
 
-  it('D (missed one start): 5100, missed, 7200 -> E 10300 -> 0', () => {
+  it('D (missed one start): 5100, missed, 7200 -> errors 100, 10000, 200 -> 617', () => {
     const raw = buildRaw([
       { target_ms: T1, measured_ms: 5100, missed_start: false },
       { target_ms: T2, measured_ms: null, missed_start: true },
       { target_ms: T3, measured_ms: 7200, missed_start: false },
     ]);
     expect(totalError(raw)).toBe(10300);
-    expect(scoreStopTheClock(raw)).toBe(0);
+    expect(raw.attempts.map(attemptShare)).toEqual([0.95, 0, 0.9]);
+    expect(scoreStopTheClock(raw)).toBe(617);
   });
 
-  it('E (auto-stop on 2nd): 5000, 20000 (auto), 7000 -> E 10000 -> 0', () => {
+  it('E (auto-stop on 2nd): 5000, 20000 (auto), 7000 -> errors 0, 10000, 0 -> 667', () => {
     const raw = buildRaw(attempts([5000, 20000, 7000]));
     expect(totalError(raw)).toBe(10000);
-    expect(scoreStopTheClock(raw)).toBe(0);
+    expect(scoreStopTheClock(raw)).toBe(667);
   });
 
   it('F (bot-perfect): 5000, 10000, 7000 -> E 0 -> 1000 on the client (server rejects: score > 990)', () => {
@@ -116,10 +118,61 @@ describe('game doc test cases (docs/games/stop-the-clock.md §10)', () => {
   });
 });
 
-describe('scoring bounds', () => {
-  it('clamps to 0 when error exceeds E_zero', () => {
+describe('per-attempt average (ADR-132)', () => {
+  it('G (one bad try): two good attempts (±200 ms) and one 6 s off -> 0.9, 0.9, 0 -> 600', () => {
+    const raw = buildRaw(attempts([5200, 9800, 13000]));
+    expect(scoreStopTheClock(raw)).toBe(600);
+  });
+
+  it('STC-T10: an attempt exactly 2000 ms off contributes 0 -> 667, accepted', () => {
+    const raw = buildRaw(attempts([7000, 10000, 7000]));
+    expect(attemptShare(raw.attempts[0])).toBe(0);
+    expect(scoreStopTheClock(raw)).toBe(667);
+    expect(validateStopTheClockRaw(raw, 667)).toBeNull();
+    expect(scoreStopTheClock(buildRaw(attempts([3000, 10000, 7000])))).toBe(667);
+  });
+
+  it('an attempt further than 2000 ms off also contributes 0 (no negative share)', () => {
     const raw = buildRaw(attempts([5000 + 6000, 10000, 7000]));
+    expect(attemptShare(raw.attempts[0])).toBe(0);
+    expect(scoreStopTheClock(raw)).toBe(667);
+  });
+
+  it('all attempts 2000+ ms off (or missed) -> 0', () => {
+    const raw = buildRaw([
+      { target_ms: T1, measured_ms: 3000, missed_start: false },
+      { target_ms: T2, measured_ms: null, missed_start: true },
+      { target_ms: T3, measured_ms: 17000, missed_start: false },
+    ]);
     expect(scoreStopTheClock(raw)).toBe(0);
+  });
+
+  it('every attempt within 2 s -> same as the old round(1000 x (1 - E / 6000))', () => {
+    // deterministic spread of errors 0..2000 ms, both signs, including the 3-mod-6 halves
+    const errors = [0, 1, 3, 50, 57, 60, 199, 333, 500, 999, 1000, 1497, 1500, 1999, 2000];
+    let checked = 0;
+    for (const a of errors) {
+      for (const b of errors) {
+        for (const c of errors) {
+          const sign = (a + b + c) % 2 === 0 ? 1 : -1;
+          const raw = buildRaw(attempts([T1 + a, T2 - b, T3 + sign * c]));
+          const e = totalError(raw);
+          expect(e).toBe(a + b + c);
+          expect(scoreStopTheClock(raw)).toBe(Math.round((1000 * (6000 - e)) / 6000));
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBe(errors.length ** 3);
+  });
+});
+
+describe('scoring bounds', () => {
+  it('never exceeds 667 when any attempt is 2000+ ms off, so only near-perfect rounds reach the 990 bound', () => {
+    const raw = buildRaw(attempts([5000 + 2000, 10000, 7000]));
+    const score = scoreStopTheClock(raw);
+    expect(score).toBe(667);
+    expect(validateStopTheClockRaw(raw, score)).toBeNull();
   });
 
   it('caps per-attempt error at 10000 even for wildly out-of-range measured_ms', () => {

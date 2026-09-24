@@ -58,18 +58,21 @@ Fixed. The difficulty comes from the growing and non-monotonic targets (5 → 10
 
 ## 4. Scoring
 
-`e_i = min(10000, |measured_i − target_i|)` (missed start or auto-stop → 10000) · `E = Σ e_i` · **`score = round(1000 × max(0, 1 − E / 6000))`**
+`e_i = min(10000, |measured_i − target_i|)` (missed start or auto-stop → 10000) · `s_i = max(0, 1 − e_i / 2000)` · **`score = round(1000 × (s_1 + s_2 + s_3) / 3)`** (ADR-132)
+
+Each attempt is worth a third of the round and reaches 0 at 2 s off, so one bad attempt never zeroes the other two. When all three are within 2 s the score equals `round(1000 × (1 − E / 6000))` with `E = Σ e_i` (examples A–C, STC-T1/T2).
 
 Worked examples:
 
-| Player | Guesses (ms) | Errors (ms) | E | Score |
+| Player | Guesses (ms) | Errors (ms) | Shares | Score |
 |---|---|---|---|---|
-| A (sharp) | 5120, 9800, 7050 | 120, 200, 50 | 370 | round(1000 × 0.93833) = **938** |
-| B (typical) | 5400, 10700, 6600 | 400, 700, 400 | 1500 | round(1000 × 0.75) = **750** |
-| C (rushed) | 3900, 8200, 5800 | 1100, 1800, 1200 | 4100 | round(1000 × 0.31667) = **317** |
-| D (missed one start) | 5100, missed, 7200 | 100, 10000, 200 | 10300 | **0** |
-| E (auto-stop on 2nd) | 5000, 20000 (auto), 7000 | 0, 10000, 0 | 10000 | **0** |
-| F (bot-perfect) | 5000, 10000, 7000 | 0, 0, 0 | 0 | 1000 → **rejected** (> 990) |
+| A (sharp) | 5120, 9800, 7050 | 120, 200, 50 | 0.94, 0.9, 0.975 | round(1000 × 2.815 / 3) = **938** |
+| B (typical) | 5400, 10700, 6600 | 400, 700, 400 | 0.8, 0.65, 0.8 | round(1000 × 2.25 / 3) = **750** |
+| C (rushed) | 3900, 8200, 5800 | 1100, 1800, 1200 | 0.45, 0.1, 0.4 | round(1000 × 0.95 / 3) = **317** |
+| D (missed one start) | 5100, missed, 7200 | 100, 10000, 200 | 0.95, 0, 0.9 | round(1000 × 1.85 / 3) = **617** |
+| E (auto-stop on 2nd) | 5000, 20000 (auto), 7000 | 0, 10000, 0 | 1, 0, 1 | round(1000 × 2 / 3) = **667** |
+| F (bot-perfect) | 5000, 10000, 7000 | 0, 0, 0 | 1, 1, 1 | 1000 → **rejected** (> 990) |
+| G (one bad try) | 5200, 9800, 13000 | 200, 200, 6000 | 0.9, 0.9, 0 | round(1000 × 1.8 / 3) = **600** |
 
 ## 5. Submission and rejection bounds
 
@@ -154,3 +157,4 @@ Big screen during the round: live round board (scores only, guesses hidden until
 | STC-T7 | Reload during running attempt 2 | resumes attempt 2; attempt 1 result kept |
 | STC-T8 | No visual change on the running screen for 20 s (screenshot diff every 1 s) | identical frames |
 | STC-T9 | Double tap within 100 ms | only Start registered |
+| STC-T10 | Guesses 7000, 10000, 7000 (first exactly 2 s off) | first attempt's share 0, score 667, accepted |

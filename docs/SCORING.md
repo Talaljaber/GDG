@@ -44,9 +44,10 @@ Symbols: `clamp(x, lo, hi)`, all times in milliseconds.
 
 - Targets: `T_1 = 5000`, `T_2 = 10000`, `T_3 = 7000` (fixed, same for everyone).
 - Per attempt: `e_i = min(10000, |measured_i − T_i|)`; a missed start (no tap on Start within 10 s) or an auto-stop has `e_i = 10000`.
-- `E = e_1 + e_2 + e_3`
-- **`score = round(1000 × max(0, 1 − E / 6000))`**
-- Examples: total error 1.5 s → 750; 0.6 s → 900; 3 s → 500; ≥ 6 s → 0.
+- Per attempt share: `s_i = max(0, 1 − e_i / 2000)` (0 at 2 s off or more).
+- **`score = round(1000 × (s_1 + s_2 + s_3) / 3)`** (ADR-132)
+- When every attempt is within 2 s this equals `round(1000 × (1 − E / 6000))` with `E = e_1 + e_2 + e_3`; one bad attempt costs at most a third of the round.
+- Examples: all within 2 s with total error 1.5 s → 750; 0.6 s → 900; 3 s → 500. Two attempts 200 ms off and one 6 s off → 600; one missed start, the others perfect → 667; all three 2 s off or more → 0.
 
 ### 3.3 Simon
 

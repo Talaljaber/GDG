@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { oddTileIndex } from '../src/games/odd-one-out/grid';
 import { generateSimonSequence, type SimonPad } from '../src/games/simon/sequence';
+import { scoreStopTheClock } from '../src/games/stop-the-clock/scoring';
 
 import { localEnv } from './env';
 
@@ -184,13 +185,12 @@ export interface StcAttempt {
   missed_start: boolean;
 }
 
-/** Hand calculation of the Stop the Clock score (docs/games/stop-the-clock.md §4). */
+/**
+ * The Stop the Clock score for the phone's recorded guesses (docs/games/stop-the-clock.md §4,
+ * ADR-132), from the game's own pure scoring function (unit-tested against the doc's examples).
+ */
 export function stcScore(attempts: StcAttempt[]): number {
-  const E = attempts.reduce(
-    (sum, a) => sum + (a.measured_ms === null ? 10000 : Math.min(10000, Math.abs(a.measured_ms - a.target_ms))),
-    0,
-  );
-  return Math.round(1000 * Math.max(0, 1 - E / 6000));
+  return scoreStopTheClock({ attempts });
 }
 
 export function stcButton(page: Page, label: 'Start' | 'Stop') {

@@ -5,6 +5,7 @@
 // in one Node process behave like N separate browser tabs, never sharing a session).
 
 import { createClient, type SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
+import { scoreStopTheClock } from "../../src/games/stop-the-clock/scoring.ts";
 
 // ---------- isolated per-phone storage (stands in for a browser's localStorage) ----------
 class MemoryStorage {
@@ -82,8 +83,7 @@ function buildStopTheClockRaw(rng: () => number) {
     const measured_ms = Math.max(0, Math.min(target_ms + 10000, target_ms + sign * errorMs));
     return { target_ms, measured_ms, missed_start: false };
   });
-  const E = attempts.reduce((sum, a) => sum + Math.min(10000, Math.abs(a.measured_ms - a.target_ms)), 0);
-  const score = Math.min(990, Math.round(1000 * Math.max(0, 1 - E / 6000)));
+  const score = Math.min(990, scoreStopTheClock({ attempts }));
   // duration_ms: sum of measured attempt times + the two 1.5s "locked in" transitions (docs/games/stop-the-clock.md §2)
   const duration_ms = Math.min(
     120000,
