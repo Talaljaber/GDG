@@ -71,6 +71,31 @@ function percentile(values: number[], p: number): number | null {
   return sorted[Math.max(0, idx)];
 }
 
+/**
+ * Realtime Free-plan limits are per-project, not enforced by the local stack (docs/ARCHITECTURE.md §6),
+ * so we estimate the burst rate a scenario would generate against them: the largest number of messages
+ * landing inside any 1s sliding window, from the absolute timestamps each phone/host actually observed.
+ */
+function maxMessagesPerSecond(timestampsMs: number[]): number {
+  if (timestampsMs.length === 0) return 0;
+  const sorted = [...timestampsMs].sort((a, b) => a - b);
+  let best = 0;
+  let start = 0;
+  for (let end = 0; end < sorted.length; end++) {
+    while (sorted[end] - sorted[start] > 1000) start++;
+    best = Math.max(best, end - start + 1);
+  }
+  return best;
+}
+
+interface RealtimeRateEstimate {
+  label: string;
+  n: number;
+  estMsgPerSec: number;
+  limit: number;
+  withinLimit: boolean;
+}
+
 interface Criterion {
   name: string;
   pass: boolean;
@@ -183,6 +208,7 @@ async function main(): Promise<void> {
 
   const host = new SimHost(env.url, env.publishableKey, log);
   await host.signIn(env.adminEmail, env.adminPassword);
+  await host.closeLeftoverRunningSession(); // force-finish an aborted previous run's rounds 2-3, if any
   await host.tryNewSession(); // close a leftover 'results' session from a previous run, if any
   const { sessionId, code } = await host.openLobby(["stop_the_clock", "odd_one_out", "simon"]);
   log(`lobby open, code=${code}, sessionId=${sessionId}`);
@@ -243,6 +269,10 @@ async function main(): Promise<void> {
   const hostDonePromise = host.runRoundUntilDone(roundId, roundStartedAt, readyCount);
   const [endReason] = await Promise.all([hostDonePromise, Promise.all(playPromises)]);
   await host.endRound(roundId, endReason);
+  // Only round 1 is measured, but a session is 3 rounds (ADR-012): force-finish rounds 2-3 so the
+  // session actually reaches 'results' before closing it, or it's left 'playing' and blocks every
+  // later admin_start_session/admin_new_session call (ADR-108, at most one running session).
+  await host.finishRemainingRounds(sessionId);
   await host.tryNewSession(); // leave a clean lobby behind for the next scenario run
 
   const hostResult: HostResult = {
@@ -283,6 +313,58 @@ async function main(): Promise<void> {
   console.log(`errors by code: ${JSON.stringify(errorsByCode)}`);
   console.log(`realtime errors by type: ${JSON.stringify(realtimeErrorsByType)}`);
   console.log(`round end reason: ${endReason}`);
+
+  // ---------- realtime message-rate estimate (ADR-112, ARCHITECTURE §6) ----------
+  // The local stack doesn't enforce the cloud Free-plan quotas (100 msg/s total, 20 presence msg/s),
+  // so we estimate the burst rate each scenario would generate against them.
+  const roundStartFanout = maxMessagesPerSecond(
+    phoneMetrics.map((m) => m.roundStartReceivedAt).filter((v): v is number => v !== null),
+  );
+  const presenceJoinBurst = maxMessagesPerSecond(
+    phoneMetrics.map((m) => m.presenceTrackedAt).filter((v): v is number => v !== null),
+  );
+  const presenceReconnectBurst = maxMessagesPerSecond(
+    phoneMetrics.map((m) => m.presenceRetrackedAt).filter((v): v is number => v !== null),
+  );
+  const scoreInsertToHostBurst = maxMessagesPerSecond(hostResult.scoreArrivals.map((a) => a.insertReceivedAt));
+  const realtimeRates: RealtimeRateEstimate[] = [
+    {
+      label: "round-start state fan-out (rounds UPDATE -> N phones)",
+      n: roundStartFanout,
+      estMsgPerSec: roundStartFanout,
+      limit: 100,
+      withinLimit: roundStartFanout <= 100,
+    },
+    {
+      label: "presence track on join",
+      n: presenceJoinBurst,
+      estMsgPerSec: presenceJoinBurst,
+      limit: 20,
+      withinLimit: presenceJoinBurst <= 20,
+    },
+    {
+      label: "scores INSERT fan-out to host (1 subscriber)",
+      n: scoreInsertToHostBurst,
+      estMsgPerSec: scoreInsertToHostBurst,
+      limit: 100,
+      withinLimit: scoreInsertToHostBurst <= 100,
+    },
+  ];
+  if (preset.dropSockets) {
+    realtimeRates.push({
+      label: "presence re-track after mass reconnect (L5)",
+      n: presenceReconnectBurst,
+      estMsgPerSec: presenceReconnectBurst,
+      limit: 20,
+      withinLimit: presenceReconnectBurst <= 20,
+    });
+  }
+  console.log(`\nEstimated realtime message rate vs Free-plan limits (docs/ARCHITECTURE.md §6):`);
+  for (const r of realtimeRates) {
+    console.log(
+      `  ${r.withinLimit ? "OK" : "OVER"}  ${r.label}: ~${r.estMsgPerSec} msg/s (limit ${r.limit}/s)`,
+    );
+  }
   console.log(`\nPass criteria (docs/TESTING.md §5):`);
   for (const c of criteria) {
     console.log(`  [${c.pass ? "PASS" : "FAIL"}] ${c.name} — ${c.detail}`);
@@ -316,6 +398,7 @@ async function main(): Promise<void> {
       errorsByCode,
       realtimeErrorsByType,
     },
+    realtimeRates,
     criteria,
     overall,
   };

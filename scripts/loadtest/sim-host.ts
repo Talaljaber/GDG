@@ -57,11 +57,23 @@ export class SimHost {
     this.record("signed_in");
   }
 
+  /**
+   * admin_open_lobby reuses an already-joinable (pending/lobby) session as-is and does NOT overwrite
+   * its lineup (ADR-108: "the last lineup if untouched" is intentional for the real host UI). A load
+   * test run needs a deterministic round 1 (docs/TESTING.md §5 measures round 1's game), so this also
+   * force-sets the lineup via admin_set_lineup, in case a leftover session from an earlier run (this
+   * script or a manual dry run) carried forward a different game order.
+   */
   async openLobby(lineup: string[]): Promise<{ sessionId: string; code: string }> {
     const { data, error } = await this.client.rpc("admin_open_lobby", { p_lineup: lineup });
     if (error) throw new Error(`admin_open_lobby failed: ${error.message}`);
     const row = data as { id: string; code: string };
-    this.record("lobby_opened", { sessionId: row.id, code: row.code });
+    const { error: lineupErr } = await this.client.rpc("admin_set_lineup", {
+      p_session: row.id,
+      p_lineup: lineup,
+    });
+    if (lineupErr) throw new Error(`admin_set_lineup failed: ${lineupErr.message}`);
+    this.record("lobby_opened", { sessionId: row.id, code: row.code, lineup });
     return { sessionId: row.id, code: row.code };
   }
 
@@ -233,6 +245,26 @@ export class SimHost {
       throw new Error(`admin_new_session (cleanup) failed: ${error.message}`);
     }
     if (!error) this.record("new_session_cleanup");
+  }
+
+  /**
+   * Recovers from a previous run that only measured round 1 and never finished rounds 2-3 (a bug fixed
+   * in run.ts, see finishRemainingRounds below): a session left in 'playing' with 'upcoming' rounds
+   * blocks every future admin_start_session/admin_new_session call (ADR-108, at most one running
+   * session). Finds any such leftover session, force-ends its remaining rounds so it reaches
+   * 'results', then leaves it for the caller's tryNewSession() to actually close. No-op if none exists.
+   */
+  async closeLeftoverRunningSession(): Promise<void> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select("id, status")
+      .eq("status", "playing")
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(`closeLeftoverRunningSession query failed: ${error.message}`);
+    if (!data) return;
+    this.record("closing_leftover_running_session", { sessionId: data.id });
+    await this.finishRemainingRounds(data.id);
   }
 
   async close(): Promise<void> {

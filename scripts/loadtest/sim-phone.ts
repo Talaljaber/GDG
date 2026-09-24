@@ -39,6 +39,12 @@ export interface PhoneMetrics {
   boardPolls: number;
   boardPollErrors: number;
   score: number | null;
+  /** Date.now() when this phone's initial presence `track()` resolved (for join-burst msg/s). */
+  presenceTrackedAt: number | null;
+  /** Date.now() when this phone received the round-start Postgres Changes event (for fan-out msg/s). */
+  roundStartReceivedAt: number | null;
+  /** Date.now() when this phone's presence re-`track()` resolved after simulateDisconnect (L5). */
+  presenceRetrackedAt: number | null;
 }
 
 export interface SimPhoneOptions {
@@ -147,6 +153,9 @@ export class SimPhone {
       boardPolls: 0,
       boardPollErrors: 0,
       score: null,
+      presenceTrackedAt: null,
+      roundStartReceivedAt: null,
+      presenceRetrackedAt: null,
     };
   }
 
@@ -161,7 +170,15 @@ export class SimPhone {
     this.playerId = data.user?.id ?? null;
   }
 
-  /** join_session(code, name) RPC, per docs/DATA_MODEL.md §6. */
+  /**
+   * join_session(code, name) RPC, per docs/DATA_MODEL.md §6. Since ADR-130 (join throttle, migration
+   * 20260925000400) a wrong/locked code is not a raised error: the call still succeeds and returns
+   * `{error: "GD001"}` (wrong/unknown code) or `{error: "GD013", retry_after_s}` (identity locked out
+   * after 5 wrong codes in 60s) as ordinary data, so it must be checked explicitly. The load test
+   * always uses a real, freshly-opened code, so this path isn't expected to fire — but a phone must
+   * still treat it as a failed join (never as success, and never retried in a tight loop: it's logged
+   * and thrown like any other join failure, one attempt per phone).
+   */
   async join(): Promise<void> {
     const t0 = performance.now();
     const { data, error } = await this.client.rpc("join_session", {
@@ -175,11 +192,25 @@ export class SimPhone {
       this.bumpError(this.metrics.errorsByCode, error.code ?? "unknown");
       throw new Error(`join_session failed for phone ${this.index}: ${error.message}`);
     }
+    const row = data as {
+      session_id?: string;
+      player_row_id?: string;
+      error?: string;
+      retry_after_s?: number;
+    };
+    if (row?.error) {
+      this.metrics.joinOk = false;
+      this.metrics.joinError = row.retry_after_s ? `${row.error}:retry_after_s=${row.retry_after_s}` : row.error;
+      this.bumpError(this.metrics.errorsByCode, row.error);
+      throw new Error(
+        `join_session for phone ${this.index} returned ${row.error}` +
+          (row.retry_after_s ? ` (retry_after_s=${row.retry_after_s})` : ""),
+      );
+    }
     this.metrics.joinOk = true;
     this.metrics.joinLatencyMs = latency;
-    const row = data as { session_id: string; player_row_id: string };
-    this.sessionId = row.session_id;
-    this.playerRowId = row.player_row_id;
+    this.sessionId = row.session_id!;
+    this.playerRowId = row.player_row_id!;
   }
 
   /**
@@ -209,6 +240,7 @@ export class SimPhone {
             const row = payload.new as RoundRow;
             this.latestRound = row;
             if (row.status === "playing") {
+              this.metrics.roundStartReceivedAt = Date.now();
               const resolvers = this.roundPlayingResolvers.splice(0);
               resolvers.forEach((r) => r(row));
             } else if (row.status === "done") {
@@ -255,6 +287,11 @@ export class SimPhone {
       channel.subscribe(async (status, err) => {
         if (status === "SUBSCRIBED") {
           await channel.track({ player_id: this.playerId });
+          if (this.metrics.presenceTrackedAt === null) {
+            this.metrics.presenceTrackedAt = Date.now();
+          } else {
+            this.metrics.presenceRetrackedAt = Date.now();
+          }
           resolvePresence();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           const type = err?.message?.match(/too_many_\w+|tenant_events/)?.[0] ?? status;
@@ -345,7 +382,9 @@ export class SimPhone {
     }
     this.metrics.submitOk = false;
     this.bumpError(this.metrics.errorsByCode, error.code ?? "unknown");
-    this.log(`phone ${this.index}: score insert failed ${error.code} ${error.message}`);
+    this.log(
+      `phone ${this.index}: score insert failed ${error.code} ${error.message} (detail=${error.details ?? "n/a"}, hint=${error.hint ?? "n/a"})`,
+    );
   }
 
   /** Poll v_round_board / v_session_board every N ms while "on a board" (docs/DATA_MODEL.md §8). */
