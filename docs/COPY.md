@@ -55,14 +55,14 @@ Last updated: 2026-09-24
 | Key | English | العربية |
 |---|---|---|
 | `lobby.in` | You're in! | أنت معنا! |
-| `lobby.you_are` | Playing as {name} | تلعب باسم {name} |
+| `lobby.you_are` | Playing as {name} | اسمك في اللعبة: {name} |
 | `lobby.lineup` | Your games | ألعابك |
 | `lobby.waiting` | Waiting for the host to start… | بانتظار أن يبدأ المضيف… |
-| `lobby.next_round` | You're in the next round | أنت في الجولة القادمة |
-| `lobby.next_round_sub` | The current game is almost done. Hang tight! | اللعبة الحالية على وشك الانتهاء. انتظر قليلًا! |
+| `lobby.next_round` | You're in the next round | أنت في الجلسة القادمة |
+| `lobby.next_round_sub` | The current game is almost done. Hang tight! | الجلسة الحالية على وشك الانتهاء. لن يطول الانتظار! |
 | `lobby.players_count` (plural) | one: 1 player · other: {n} players | zero: لا يوجد لاعبون بعد · one: لاعب واحد · two: لاعبان · few: {n} لاعبين · many: {n} لاعبًا · other: {n} لاعب |
-| `removed.title` | Removed by host | تمت إزالتك من قِبل المضيف |
-| `removed.body` | You can join the next game with its new code. | يمكنك الانضمام إلى اللعبة القادمة برمزها الجديد. |
+| `removed.title` | Removed by host | أزالك المضيف من الجلسة |
+| `removed.body` | You can join the next game with its new code. | يمكنك الانضمام إلى الجلسة القادمة برمزها الجديد. |
 | `removed.cta` | Enter a new code | أدخل رمزًا جديدًا |
 | `round.label` | Round {n} of {total} | الجولة {n} من {total} |
 | `round.get_ready` | Get ready… | استعد… |
@@ -83,10 +83,10 @@ Last updated: 2026-09-24
 | `results.breakdown_missing` | – | – |
 | `results.no_scores` | No scores this session | لا نتائج في هذه الجلسة |
 | `results.new_best` | New personal best! | رقم شخصي جديد! |
-| `results.join_next` | Join the next game | انضم إلى اللعبة القادمة |
-| `results.session_ended` | This game has ended. Join the next one! | انتهت هذه اللعبة. انضم إلى القادمة! |
+| `results.join_next` | Join the next game | انضم للجلسة القادمة |
+| `results.session_ended` | This game has ended. Join the next one! | انتهت هذه الجلسة. انضم إلى القادمة! |
 | `dayboard.title` | Today's best | أفضل نتائج اليوم |
-| `dayboard.empty` | No scores yet. Be the first! | لا نتائج بعد. كن الأول! |
+| `dayboard.empty` | No scores yet. Be the first! | لا نتائج بعد. من سيكون الأول؟ |
 
 ## 5. Games
 
@@ -98,10 +98,10 @@ Last updated: 2026-09-24
 | `game.perfect_circle.name` | Perfect Circle | الدائرة المثالية |
 | `game.trivia.name` | Trivia | أسئلة سريعة |
 | `game.odd_one_out.pitch` (`game.ooo.pitch`) | One chevron is different. Find it fast. | شكل واحد مختلف. اعثر عليه بسرعة. |
-| `game.stop_the_clock.pitch` (`game.stc.pitch`) | No clock, no hints. Stop it when you feel the time is up. | لا ساعة ولا تلميحات. أوقفها حين تشعر أن الوقت انتهى. |
-| `game.simon.pitch` | Watch the pads light up, then repeat the pattern. | راقب الأزرار وهي تضيء، ثم كرّر النمط. |
-| `game.perfect_circle.pitch` (`game.pc.pitch`) | Draw one circle with your finger. How round can you go? | ارسم دائرة واحدة بإصبعك. إلى أي حدّ ستكون مستديرة؟ |
-| `game.trivia.pitch` | 5 quick questions. Faster right answers score more. | 5 أسئلة سريعة. الإجابة الصحيحة الأسرع تكسب أكثر. |
+| `game.stop_the_clock.pitch` (`game.stc.pitch`) | No clock, no hints. Stop it when you feel the time is up. | لا ساعة ولا تلميحات. اضغط «أوقف» حين تشعر أن الوقت انتهى. |
+| `game.simon.pitch` | Watch the pads light up, then repeat the pattern. | راقب الأزرار وهي تضيء، ثم كرّر التسلسل. |
+| `game.perfect_circle.pitch` (`game.pc.pitch`) | Draw one circle with your finger. How round can you go? | ارسم دائرة واحدة بإصبعك. هل ستكون مثالية؟ |
+| `game.trivia.pitch` | 5 quick questions. Faster right answers score more. | 5 أسئلة سريعة. كلما أسرعت في الإجابة الصحيحة زادت نقاطك. |
 
 Key aliasing: game docs use short ids (`ooo`, `stc`, `pc`) for readability; the string files use the full game id (`odd_one_out`, `stop_the_clock`, `perfect_circle`). `game.ooo.x` in a game doc = `game.odd_one_out.x` in the JSON.
 
@@ -130,9 +130,9 @@ Key aliasing: game docs use short ids (`ooo`, `stc`, `pc`) for readability; the 
 | `game.odd_one_out.intro` | 3 grids · each one harder | 3 شبكات · كل واحدة أصعب |
 | `game.odd_one_out.grid` | Grid {n} of 3 | الشبكة {n} من 3 |
 | `game.odd_one_out.penalty` | +2 s | +2 ث |
-| `game.odd_one_out.timeout` | Time's up for this one | انتهى الوقت لهذه |
+| `game.odd_one_out.timeout` | Time's up for this one | انتهى وقت هذه الشبكة |
 | `game.odd_one_out.result_row` | Grid {n} · {s} s | الشبكة {n} · {s} ث |
-| `game.odd_one_out.penalty_note` | incl. {p} s penalty | تشمل {p} ث عقوبة |
+| `game.odd_one_out.penalty_note` | incl. {p} s penalty | منها {p} ث عقوبة |
 
 ### 5.3 Simon
 
@@ -170,14 +170,14 @@ Key aliasing: game docs use short ids (`ooo`, `stc`, `pc`) for readability; the 
 | Key | English | العربية |
 |---|---|---|
 | `game.trivia.intro` | 5 questions · 10 s each | 5 أسئلة · 10 ثوانٍ لكل سؤال |
-| `game.trivia.progress` | {n} / 5 | {n} / 5 |
+| `game.trivia.progress` | {n} / 5 | {n} من 5 |
 | `game.trivia.bucket.google_dev` | Google & dev | Google والبرمجة |
 | `game.trivia.bucket.ai_basics` | AI basics | أساسيات الذكاء الاصطناعي |
 | `game.trivia.bucket.gdg_community` | Community | المجتمع |
 | `game.trivia.times_up` | Time's up | انتهى الوقت |
 | `game.trivia.correct_points` | +{p} | +{p} |
 | `game.trivia.five_left` | 5 seconds left | متبقٍّ 5 ثوانٍ |
-| `game.trivia.result` | {n} / 5 correct | {n} / 5 إجابات صحيحة |
+| `game.trivia.result` | {n} / 5 correct | {n} من 5 إجابات صحيحة |
 | `game.trivia.unavailable` | Needs 5+ ready questions | يحتاج 5 أسئلة جاهزة على الأقل |
 
 ## 6. Host view (big screen)
@@ -194,11 +194,11 @@ The lobby join strings (`host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.co
 | `host.signin.not_admin` | This account isn't a host account | هذا الحساب ليس حساب مضيف |
 | `host.lobby.scan` | Scan to play | امسح الرمز لتلعب |
 | `host.lobby.or_visit` | or visit {url} | أو زُر {url} |
-| `host.lobby.code_label` | Game code | رمز اللعبة |
+| `host.lobby.code_label` | Game code | رمز الجلسة |
 | `host.lobby.players` (plural) | one: 1 player · other: {n} players | zero: لا يوجد لاعبون بعد · one: لاعب واحد · two: لاعبان · few: {n} لاعبين · many: {n} لاعبًا · other: {n} لاعب |
-| `host.lobby.empty` | Waiting for players… be the first! | بانتظار اللاعبين… كن الأول! |
+| `host.lobby.empty` | Waiting for players… be the first! | بانتظار اللاعبين… من سيكون الأول؟ |
 | `host.lobby.remove` | Remove | إزالة |
-| `host.lobby.remove_confirm` | Remove {name} from this game? | إزالة {name} من هذه اللعبة؟ |
+| `host.lobby.remove_confirm` | Remove {name} from this game? | إزالة {name} من هذه الجلسة؟ |
 | `host.lineup.title` | Games: pick {n} | الألعاب: اختر {n} |
 | `host.lineup.next_title` | Next session's games | ألعاب الجلسة القادمة |
 | `host.lineup.need` (plural) | one: Pick 1 game · other: Pick {n} different games | zero: اختر {n} ألعاب مختلفة · one: اختر لعبة واحدة · two: اختر لعبتين مختلفتين · few: اختر {n} ألعاب مختلفة · many: اختر {n} لعبة مختلفة · other: اختر {n} لعبة مختلفة |
@@ -207,9 +207,9 @@ The lobby join strings (`host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.co
 | `host.round.finished` | {done}/{total} finished | {done}/{total} أنهوا |
 | `host.round.force_end` | End round | إنهاء الجولة |
 | `host.round.force_end_confirm` | End this round now? Scores so far count. | إنهاء هذه الجولة الآن؟ النتائج الحالية تُحتسب. |
-| `host.corner.next_code` | Next game: {code} | اللعبة القادمة: {code} |
-| `host.corner.late` | Late? Join the next round | تأخرت؟ انضم إلى الجولة القادمة |
-| `host.results.winner` | Winner! | الفائز! |
+| `host.corner.next_code` | Next game: {code} | الجلسة القادمة: {code} |
+| `host.corner.late` | Late? Join the next session | تأخرت؟ انضم للجلسة القادمة |
+| `host.results.winner` | Winner! | المركز الأول! |
 | `host.results.show_day_board` | Show day board | عرض لوحة اليوم |
 | `host.results.total` | Total | المجموع |
 | `host.new_session` | New session | جلسة جديدة |

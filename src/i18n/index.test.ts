@@ -27,7 +27,7 @@ describe('translate: interpolation', () => {
   });
 
   it('interpolates in Arabic too', () => {
-    expect(translate('ar', 'lobby.you_are', { name: 'سارة' })).toBe('تلعب باسم سارة');
+    expect(translate('ar', 'lobby.you_are', { name: 'سارة' })).toBe('اسمك في اللعبة: سارة');
   });
 });
 

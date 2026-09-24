@@ -132,7 +132,7 @@
   "game.trivia.unavailable": "Needs 5+ ready questions",
   "host.banner.db_down": "Database unreachable. See runbook §5.1.",
   "host.banner.reconnecting": "Reconnecting…",
-  "host.corner.late": "Late? Join the next round",
+  "host.corner.late": "Late? Join the next session",
   "host.corner.next_code": "Next game: {code}",
   "host.lineup.need": {
     "one": "Pick 1 game",
