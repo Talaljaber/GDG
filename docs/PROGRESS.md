@@ -67,6 +67,7 @@ Last updated: 2026-09-24
 
 ## Blockers
 
+- **GitHub Actions is locked by a billing issue on the account** (2026-09-25): CI and the scheduled keepalive are refused ("account is locked due to a billing issue"), so the keepalive isn't touching the cloud database; the Free project pauses after ~7 days without activity. Talal fixes billing in GitHub → Settings → Billing, then re-runs Keepalive once by hand.
 - Netlify needs the team's account (OQ-14). Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia: the pool now has 30 questions marked ready (`check:trivia`); the review sign-off is OQ-03.
 
 ## Edge-case test coverage (E1–E29, `SESSION_LIFECYCLE.md` §6)

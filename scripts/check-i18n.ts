@@ -63,7 +63,8 @@ function main() {
   let actualEn: CopyMap;
   let actualAr: CopyMap;
   try {
-    actualEnRaw = readFileSync(EN_JSON_PATH, 'utf-8');
+    // Normalise CRLF: a Windows checkout (core.autocrlf) must not read as out of date.
+    actualEnRaw = readFileSync(EN_JSON_PATH, 'utf-8').replace(/\r\n/g, '\n');
     actualEn = readJson(EN_JSON_PATH);
   } catch {
     errors.push(`src/i18n/en.json is missing or invalid JSON. Run \`npm run gen:i18n\`.`);
@@ -71,7 +72,8 @@ function main() {
     actualEn = {};
   }
   try {
-    actualArRaw = readFileSync(AR_JSON_PATH, 'utf-8');
+    // Normalise CRLF: a Windows checkout (core.autocrlf) must not read as out of date.
+    actualArRaw = readFileSync(AR_JSON_PATH, 'utf-8').replace(/\r\n/g, '\n');
     actualAr = readJson(AR_JSON_PATH);
   } catch {
     errors.push(`src/i18n/ar.json is missing or invalid JSON. Run \`npm run gen:i18n\`.`);
