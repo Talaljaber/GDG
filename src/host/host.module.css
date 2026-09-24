@@ -1,0 +1,298 @@
+/* Big screen (docs/SCREENS.md §2). Projector scale only (DESIGN_SYSTEM §3.2):
+   vh units, nothing smaller than --proj-min, 5vh safe margins, max 10 rows.
+   Logical properties only. */
+
+.host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-3);
+  min-block-size: 100vh;
+  padding: var(--big-screen-safe-margin);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--proj-min);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--proj-s-3);
+}
+
+.headerEnd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--proj-s-1);
+  text-align: end;
+}
+
+.heading {
+  font-size: var(--proj-heading);
+  font-weight: var(--proj-heading-weight);
+}
+
+.big {
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer {
+  font-size: var(--proj-timer);
+  font-weight: var(--proj-heading-weight);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  gap: var(--proj-s-4);
+  min-block-size: 0;
+}
+
+/* ---- H1 lobby ---- */
+
+.joinCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--proj-s-2);
+  flex: none;
+}
+
+.codeCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--proj-s-1);
+  flex: none;
+}
+
+.code {
+  font-size: var(--proj-code);
+  font-weight: var(--proj-code-weight);
+  letter-spacing: var(--proj-code-letter-spacing);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--primary-text);
+}
+
+.bilingual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--proj-s-1);
+  text-align: center;
+}
+
+.url {
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+  color: var(--primary-text);
+}
+
+.playersCol {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--proj-s-2);
+  min-inline-size: 0;
+}
+
+.players {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: var(--proj-s-1) var(--proj-s-2);
+}
+
+.player {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--proj-s-1);
+  padding-block: var(--proj-s-1);
+  padding-inline: var(--proj-s-2);
+  border-radius: var(--r-chip);
+  background: var(--surface);
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+}
+
+.dot {
+  inline-size: var(--proj-dot-size);
+  block-size: var(--proj-dot-size);
+  border-radius: 50%;
+  flex: none;
+}
+
+.dotOn {
+  background: var(--primary);
+}
+
+.dotOff {
+  background: transparent;
+  border: var(--line-width-strong) solid var(--text-muted);
+}
+
+.playerOff {
+  color: var(--text-muted);
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--touch-target-min);
+  min-block-size: var(--touch-target-min);
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--proj-min);
+}
+
+.removeIcon {
+  inline-size: var(--proj-row);
+  block-size: var(--proj-row);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.remove:hover {
+  background: var(--gdg-blue-tint);
+  color: var(--text);
+}
+
+/* ---- footer: lineup + controls, grouped in the inline-end bottom corner ---- */
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--proj-s-2);
+}
+
+.lineup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--proj-s-1);
+}
+
+.gameCard {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--proj-s-1);
+  min-block-size: var(--touch-target-min);
+  padding-block: var(--proj-s-1);
+  padding-inline: var(--proj-s-2);
+  border: var(--line-width-strong) solid var(--gdg-line);
+  border-radius: var(--r-button);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--proj-min);
+  font-weight: var(--proj-row-weight);
+}
+
+.gameCardOn {
+  border-color: var(--primary);
+  background: var(--gdg-blue-tint);
+}
+
+.gameNo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--proj-row);
+  block-size: var(--proj-row);
+  border-radius: 50%;
+  background: var(--gdg-blue-deep);
+  color: var(--on-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--proj-s-1);
+  margin-inline-start: auto;
+}
+
+.control {
+  font-size: var(--proj-min);
+}
+
+.hint {
+  font-size: var(--proj-min);
+  color: var(--text-muted);
+}
+
+/* ---- H2 / H4 ---- */
+
+.boardWrap {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.winner {
+  display: flex;
+  align-items: center;
+  gap: var(--proj-s-3);
+  padding-block: var(--proj-s-2);
+  padding-inline: var(--proj-s-3);
+  border-radius: var(--r-card);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  font-size: var(--proj-heading);
+  font-weight: var(--proj-heading-weight);
+}
+
+.winnerLabel {
+  font-size: var(--proj-row);
+}
+
+.winnerScore {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.banner {
+  padding-block: var(--proj-s-1);
+  padding-inline: var(--proj-s-2);
+  border-radius: var(--r-button);
+  background: var(--gdg-ink);
+  color: var(--gdg-paper);
+  font-size: var(--proj-min);
+  text-align: center;
+}
+
+/* ---- H0 sign-in (not projected; phone/laptop scale) ---- */
+
+.signin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  inline-size: min(100%, var(--phone-max-width));
+  margin-inline: auto;
+  padding-block: var(--s-7);
+  padding-inline: var(--phone-gutter);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
