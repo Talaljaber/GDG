@@ -46,6 +46,8 @@ Run as three identities: `anon` (no JWT), a guest (anonymous JWT), the admin (JW
 
 **Functions:** every transition in `SESSION_LIFECYCLE.md` §2–§3, plus: start with 0 players → `GD010`; remove after start → `GD010`; two joinable sessions impossible (unique index); `join_session` idempotent for the same uid; removed uid → `GD004`; late score within 15 s accepted, after → `GD007`.
 
+**Join throttle (`08_join_throttle.sql`, ADR-130):** wrong and malformed codes come back as `{"error":"GD001"}` (not raised) and are logged; the 6th try after 5 wrong codes returns `{"error":"GD013","retry_after_s":30}` even with the right code and creates no player; locked tries aren't logged; another uid is unaffected; with log rows backdated (no sleeps) the seconds left count down and the right code joins after 30 s; one more wrong code while 5 are inside 60 s locks again; rows older than 60 s don't count; rows older than 10 minutes are purged; `private.join_attempts` has RLS on, no policies and no privileges for anon/authenticated; GD002/GD003/GD012 still raise and log nothing.
+
 **Lineup:** exactly 3 distinct games (`admin_open_lobby`/`admin_set_lineup` with 1, 2, a repeat or a 2-D array → `GD011`; a new or shrunk `sessions` row with other than 3 games → `23514`, constraint `sessions_lineup_three`).
 
 **Boards (`07_boards.sql`):** round board `score desc, created_at asc`; session board totals with `total_duration_ms` then `joined_at` tie-breaks, a guest sees only sessions it joined; day board one row per name key with the best score, the earliest of equal bests, names without suffix, current day only; a hidden key leaves all three (rows kept) and comes back when unhidden.

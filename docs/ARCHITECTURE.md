@@ -73,13 +73,15 @@ sequenceDiagram
         A-->>G: session (auth.uid() = playerId), stored in localStorage
     end
     G->>DB: rpc join_session(code, name)
-    DB->>DB: find joinable session by code, validate name,<br/>blocklist, name_key, display suffix, insert player
+    DB->>DB: wrong-code throttle (ADR-130), find joinable session by code,<br/>validate name, blocklist, name_key, display suffix, insert player
     alt ok
         DB-->>G: {session_id, player_row_id, name, suffix, status}
         G->>G: subscribe session channel, track presence
         DB--)H: players INSERT (realtime)
         H->>H: player appears in lobby (shatter-in)
-    else GD001 / GD002 / GD003 / GD004
+    else wrong code / too many tries (returned as data, so the attempt log commits)
+        DB-->>G: {error: GD001} or {error: GD013, retry_after_s}
+    else GD002 / GD003 / GD004
         DB-->>G: error code → COPY message
     end
 ```
