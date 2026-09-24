@@ -1,0 +1,184 @@
+/* Simon screen. Tokens only (docs/DESIGN_SYSTEM.md §2-6), except the four
+   Simon pad colours, the only place Google's four colours are allowed
+   (.claude/rules/games.md, docs/DESIGN_SYSTEM.md §2.3). Never left/right:
+   pad geometry is fixed and never mirrored in RTL (.claude/rules/ui-i18n.md). */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-5);
+  min-height: 100%;
+  padding-block: var(--s-6);
+  padding-inline: var(--phone-gutter);
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.title {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  margin: 0;
+}
+
+.pitch {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--text-muted);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  margin: 0;
+}
+
+.won {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--primary-text);
+  margin: 0;
+  animation: won-pop var(--dur-slow) var(--ease-emphasized);
+}
+
+@keyframes won-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  grid-template-rows: repeat(2, minmax(120px, 1fr));
+  gap: var(--s-4);
+  width: min(100%, 360px);
+}
+
+.pad {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-inline-size: 120px;
+  min-block-size: 120px;
+  border: none;
+  border-radius: var(--r-card);
+  color: #ffffff;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    filter var(--dur-fast) var(--ease-standard);
+}
+
+.pad:disabled {
+  cursor: default;
+}
+
+.pad:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+/* §2 pad table: position -> shape (baked into the chevron rotation) -> Google colour. */
+.pad_up {
+  background: var(--simon-blue);
+}
+
+.pad_right {
+  background: var(--simon-red);
+}
+
+.pad_left {
+  background: var(--simon-yellow);
+}
+
+.pad_down {
+  background: var(--simon-green);
+}
+
+.chevron {
+  width: 40%;
+  height: 40%;
+}
+
+/* Flash: brighten + scale 1.06 + 3px ink outline (docs/games/simon.md §2). */
+.flashing {
+  filter: brightness(1.35);
+  outline: 3px solid var(--gdg-ink);
+  outline-offset: 2px;
+  transform: scale(1.06);
+}
+
+/* over: the wrong pad shakes once. */
+.shaking {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-inline-size: 120px;
+  min-block-size: 120px;
+  border-radius: var(--r-card);
+  color: #ffffff;
+  animation: shake var(--dur-slow) var(--ease-standard);
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+.dots {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.dot {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 999px;
+  background: var(--gdg-line);
+}
+
+.dotFilled {
+  background: var(--gdg-amber);
+}
+
+/* Reduced motion: no scale on flash, no shake, no won pop (docs/games/simon.md §8). */
+@media (prefers-reduced-motion: reduce) {
+  .flashing {
+    transform: none;
+  }
+
+  .shaking {
+    animation: none;
+  }
+
+  .won {
+    animation: none;
+  }
+}
