@@ -21,6 +21,7 @@ import { SessionDetailPanel, SessionsPanel } from './Sessions';
 import { ResultsPanel } from './Results';
 import { NamesPanel } from './Names';
 import { DaysPanel } from './Days';
+import { useRenderCount } from './renderCount';
 
 export function DashboardApp() {
   return (
@@ -193,6 +194,7 @@ export function DashboardMain({
   /** Dev preview only: open this session's detail (with `initialTab: 'sessions'`). */
   initialSessionId?: string | null;
 }) {
+  useRenderCount('DashboardMain');
   const t = useT();
   const [tab, setTab] = useState<DashTab>(initialTab);
   const [openSessionId, setOpenSessionId] = useState<string | null>(initialSessionId);

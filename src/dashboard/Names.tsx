@@ -6,7 +6,7 @@
  * `HideNameField` is also used standalone on D1 ("quick hide a name",
  * AC4.4: hide takes <= 10 s end to end including typing).
  */
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { formatNumber, useLang, useT } from '../i18n';
 import { nameKey as computeNameKey } from '../lib/names';
@@ -17,11 +17,14 @@ import styles from './dashboard.module.css';
 import { ApiError, type BlockedTermRow, type DayBoardRow, type HiddenNameRow, type TermMatch } from './api';
 import { useDashApi } from './dashApi';
 import { formatTime } from './format';
+import { useRenderCount } from './renderCount';
 import { Alert, EmptyState, PageHeader, Panel, TableSkeleton } from './parts';
 
 // ------------------------------------------------------------------ hide a name (D1 quick field + D5)
 
-export function HideNameField({ onHidden }: { onHidden?: () => void }) {
+/** Memoised (owns its own typing state): parents pass a stable `onHidden`, so their re-renders skip it. */
+export const HideNameField = memo(function HideNameField({ onHidden }: { onHidden?: () => void }) {
+  useRenderCount('HideNameField');
   const t = useT();
   const api = useDashApi();
   const [typed, setTyped] = useState('');
@@ -102,13 +105,13 @@ export function HideNameField({ onHidden }: { onHidden?: () => void }) {
       ) : null}
     </form>
   );
-}
+});
 
 // ------------------------------------------------------------------ D5 full page
 
 export function NamesPanel() {
+  useRenderCount('NamesPanel');
   const t = useT();
-  const { lang } = useLang();
   const api = useDashApi();
   const [hidden, setHidden] = useState<HiddenNameRow[] | null>(null);
   const [blocked, setBlocked] = useState<BlockedTermRow[] | null>(null);
@@ -132,17 +135,24 @@ export function NamesPanel() {
     void reload();
   }, [reload]);
 
-  const unhide = async (nameKey: string) => {
-    setBusy(true);
-    try {
-      await api.adminUnhideName(nameKey);
-      await reload();
-    } catch {
-      setError('sys.generic_error');
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Stable callbacks (with the memoised tables and HideNameField): typing in the blocked-word
+  // field re-renders only this panel, not both lists and the hide field on every keystroke.
+  const onHidden = useCallback(() => void reload(), [reload]);
+
+  const unhide = useCallback(
+    async (nameKey: string) => {
+      setBusy(true);
+      try {
+        await api.adminUnhideName(nameKey);
+        await reload();
+      } catch {
+        setError('sys.generic_error');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [api, reload],
+  );
 
   const addTerm = async (e: FormEvent) => {
     e.preventDefault();
@@ -160,17 +170,20 @@ export function NamesPanel() {
     }
   };
 
-  const removeTerm = async (termKey: string) => {
-    setBusy(true);
-    try {
-      await api.adminRemoveBlockedTerm(termKey);
-      await reload();
-    } catch {
-      setError('sys.generic_error');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const removeTerm = useCallback(
+    async (termKey: string) => {
+      setBusy(true);
+      try {
+        await api.adminRemoveBlockedTerm(termKey);
+        await reload();
+      } catch {
+        setError('sys.generic_error');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [api, reload],
+  );
 
   return (
     <div className={styles.page} data-testid="dash-names">
@@ -179,7 +192,7 @@ export function NamesPanel() {
       <div className={styles.columns}>
         <div className={styles.stack}>
           <Panel title={t('dash.names.hide_title')}>
-            <HideNameField onHidden={() => void reload()} />
+            <HideNameField onHidden={onHidden} />
           </Panel>
 
           <Panel
@@ -192,40 +205,7 @@ export function NamesPanel() {
             ) : hidden.length === 0 ? (
               <EmptyState title={t('dash.names.hidden_empty')} />
             ) : (
-              <div className={styles.tableWrap}>
-                <table className={styles.table} data-testid="hidden-list">
-                  <thead>
-                    <tr>
-                      <th>{t('dash.results.col.name')}</th>
-                      <th>{t('dash.names.col.hidden_at')}</th>
-                      <th className={styles.actionsCol}>
-                        <span className="visually-hidden">{t('dash.names.col.action')}</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hidden.map((h) => (
-                      <tr key={h.name_key} data-testid="hidden-row">
-                        <td className={styles.primaryCell}>
-                          <bdi className={styles.nameCell}>{h.name_key}</bdi>
-                        </td>
-                        <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.names.col.hidden_at')}>{formatTime(h.hidden_at, lang)}</td>
-                        <td className={styles.actionsCol}>
-                          <button
-                            type="button"
-                            className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet}`}
-                            disabled={busy}
-                            onClick={() => void unhide(h.name_key)}
-                            data-testid="unhide-btn"
-                          >
-                            {t('dash.names.unhide')}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <HiddenTable hidden={hidden} busy={busy} onUnhide={unhide} />
             )}
           </Panel>
         </div>
@@ -281,45 +261,111 @@ export function NamesPanel() {
           ) : blocked.length === 0 ? (
             <EmptyState title={t('dash.names.blocked_empty')} />
           ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table} data-testid="blocked-list">
-                <thead>
-                  <tr>
-                    <th>{t('dash.names.col.word')}</th>
-                    <th>{t('dash.names.col.match')}</th>
-                    <th className={styles.actionsCol}>
-                      <span className="visually-hidden">{t('dash.names.col.action')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {blocked.map((b) => (
-                    <tr key={b.term_key} data-testid="blocked-row">
-                      <td className={styles.primaryCell}>
-                        <bdi className={styles.nameCell}>{b.term_key}</bdi>
-                      </td>
-                      <td className={styles.dim} data-label={t('dash.names.col.match')}>
-                        {t(b.match === 'word' ? 'dash.names.match_word' : 'dash.names.match_substring')}
-                      </td>
-                      <td className={styles.actionsCol}>
-                        <button
-                          type="button"
-                          className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet}`}
-                          disabled={busy}
-                          onClick={() => void removeTerm(b.term_key)}
-                          data-testid="blocked-remove-btn"
-                        >
-                          {t('dash.names.remove')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <BlockedTable blocked={blocked} busy={busy} onRemove={removeTerm} />
           )}
         </Panel>
       </div>
     </div>
   );
 }
+
+const HiddenTable = memo(function HiddenTable({
+  hidden,
+  busy,
+  onUnhide,
+}: {
+  hidden: HiddenNameRow[];
+  busy: boolean;
+  onUnhide: (nameKey: string) => Promise<void>;
+}) {
+  useRenderCount('HiddenTable');
+  const t = useT();
+  const { lang } = useLang();
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table} data-testid="hidden-list">
+        <thead>
+          <tr>
+            <th>{t('dash.results.col.name')}</th>
+            <th>{t('dash.names.col.hidden_at')}</th>
+            <th className={styles.actionsCol}>
+              <span className="visually-hidden">{t('dash.names.col.action')}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {hidden.map((h) => (
+            <tr key={h.name_key} data-testid="hidden-row">
+              <td className={styles.primaryCell}>
+                <bdi className={styles.nameCell}>{h.name_key}</bdi>
+              </td>
+              <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.names.col.hidden_at')}>{formatTime(h.hidden_at, lang)}</td>
+              <td className={styles.actionsCol}>
+                <button
+                  type="button"
+                  className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet}`}
+                  disabled={busy}
+                  onClick={() => void onUnhide(h.name_key)}
+                  data-testid="unhide-btn"
+                >
+                  {t('dash.names.unhide')}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+});
+
+const BlockedTable = memo(function BlockedTable({
+  blocked,
+  busy,
+  onRemove,
+}: {
+  blocked: BlockedTermRow[];
+  busy: boolean;
+  onRemove: (termKey: string) => Promise<void>;
+}) {
+  useRenderCount('BlockedTable');
+  const t = useT();
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table} data-testid="blocked-list">
+        <thead>
+          <tr>
+            <th>{t('dash.names.col.word')}</th>
+            <th>{t('dash.names.col.match')}</th>
+            <th className={styles.actionsCol}>
+              <span className="visually-hidden">{t('dash.names.col.action')}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {blocked.map((b) => (
+            <tr key={b.term_key} data-testid="blocked-row">
+              <td className={styles.primaryCell}>
+                <bdi className={styles.nameCell}>{b.term_key}</bdi>
+              </td>
+              <td className={styles.dim} data-label={t('dash.names.col.match')}>
+                {t(b.match === 'word' ? 'dash.names.match_word' : 'dash.names.match_substring')}
+              </td>
+              <td className={styles.actionsCol}>
+                <button
+                  type="button"
+                  className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet}`}
+                  disabled={busy}
+                  onClick={() => void onRemove(b.term_key)}
+                  data-testid="blocked-remove-btn"
+                >
+                  {t('dash.names.remove')}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+});

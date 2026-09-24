@@ -3,7 +3,7 @@
  * new event day (label + confirm), disabled while a session is playing
  * (AC4.6).
  */
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { formatNumber, useLang, useT } from '../i18n';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -12,6 +12,7 @@ import styles from './dashboard.module.css';
 import { isNewDayBlocked } from './combinedResults';
 import { useDashApi } from './dashApi';
 import { formatDateTime } from './format';
+import { useRenderCount } from './renderCount';
 import { Alert, PageHeader, Panel, TableSkeleton } from './parts';
 import type { EventDayRow } from './api';
 
@@ -21,8 +22,8 @@ interface DayRow {
 }
 
 export function DaysPanel() {
+  useRenderCount('DaysPanel');
   const t = useT();
-  const { lang } = useLang();
   const api = useDashApi();
   const [rows, setRows] = useState<DayRow[] | null>(null);
   const [blocked, setBlocked] = useState(false);
@@ -113,43 +114,53 @@ export function DaysPanel() {
         {!rows ? (
           <TableSkeleton columns={4} rows={3} />
         ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table} data-testid="days-table">
-              <thead>
-                <tr>
-                  <th>{t('dash.results.filter_day')}</th>
-                  <th>{t('dash.days.col.started')}</th>
-                  <th>{t('dash.days.col.ended')}</th>
-                  <th className={styles.num}>{t('dash.days.col.sessions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ day, sessions }) => (
-                  <tr key={day.id} data-testid="day-row">
-                    <td className={styles.primaryCell}>
-                      <span className={styles.nameWithTag}>
-                        <span className={styles.strong}>{day.label}</span>
-                        {day.is_current ? (
-                          <span className={`${ui.badge} ${styles.tagLive}`}> {t('dash.days.current_badge')}</span>
-                        ) : null}
-                      </span>
-                    </td>
-                    <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.days.col.started')}>
-                      {formatDateTime(day.started_at, lang)}
-                    </td>
-                    <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.days.col.ended')}>
-                      {formatDateTime(day.ended_at, lang)}
-                    </td>
-                    <td className={styles.num} data-label={t('dash.days.col.sessions')}>
-                      {formatNumber(sessions)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DaysTable rows={rows} />
         )}
       </Panel>
     </div>
   );
 }
+
+/** Memoised so typing the new day's label (DaysPanel state) doesn't re-render the table. */
+const DaysTable = memo(function DaysTable({ rows }: { rows: DayRow[] }) {
+  useRenderCount('DaysTable');
+  const t = useT();
+  const { lang } = useLang();
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table} data-testid="days-table">
+        <thead>
+          <tr>
+            <th>{t('dash.results.filter_day')}</th>
+            <th>{t('dash.days.col.started')}</th>
+            <th>{t('dash.days.col.ended')}</th>
+            <th className={styles.num}>{t('dash.days.col.sessions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ day, sessions }) => (
+            <tr key={day.id} data-testid="day-row">
+              <td className={styles.primaryCell}>
+                <span className={styles.nameWithTag}>
+                  <span className={styles.strong}>{day.label}</span>
+                  {day.is_current ? (
+                    <span className={`${ui.badge} ${styles.tagLive}`}> {t('dash.days.current_badge')}</span>
+                  ) : null}
+                </span>
+              </td>
+              <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.days.col.started')}>
+                {formatDateTime(day.started_at, lang)}
+              </td>
+              <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.days.col.ended')}>
+                {formatDateTime(day.ended_at, lang)}
+              </td>
+              <td className={styles.num} data-label={t('dash.days.col.sessions')}>
+                {formatNumber(sessions)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+});

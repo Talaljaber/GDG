@@ -8,6 +8,7 @@ import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
 import { useDashApi } from './dashApi';
 import { formatTime } from './format';
+import { useRenderCount } from './renderCount';
 import { Alert, EmptyState, Icon, PageHeader, Panel, Select, TableSkeleton } from './parts';
 import type { EventDayRow, PlayerRow, RoundRow, ScoreRow, SessionRow, SessionWinner } from './api';
 
@@ -25,6 +26,7 @@ function StatusTag({ status }: { status: SessionRow['status'] }) {
 }
 
 export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: string) => void }) {
+  useRenderCount('SessionsPanel');
   const t = useT();
   const { lang } = useLang();
   const api = useDashApi();
@@ -48,7 +50,7 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
   useEffect(() => {
     if (!dayId) return;
     let alive = true;
-    setRows(null);
+    // Rows are cleared by the day select's onChange, in the same render as the new day.
     void (async () => {
       try {
         const sessions = await api.fetchSessionsForDay(dayId);
@@ -78,7 +80,10 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
         <Select
           label={t('dash.results.filter_day')}
           value={dayId ?? ''}
-          onChange={(e) => setDayId(e.target.value)}
+          onChange={(e) => {
+            setRows(null);
+            setDayId(e.target.value);
+          }}
           data-testid="sessions-day-select"
         >
           {days.map((d) => (
@@ -170,6 +175,7 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
 // ------------------------------------------------------------------ D3
 
 export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
+  useRenderCount('SessionDetailPanel');
   const t = useT();
   const { lang } = useLang();
   const api = useDashApi();
@@ -299,7 +305,7 @@ export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; o
                           </td>
                           {roundScores.map((s, i) => (
                             <td
-                              key={i}
+                              key={rounds[i].id}
                               className={`${styles.num} ${s === undefined ? styles.dim : ''}`}
                               data-label={t('dash.session.col.round', { n: rounds[i].round_no })}
                             >

@@ -11,6 +11,7 @@ import { HideNameField } from './Names';
 import { useDashApi, type DashApi } from './dashApi';
 import { Alert, EmptyState, PageHeader, Panel } from './parts';
 import { formatTime } from './format';
+import { useRenderCount } from './renderCount';
 import type { EventDayRow, SessionRow } from './api';
 
 const RUNNING_STATUSES: SessionRow['status'][] = ['pending', 'lobby', 'playing', 'results'];
@@ -33,6 +34,7 @@ async function load(api: DashApi): Promise<TodayData> {
 }
 
 export function TodayPanel() {
+  useRenderCount('TodayPanel');
   const t = useT();
   const { lang } = useLang();
   const api = useDashApi();
@@ -41,7 +43,10 @@ export function TodayPanel() {
 
   const reload = useCallback(async () => {
     try {
-      setData(await load(api));
+      const next = await load(api);
+      // A reload after hiding a name usually returns the same numbers (hiding deletes nothing): keep
+      // the old object then, so the page doesn't re-render for identical data.
+      setData((prev) => (prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
       setError(null);
     } catch {
       setError('sys.generic_error');
@@ -51,6 +56,8 @@ export function TodayPanel() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const onHidden = useCallback(() => void reload(), [reload]);
 
   const stats: { id: string; label: string; value: number | undefined }[] = [
     { id: 'players', label: t('dash.stat.players'), value: data?.playerCount },
@@ -128,7 +135,7 @@ export function TodayPanel() {
 
         <Panel title={t('dash.names.hide_title')}>
           <p className={styles.panelNote}>{t('dash.today.hide_note')}</p>
-          <HideNameField onHidden={() => void reload()} />
+          <HideNameField onHidden={onHidden} />
         </Panel>
       </div>
     </div>

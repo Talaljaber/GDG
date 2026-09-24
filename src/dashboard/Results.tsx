@@ -3,7 +3,7 @@
  * day(s), sortable columns, day/game filters, "Best per name" toggle
  * (AC4.2), and a client-side CSV export of exactly what's shown (AC4.3).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { formatNumber, useLang, useT } from '../i18n';
 import { displayName } from '../lib/boards';
 import ui from '../components/ui.module.css';
@@ -12,6 +12,7 @@ import { buildCsv, csvFilename, downloadCsv } from './csv';
 import { bestPerName, rowsToCsv, sortCombined, type SortDir, type SortKey } from './combinedResults';
 import { useDashApi } from './dashApi';
 import { formatDateTime } from './format';
+import { useRenderCount } from './renderCount';
 import { Alert, EmptyState, Icon, PageHeader, Panel, Select, TableSkeleton } from './parts';
 import type { CombinedScoreRow, EventDayRow, GameId } from './api';
 
@@ -24,8 +25,8 @@ const GAME_IDS: GameId[] = ['odd_one_out', 'stop_the_clock', 'simon', 'perfect_c
 const NUMERIC: ReadonlySet<SortKey> = new Set<SortKey>(['score']);
 
 export function ResultsPanel() {
+  useRenderCount('ResultsPanel');
   const t = useT();
-  const { lang } = useLang();
   const api = useDashApi();
   const [days, setDays] = useState<EventDayRow[]>([]);
   const [currentDay, setCurrentDay] = useState<EventDayRow | null>(null);
@@ -50,10 +51,11 @@ export function ResultsPanel() {
     })();
   }, [api]);
 
+  // Back to the skeleton in the same render as the filter change (see `changeDay`/`changeGame`), not
+  // one render later from here: an effect-time `setRows(null)` first re-rendered every old row once.
   useEffect(() => {
     if (dayFilter === DAY_FILTER_UNSET) return;
     let alive = true;
-    setRows(null);
     void (async () => {
       try {
         const data = await api.fetchCombinedResults({
@@ -75,6 +77,16 @@ export function ResultsPanel() {
     const reduced = bestOnly ? bestPerName(rows) : rows;
     return sortCombined(reduced, sortKey, sortDir);
   }, [rows, bestOnly, sortKey, sortDir]);
+
+  const changeDay = (value: string) => {
+    setRows(null);
+    setDayFilter(value);
+  };
+
+  const changeGame = (value: GameId | typeof ALL_GAMES) => {
+    setRows(null);
+    setGameFilter(value);
+  };
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -124,7 +136,7 @@ export function ResultsPanel() {
         <Select
           label={t('dash.results.filter_day')}
           value={dayFilter}
-          onChange={(e) => setDayFilter(e.target.value)}
+          onChange={(e) => changeDay(e.target.value)}
           data-testid="results-day-select"
         >
           <option value={ALL_DAYS}>{t('dash.results.all')}</option>
@@ -138,7 +150,7 @@ export function ResultsPanel() {
         <Select
           label={t('dash.results.filter_game')}
           value={gameFilter}
-          onChange={(e) => setGameFilter(e.target.value as GameId | typeof ALL_GAMES)}
+          onChange={(e) => changeGame(e.target.value as GameId | typeof ALL_GAMES)}
           data-testid="results-game-select"
         >
           <option value={ALL_GAMES}>{t('dash.results.all')}</option>
@@ -200,21 +212,7 @@ export function ResultsPanel() {
               </thead>
               <tbody>
                 {shown.map((r) => (
-                  <tr key={r.id} data-testid="results-row">
-                    <td className={styles.primaryCell}>
-                      <bdi className={styles.nameCell}>{displayName(r.name, r.displaySuffix)}</bdi>
-                    </td>
-                    <td data-label={t('dash.results.col.game')}>{t(`game.${r.game}.name`)}</td>
-                    <td className={`${styles.num} ${styles.strong}`} data-label={t('dash.results.col.score')}>
-                      {formatNumber(r.score)}
-                    </td>
-                    <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.results.col.time')}>
-                      {formatDateTime(r.createdAt, lang, true)}
-                    </td>
-                    <td className={styles.code} data-label={t('dash.results.col.session')}>
-                      <span dir="ltr">{r.sessionCode ?? '–'}</span>
-                    </td>
-                  </tr>
+                  <ResultRow key={r.id} row={r} />
                 ))}
               </tbody>
             </table>
@@ -224,3 +222,31 @@ export function ResultsPanel() {
     </div>
   );
 }
+
+/**
+ * One results row. Memoised on the row object: sorting and the best-per-name
+ * toggle reorder or drop rows but keep the same objects, so kept rows don't
+ * re-render. Language changes still reach it through `useT`/`useLang`.
+ */
+const ResultRow = memo(function ResultRow({ row: r }: { row: CombinedScoreRow }) {
+  useRenderCount('ResultRow');
+  const t = useT();
+  const { lang } = useLang();
+  return (
+    <tr data-testid="results-row">
+      <td className={styles.primaryCell}>
+        <bdi className={styles.nameCell}>{displayName(r.name, r.displaySuffix)}</bdi>
+      </td>
+      <td data-label={t('dash.results.col.game')}>{t(`game.${r.game}.name`)}</td>
+      <td className={`${styles.num} ${styles.strong}`} data-label={t('dash.results.col.score')}>
+        {formatNumber(r.score)}
+      </td>
+      <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.results.col.time')}>
+        {formatDateTime(r.createdAt, lang, true)}
+      </td>
+      <td className={styles.code} data-label={t('dash.results.col.session')}>
+        <span dir="ltr">{r.sessionCode ?? '–'}</span>
+      </td>
+    </tr>
+  );
+});

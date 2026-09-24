@@ -2,7 +2,7 @@
 
 Purpose: how we know the system works before guests touch it: the test strategy per layer (pure scoring, database/RLS, UI, multi-phone end-to-end), the device and browser matrix, the bright-light and projector checks, the load test with simulated phones, and the scripted dry run the day before the event. Phase acceptance criteria in `PHASES.md` point to sections here.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ---
 
@@ -196,3 +196,26 @@ Run by two people: host + tester, with **at least five real phones** covering th
 **F. Readability (5 min)**: from 6 m, read the code and the top 3 names; from arm's length in bright light, read a phone's result screen.
 
 **G. Sign-off**: team lead writes "Dry run passed" with the release tag in `PROGRESS.md`. No code changes after this.
+
+## 9. Render budget
+
+How many times each component commits a render over fixed scenarios, so unnecessary re-renders are caught by tests. Counters are dev-only and absent from production builds (checked by grepping `dist/`).
+
+### Dashboard
+
+Counter: `useRenderCount(name)` (`src/dashboard/renderCount.ts`, one count per commit in which the component rendered; `window.__dashRenderCounts` in the dev server). Guarded by `src/dashboard/renderBudget.test.tsx` through the `/__preview` dashboard fixtures' fake api (no database); 40 result rows. Measured 2026-09-25, before → after the render audit:
+
+| Scenario | Before | After |
+|---|---|---|
+| Idle on Today, 30 s | 0 | 0 (no polling, timers or listeners) |
+| Switch every tab (5 clicks) | shell 5; `HideNameField` 4 | shell 5; `HideNameField` 2 (each page: mount + one render per load) |
+| Sort Results, 4 header clicks | `ResultRow` 160 | `ResultRow` 0 |
+| Filter Results, game then day | `ResultsPanel` 6, `ResultRow` 160 | `ResultsPanel` 4, `ResultRow` 80 (fresh rows only) |
+| Best-per-name on + off | `ResultRow` 50 | `ResultRow` 30 (only dropped rows remount) |
+| Open a session detail | detail 2, shell 1 | same |
+| Language toggle on Results | every component once (`ResultRow` 40) | same: one commit, not two |
+| Type 6 chars, blocked-word field | panel 6, hide field 6, each list 6 | panel 6, hide field 0, lists 0 |
+| Type 6 chars, new-day label | panel 6, table 6 | panel 6, table 0 |
+| Hide a name on Today (preview + confirm) | `TodayPanel` 1 | `TodayPanel` 0 (unchanged reload kept) |
+
+In the dev server, StrictMode runs each render function twice, but that isn't a second commit: the language toggle still commits once per component. Its mount-time effect replay does add one count per newly mounted component, so browser runs reset the counts after load.
