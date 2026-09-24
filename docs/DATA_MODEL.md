@@ -10,7 +10,7 @@ Related: `SESSION_LIFECYCLE.md` (which function moves which state), `SCORING.md`
 
 ## 1. Principles
 
-Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
+Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`); follow-ups are new files, never edits: `20260925000300_lineup_exactly_three.sql` (§3 notes). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
 
 1. **RLS is enabled on every table in `public`. Never disabled.** (ADR-030)
 2. Guests are Supabase **anonymous users**: role `authenticated`, `auth.uid()` = playerId (ADR-102). The unsigned `anon` role can read and write nothing except calling `keepalive()`.
@@ -246,7 +246,19 @@ insert into public.keepalive (id) values (1);
 ```
 
 Notes:
-- `sessions.lineup` allows 1–3 games so the Phase 1–2 slice can run 1-round sessions (ADR-120). The app enforces `ROUNDS_PER_SESSION`; once it is 3, a follow-up migration tightens the check to `cardinality(lineup) = 3`.
+- `sessions.lineup`: the original check allows 1–3 distinct games so the Phase 1 slice could run 1-round sessions (ADR-120). Migration `20260925000300_lineup_exactly_three.sql` (Phase 3, `ROUNDS_PER_SESSION = 3`) tightens it to **exactly 3 distinct games** (ADR-012), keeping history intact:
+
+  ```sql
+  -- a 1-game session still `playing` aborts the migration (finish it first); open old ones are closed (status only)
+  update public.sessions set status = 'closed', closed_at = now()
+   where status in ('pending', 'lobby', 'results') and cardinality(lineup) <> 3;
+  alter table public.sessions
+    add constraint sessions_lineup_three check (cardinality(lineup) = 3) not valid;
+  -- VALIDATE only if every existing row already has 3 games; older closed 1-game rows are left as they are
+  -- private.lineup_is_valid(p) now requires cardinality(p) = 3 (admin_open_lobby, admin_set_lineup -> GD011)
+  ```
+
+  Postgres checks a CHECK constraint on every UPDATE of a row, so an old *open* 1-game session could never be advanced or closed once the constraint exists; that is why those (and only those) are closed. Closed rows are never updated by any function afterwards. On a fresh database (the cloud project) the constraint is validated at once.
 - `players.name` stores the *cleaned* name (`clean_name`), not the raw input.
 - `scores.raw` is at most 4096 bytes as text: constraint `scores_raw_size check (octet_length(raw::text) <= 4096)`, added by migration `20260925000200_scores_raw_size.sql` (`SECURITY.md` T16). The trigger ignores extra keys, so without it a guest could store megabytes per score; a real raw is under 500 bytes. A violation raises `23514`.
 - `scores.duration_ms` is the phone-measured time from the end of the 3-2-1 to the submit, capped by the phone at 120 000 ms; the 130 000 upper bound leaves room for the grace window.
@@ -487,7 +499,7 @@ These are the functions the browser calls with `supabase.rpc()`, so they live in
 | `server_now() returns timestamptz` | any signed-in | `select now()`. Used once by the host to compute its clock offset (ADR-104). | — |
 | `keepalive() returns void` | anon (and signed-in) | `update keepalive set pinged_at = now() where id = 1`. Called by the GitHub Actions job. | — |
 | `admin_open_lobby(p_lineup game_id[]) returns sessions` | admin | Validates the lineup (below). Creates a `lobby` in the current day with a fresh code, if no joinable session exists; else returns the existing joinable one unchanged apart from flipping `pending` → `lobby` (with `opened_at`) if nothing is running (use `admin_set_lineup` to change its lineup). No current day → `GD010`. | GD009, GD010, GD011 |
-| `admin_set_lineup(p_session uuid, p_lineup game_id[]) returns void` | admin | Sets the lineup of a `lobby` or `pending` session (any other state or unknown id → `GD010`). **Lineup rule** (here and in `admin_open_lobby`): a one-dimensional array of 1–3 distinct, non-null games, else `GD011`. The app always sends exactly `ROUNDS_PER_SESSION` games (its picker enforces the count); the function and the check constraint are the floor (ADR-120). | GD009, GD010, GD011 |
+| `admin_set_lineup(p_session uuid, p_lineup game_id[]) returns void` | admin | Sets the lineup of a `lobby` or `pending` session (any other state or unknown id → `GD010`). **Lineup rule** (here and in `admin_open_lobby`, checked first): a one-dimensional array of exactly 3 distinct, non-null games, else `GD011` (1–3 until migration `20260925000300`). The app's picker enforces the same count (`ROUNDS_PER_SESSION`); the check constraint `sessions_lineup_three` backs it (ADR-012, ADR-120). | GD009, GD010, GD011 |
 | `admin_remove_player(p_player_row uuid) returns void` | admin | Only if the player's session is `lobby` (a `pending` session or unknown player → `GD010`): `status = 'removed'`, `removed_at = now()`. Removing an already removed player is a no-op. | GD009, GD010 |
 | `admin_start_session(p_session uuid) returns jsonb` | admin | Requires `lobby` with ≥ 1 `joined` player, and no other session `playing`/`results` (close it with `admin_new_session` first; otherwise the unique index would fail with a bare 23505). Sets `playing`, `started_at`, `current_round = 1`; inserts rounds 1..n from the lineup (round 1 `playing` with `started_at = now()`, others `upcoming`); inserts the next session as `pending` with a fresh code and the same lineup. Returns `{round_id, pending_session_id, pending_code}`. | GD009, GD010 |
 | `admin_end_round(p_round uuid, p_reason round_end_reason) returns void` | admin | `playing` → `done` with `ended_at`, `end_reason`. If it was the last round: session → `results`, `ended_at = now()`, `current_round = null`. Idempotent (a second call on a `done` round is a no-op, whatever the reason). An `upcoming` round, an unknown id or a null reason → `GD010`. | GD009, GD010 |
@@ -571,11 +583,13 @@ alter publication supabase_realtime
 | Subscriber | Channel | Postgres Changes subscriptions | Leaderboards | Presence |
 |---|---|---|---|---|
 | Phone in a session | `session:<session_id>` | `sessions` UPDATE `id=eq.<sid>`; `rounds` * `session_id=eq.<sid>`; `players` UPDATE `id=eq.<own player_row_id>` | poll `v_round_board` / `v_session_board` every 3 s while a board is visible, and once right after submitting; poll `v_day_board` every 10 s after Show day board | `track({ player_id })` on `presence:<sid>` once per join |
-| Host view | `session:<sid>` (+ `session:<pending_sid>` while playing) | `sessions`, `rounds` as the phone; `players` * `session_id=eq.<sid>`; `scores` INSERT `session_id=eq.<sid>`; `hidden_names` * | re-query views on each change (scores: throttled, at once then at most every 500 ms) | reads `presence:<sid>` state |
+| Host view | `session:<sid>` (+ `pending:<pending_sid>` while a session runs: that session's `sessions` UPDATE and `players` *, for the corner code, the next-games picker and late joiners) | `sessions`, `rounds` as the phone; `players` * `session_id=eq.<sid>`; `scores` INSERT `session_id=eq.<sid>`; `hidden_names` * | re-query views on each change (scores: throttled, at once then at most every 500 ms; hidden names: at once, unthrottled) | reads `presence:<sid>` state |
 | Host day board | `day:<event_day_id>` | `scores` INSERT `event_day_id=eq.<day>` | re-query `v_day_board` (debounced) | — |
 | Dashboard | none | — | query on demand + manual refresh | — |
 
 Postgres Changes delivers a row to a subscriber only if that subscriber's RLS allows selecting it, so a phone never receives another session's rows. Polling uses the REST API (Free plan: unlimited API requests; egress counts, §9) with small responses: top 10 rows plus the caller's own row.
+
+Phone reads besides the views (all plain selects under the RLS in §4, no subscriptions): its own score rows in the session (`scores` where `player_row_id` = own; results total and breakdown, so a hidden player still sees them, ADR-115); its name key's best earlier score today in a game (`new_best` on P7); `hidden_names` every 3 s while the day board (P10) shows, so a hidden name leaves it within 3 s although the day board itself polls every 10 s (AC2.9); and, once its session is `closed`, its `event_days` row (is the day still current? E25). The session board (`v_session_board`) joins `players`, so a guest only sees boards of sessions it joined.
 
 ## 9. Verified platform facts
 

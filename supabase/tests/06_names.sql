@@ -41,7 +41,7 @@ end $$;
 select plan(55);
 
 select pg_temp.as_admin();
-select pg_temp.setv('code', s.code) from public.admin_open_lobby('{stop_the_clock}') s;
+select pg_temp.setv('code', s.code) from public.admin_open_lobby('{stop_the_clock,odd_one_out,simon}') s;
 select pg_temp.as_postgres();
 
 -- ============ SCORING.md section 6 vectors: clean + key ============

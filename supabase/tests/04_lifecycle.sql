@@ -51,7 +51,7 @@ create function pg_temp.sess(p_id text) returns public.sessions language sql as 
 create function pg_temp.rnd(p_id text) returns public.rounds language sql as $$
   select * from public.rounds where id = p_id::uuid $$;
 
-select plan(110);
+select plan(118);
 
 select pg_temp.setv('stc_raw', '{"attempts":[{"target_ms":5000,"measured_ms":5100,"missed_start":false},'
                                '{"target_ms":10000,"measured_ms":9800,"missed_start":false},'
@@ -64,21 +64,29 @@ select is(pg_temp.try($$ select public.admin_open_lobby('{simon,simon}') $$), 'G
 select is(pg_temp.try($$ select public.admin_open_lobby('{simon,trivia,odd_one_out,perfect_circle}') $$), 'GD011', 'open_lobby: 4 games -> GD011');
 select is(pg_temp.try($$ select public.admin_open_lobby(null) $$), 'GD011', 'open_lobby: null lineup -> GD011');
 select is(pg_temp.try($$ select public.admin_open_lobby('{simon,NULL}') $$), 'GD011', 'open_lobby: null game -> GD011');
+-- exactly 3 distinct games since 20260925000300 (ADR-012, AC3.5)
+select is(pg_temp.try($$ select public.admin_open_lobby('{simon}') $$), 'GD011', 'open_lobby: 1 game -> GD011');
+select is(pg_temp.try($$ select public.admin_open_lobby('{simon,trivia}') $$), 'GD011', 'open_lobby: 2 games -> GD011');
+select is(pg_temp.try($$ select public.admin_open_lobby('{simon,trivia,simon}') $$), 'GD011', 'open_lobby: 3 with a repeat -> GD011');
+select is(pg_temp.try($$ select public.admin_open_lobby('{{simon,trivia,odd_one_out}}') $$), 'GD011', 'open_lobby: 2-D array -> GD011');
 select is((select count(*)::int from public.sessions), 0, 'open_lobby: failed calls created nothing');
 
-select pg_temp.setv('s1', s.id::text), pg_temp.setv('s1_code', s.code) from public.admin_open_lobby('{stop_the_clock}') s;
+select pg_temp.setv('s1', s.id::text), pg_temp.setv('s1_code', s.code) from public.admin_open_lobby('{stop_the_clock,odd_one_out,simon}') s;
 select is((pg_temp.sess(pg_temp.v('s1'))).status::text, 'lobby', 'open_lobby: creates a lobby');
 select ok(pg_temp.v('s1_code') ~ '^[1-9][0-9]{3}$', 'open_lobby: 4-digit code 1000-9999');
 select is((pg_temp.sess(pg_temp.v('s1'))).event_day_id, private.current_event_day_id(), 'open_lobby: in the current day');
 select isnt((pg_temp.sess(pg_temp.v('s1'))).opened_at, null, 'open_lobby: opened_at set');
-select is((select id::text from public.admin_open_lobby('{simon}')), pg_temp.v('s1'), 'open_lobby: returns the existing joinable session');
-select is((pg_temp.sess(pg_temp.v('s1'))).lineup, '{stop_the_clock}'::public.game_id[], 'open_lobby: existing lineup untouched');
+select is((select id::text from public.admin_open_lobby('{simon,trivia,perfect_circle}')), pg_temp.v('s1'), 'open_lobby: returns the existing joinable session');
+select is((pg_temp.sess(pg_temp.v('s1'))).lineup, '{stop_the_clock,odd_one_out,simon}'::public.game_id[], 'open_lobby: existing lineup untouched');
 
 -- ============ admin_set_lineup ============
 select is(pg_temp.try(format($$ select public.admin_set_lineup(%L, '{stop_the_clock,simon,trivia}') $$, pg_temp.v('s1'))), 'ok', 'set_lineup on lobby');
 select is((pg_temp.sess(pg_temp.v('s1'))).lineup, '{stop_the_clock,simon,trivia}'::public.game_id[], 'set_lineup: stored');
 select is(pg_temp.try(format($$ select public.admin_set_lineup(%L, '{simon,simon}') $$, pg_temp.v('s1'))), 'GD011', 'set_lineup: duplicates -> GD011');
-select is(pg_temp.try($$ select public.admin_set_lineup(gen_random_uuid(), '{simon}') $$), 'GD010', 'set_lineup: unknown session -> GD010');
+select is(pg_temp.try($$ select public.admin_set_lineup(gen_random_uuid(), '{simon,trivia,odd_one_out}') $$), 'GD010', 'set_lineup: unknown session -> GD010');
+select is(pg_temp.try(format($$ select public.admin_set_lineup(%L, '{simon}') $$, pg_temp.v('s1'))), 'GD011', 'set_lineup: 1 game -> GD011');
+select is(pg_temp.try(format($$ select public.admin_set_lineup(%L, '{simon,trivia}') $$, pg_temp.v('s1'))), 'GD011', 'set_lineup: 2 games -> GD011');
+select is((pg_temp.sess(pg_temp.v('s1'))).lineup, '{stop_the_clock,simon,trivia}'::public.game_id[], 'set_lineup: refused lineups change nothing');
 
 -- ============ start with 0 players ============
 select is(pg_temp.try(format($$ select public.admin_start_session(%L) $$, pg_temp.v('s1'))), 'GD010', 'start_session with 0 players -> GD010');
@@ -142,12 +150,15 @@ select is(pg_temp.try(format($$ select public.admin_remove_player(%L) $$, pg_tem
 
 -- invariants (partial unique indexes)
 select pg_temp.as_postgres();
-select is(split_part(pg_temp.try(format($$ insert into public.sessions (event_day_id, code, status, lineup) values (%L, '4321', 'lobby', '{simon}') $$,
+select is(split_part(pg_temp.try(format($$ insert into public.sessions (event_day_id, code, status, lineup) values (%L, '4321', 'lobby', '{simon,trivia,odd_one_out}') $$,
                              private.current_event_day_id())), ':', 1),
           '23505', 'two joinable sessions are impossible');
-select is(split_part(pg_temp.try(format($$ insert into public.sessions (event_day_id, code, status, lineup) values (%L, '4321', 'results', '{simon}') $$,
+select is(split_part(pg_temp.try(format($$ insert into public.sessions (event_day_id, code, status, lineup) values (%L, '4321', 'results', '{simon,trivia,odd_one_out}') $$,
                              private.current_event_day_id())), ':', 1),
           '23505', 'two running sessions are impossible');
+select is(split_part(pg_temp.try(format($$ insert into public.sessions (event_day_id, code, status, lineup) values (%L, '4322', 'closed', '{simon}') $$,
+                             private.current_event_day_id())), ':', 1),
+          '23514', 'a new session row with 1 game violates sessions_lineup_three');
 
 -- late joiners
 select pg_temp.login(pg_temp.g('8'));
@@ -158,9 +169,9 @@ select pg_temp.as_admin();
 select is(pg_temp.try(format($$ select public.admin_remove_player(%L) $$, pg_temp.v('jC')::jsonb ->> 'player_row_id')), 'GD010', 'remove in a pending session -> GD010');
 
 -- while playing
-select is((select id::text || ':' || status from public.admin_open_lobby('{simon}')), pg_temp.v('s2') || ':pending',
+select is((select id::text || ':' || status from public.admin_open_lobby('{simon,trivia,odd_one_out}')), pg_temp.v('s2') || ':pending',
           'open_lobby while playing: returns the pending session, not flipped');
-select is(pg_temp.try(format($$ select public.admin_set_lineup(%L, '{simon}') $$, pg_temp.v('s1'))), 'GD010', 'set_lineup on a playing session -> GD010');
+select is(pg_temp.try(format($$ select public.admin_set_lineup(%L, '{simon,trivia,perfect_circle}') $$, pg_temp.v('s1'))), 'GD010', 'set_lineup on a playing session -> GD010');
 select is(pg_temp.try(format($$ select public.admin_set_lineup(%L, '{simon,trivia,odd_one_out}') $$, pg_temp.v('s2'))), 'ok', 'set_lineup on the pending session (E20)');
 select is(pg_temp.try($$ select public.admin_new_session() $$), 'GD010', 'new_session while playing -> GD010');
 select is(pg_temp.try(format($$ select public.admin_show_day_board(%L) $$, pg_temp.v('s1'))), 'GD010', 'show_day_board while playing -> GD010');
@@ -239,7 +250,7 @@ select is((select status::text from public.sessions where id = pg_temp.v('s2')::
 select pg_temp.login(pg_temp.g('a'));
 select is((select status::text from public.sessions where id = pg_temp.v('s1')::uuid), 'closed', 'players of the finished session see it closed');
 select pg_temp.as_admin();
-select is((select id::text from public.admin_open_lobby('{simon}')), pg_temp.v('s2'), 'open_lobby with a lobby open: returns it');
+select is((select id::text from public.admin_open_lobby('{simon,trivia,perfect_circle}')), pg_temp.v('s2'), 'open_lobby with a lobby open: returns it');
 
 -- ============ admin_start_new_day ============
 select pg_temp.setv('day1', private.current_event_day_id()::text);

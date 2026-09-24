@@ -55,7 +55,7 @@ with sa as (
   values (private.current_event_day_id(), '5001', 'closed', '{odd_one_out,stop_the_clock,simon}') returning id
 ), sb as (
   insert into public.sessions (event_day_id, code, status, lineup)
-  values (private.current_event_day_id(), '5002', 'closed', '{perfect_circle,trivia}') returning id
+  values (private.current_event_day_id(), '5002', 'closed', '{perfect_circle,trivia,simon}') returning id
 ), pl as (
   insert into public.players (session_id, player_id, name, name_key)
   select id, pg_temp.v('G')::uuid, 'Tester', 'tester' from sa

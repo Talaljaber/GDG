@@ -42,7 +42,7 @@ select plan(29);
 select pg_temp.setv('A', '22222222-0000-0000-0000-00000000000a');
 select pg_temp.as_admin();
 select pg_temp.setv('s1', s.id::text), pg_temp.setv('s1_code', s.code)
-  from public.admin_open_lobby('{stop_the_clock}') s;
+  from public.admin_open_lobby('{stop_the_clock,odd_one_out,simon}') s;
 select pg_temp.login(pg_temp.v('A')::uuid);
 select pg_temp.setv('pA', public.join_session(pg_temp.v('s1_code'), 'Sara') ->> 'player_row_id');
 select pg_temp.as_admin();
