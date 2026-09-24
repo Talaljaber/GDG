@@ -254,8 +254,9 @@ export function RoundResultScreen({
             {formatNumber(result.score)}
           </p>
           {newBest ? (
-            // SHATTER HOOK (Phase 5): the celebrate shatter plays on this line (DESIGN_SYSTEM §6).
-            <RevealIn as="span" className={styles.newBest} data-testid="new-best">
+            // Celebrate shatter (DESIGN_SYSTEM §6.2): fragment & reassemble + amber glow; a static
+            // amber ring with reduced motion. The round is over for this phone, so no game is covered.
+            <RevealIn variant="celebrate" as="span" className={styles.newBest} data-testid="new-best">
               {t('results.new_best')}
             </RevealIn>
           ) : null}

@@ -2,8 +2,13 @@
  * The player phone app (`SCREENS.md` §1): tab lock → join flow (P1/P2) →
  * member flow (P3–P9) driven by `derivePlayerView` over the synced DB state
  * and the persisted local state (`SESSION_LIFECYCLE.md` §4.1).
+ *
+ * Screen changes play the mosaic shatter (phone density, 24 shards; 200 ms
+ * crossfade with reduced motion, DESIGN_SYSTEM §6.2): join ↔ member flow
+ * here, member screens in MemberFlow (keys in screenKey.ts). The top bar and
+ * its logo stay outside both transitions. Nothing plays into a game screen.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { COUNTDOWN_MS, SUBMIT_RETRY_MS } from '../config';
 import { LangProvider, useT } from '../i18n';
 import { currentUserId, insertScore, setProgressPlaying, type JoinPayload, type PlayerRow } from '../lib/api';
@@ -12,7 +17,9 @@ import type { GameResult } from '../games/types';
 import { TopBar } from '../components/TopBar';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { Spinner } from '../components/Spinner';
+import { LOADING_KEY, ScreenTransition } from '../components/ScreenTransition';
 import styles from './player.module.css';
+import { phoneScreenKey, phoneSwapIsInstant } from './screenKey';
 import { JoinFlow } from './JoinFlow';
 import { useNow, usePresence, useSessionSync, useTabLock } from './hooks';
 import { derivePlayerView } from './playerFlow';
@@ -72,6 +79,12 @@ function RotateOverlay() {
   );
 }
 
+/** What the shell shows around the member flow's screen (reported by MemberFlow). */
+interface Chrome {
+  showLangToggle: boolean;
+  inRound: boolean;
+}
+
 function hasMembership(s: CurrentState | null): s is CurrentState & { sessionId: string; playerRowId: string } {
   return !!s?.sessionId && !!s.playerRowId;
 }
@@ -79,6 +92,7 @@ function hasMembership(s: CurrentState | null): s is CurrentState & { sessionId:
 function PlayerRoot() {
   const lock = useTabLock();
   const [local, setLocal] = useState<CurrentState | null>(() => getCurrent());
+  const [chrome, setChrome] = useState<Chrome>({ showLangToggle: true, inRound: false });
 
   const leave = useCallback(() => {
     clearCurrent();
@@ -104,36 +118,41 @@ function PlayerRoot() {
     setLocal(next);
   }, []);
 
+  let screenKey: string;
+  let shell: Chrome;
+  let body: React.ReactNode;
   if (lock === 'pending') {
-    return (
-      <Shell showLangToggle={false}>
-        <Spinner />
-      </Shell>
-    );
-  }
-  if (lock === 'denied') {
-    return (
-      <Shell showLangToggle={false}>
-        <OtherTabScreen />
-      </Shell>
-    );
-  }
-  if (!hasMembership(local)) {
-    return (
-      <Shell showLangToggle>
-        <JoinFlow onJoined={onJoined} />
-      </Shell>
+    screenKey = LOADING_KEY;
+    shell = { showLangToggle: false, inRound: false };
+    body = <Spinner />;
+  } else if (lock === 'denied') {
+    screenKey = 'other_tab';
+    shell = { showLangToggle: false, inRound: false };
+    body = <OtherTabScreen />;
+  } else if (!hasMembership(local)) {
+    screenKey = 'join';
+    shell = { showLangToggle: true, inRound: false };
+    body = <JoinFlow onJoined={onJoined} />;
+  } else {
+    const member = `${local.sessionId}:${local.playerRowId}`;
+    screenKey = `member:${member}`;
+    shell = chrome;
+    body = (
+      <MemberFlow
+        key={member}
+        sessionId={local.sessionId}
+        playerRowId={local.playerRowId}
+        local={local}
+        setLocal={setLocal}
+        onLeave={leave}
+        onChrome={setChrome}
+      />
     );
   }
   return (
-    <MemberFlow
-      key={`${local.sessionId}:${local.playerRowId}`}
-      sessionId={local.sessionId}
-      playerRowId={local.playerRowId}
-      local={local}
-      setLocal={setLocal}
-      onLeave={leave}
-    />
+    <Shell showLangToggle={shell.showLangToggle} inRound={shell.inRound}>
+      <ScreenTransition screenKey={screenKey}>{body}</ScreenTransition>
+    </Shell>
   );
 }
 
@@ -143,12 +162,15 @@ function MemberFlow({
   local,
   setLocal,
   onLeave,
+  onChrome,
 }: {
   sessionId: string;
   playerRowId: string;
   local: CurrentState;
   setLocal(next: CurrentState): void;
   onLeave(): void;
+  /** The shell's lang toggle / rotate overlay for this screen (set before paint). */
+  onChrome(chrome: Chrome): void;
 }) {
   const sync = useSessionSync(sessionId, playerRowId);
   const [uid, setUid] = useState<string | null>(null);
@@ -372,9 +394,15 @@ function MemberFlow({
       break;
   }
 
+  const showLangToggle = !roundScreen;
+  const inRoundNow = view.screen === 'intro' || view.screen === 'game';
+  useLayoutEffect(() => {
+    onChrome({ showLangToggle, inRound: inRoundNow });
+  }, [onChrome, showLangToggle, inRoundNow]);
+
   return (
-    <Shell showLangToggle={!roundScreen} inRound={view.screen === 'intro' || view.screen === 'game'}>
+    <ScreenTransition screenKey={phoneScreenKey(view)} instant={phoneSwapIsInstant(view)}>
       {body}
-    </Shell>
+    </ScreenTransition>
   );
 }
