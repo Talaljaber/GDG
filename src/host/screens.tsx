@@ -9,9 +9,11 @@ import { formatNumber, useT } from '../i18n';
 import { adminRemovePlayer, adminStartSession, fetchRoundBoard, type PlayerRow } from '../lib/api';
 import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
 import logo from '../assets/logo.png';
+import { SHATTER_LOGO_CLASS } from '../effects/shatter';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Leaderboard } from '../components/Leaderboard';
 import { QrCode } from '../components/QrCode';
+import { useRevealRows } from '../components/useRevealRows';
 import { Trans } from '../components/Trans';
 import ui from '../components/ui.module.css';
 import styles from './host.module.css';
@@ -30,6 +32,8 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   const t = useT();
   const { session, players } = data;
   const joined = useMemo(() => players.filter((p) => p.status === 'joined'), [players]);
+  // Player chips shatter in as they join (SCREENS H1, DESIGN_SYSTEM §6.2).
+  const chipsRef = useRevealRows<HTMLUListElement>(joined.map((p) => p.id));
   const [confirmRemove, setConfirmRemove] = useState<PlayerRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +84,7 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   return (
     <>
       <header className={styles.header}>
-        <img src={logo} alt={t('app.name')} className={ui.projLogo} />
+        <img src={logo} alt={t('app.name')} className={`${ui.projLogo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
         <p className={styles.big} data-testid="host-player-count">
           {t('host.lobby.players', { n: formatNumber(joined.length), count: joined.length })}
         </p>
@@ -101,7 +105,7 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
           {joined.length === 0 ? (
             <p className={`${styles.big} ${styles.muted}`}>{t('host.lobby.empty')}</p>
           ) : (
-            <ul className={styles.players} data-testid="host-players">
+            <ul ref={chipsRef} className={styles.players} data-testid="host-players">
               {joined.map((p) => {
                 const dot = presenceDot(p.player_id, host.presentIds, lastSeen, now);
                 const name = displayName(p.name, p.display_suffix);
@@ -113,6 +117,7 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
                     data-presence={dot}
                     data-online={host.presentIds.has(p.player_id) ? 'true' : 'false'}
                     data-name={name}
+                    data-reveal-key={p.id}
                   >
                     <span className={`${styles.dot} ${dot === 'on' ? styles.dotOn : styles.dotOff}`} aria-hidden="true" />
                     <bdi>{name}</bdi>
@@ -239,7 +244,8 @@ export function HostRound({ host, data }: { host: HostController; data: HostData
         <div className={styles.boardWrap}>
           <h2 className={styles.subheading}>{t('round.board_title')}</h2>
           {board && board.length > 0 ? (
-            <Leaderboard rows={board} projector testId="host-round-board" />
+            // New #1 → celebrate shatter on that row (SCREENS H2).
+            <Leaderboard rows={board} projector celebrateLeader testId="host-round-board" />
           ) : board ? (
             <p className={`${styles.big} ${styles.muted}`}>{t('round.no_scores')}</p>
           ) : null}

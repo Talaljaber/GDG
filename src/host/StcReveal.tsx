@@ -7,6 +7,11 @@
  *
  * The time axis is geometry, not text, so it is never mirrored in Arabic
  * (DESIGN_SYSTEM RTL rules): the strips are always laid out left-to-right.
+ *
+ * Dots appear in shatter bursts, strip after strip, within 5 s
+ * (DESIGN_SYSTEM §6.2 "Stop the Clock reveal"): `revealSchedule` spaces
+ * them and sizes each burst so no more than 48 shards are alive at once.
+ * Reduced motion: each dot fades in (200 ms) at its slot.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { formatNumber, useT } from '../i18n';
@@ -14,10 +19,8 @@ import { fetchRoundReveal, type RevealRow } from '../lib/api';
 import { STC_TARGETS_MS } from '../games/stop-the-clock/scoring';
 import { revealStrips } from './reveal';
 import { RevealIn } from '../components/RevealIn';
+import { revealSchedule } from '../effects/shatter';
 import styles from './host.module.css';
-
-/** Stagger between strips (5 s, 10 s, 7 s) so they reveal one after another. */
-const STRIP_STAGGER_MS = 600;
 
 export function StcReveal({ roundId, version }: { roundId: string; version: number }) {
   const t = useT();
@@ -35,7 +38,8 @@ export function StcReveal({ roundId, version }: { roundId: string; version: numb
   }, [roundId, version]);
 
   const strips = useMemo(() => (rows ? revealStrips(rows) : null), [rows]);
-  if (!strips) return null;
+  const plan = useMemo(() => (strips ? revealSchedule(strips.map((dots) => dots.length)) : null), [strips]);
+  if (!strips || !plan) return null;
 
   return (
     <div className={styles.reveal} data-testid="stc-reveal">
@@ -50,12 +54,13 @@ export function StcReveal({ roundId, version }: { roundId: string; version: numb
             <div className={styles.stripTrack} dir="ltr">
               <span className={styles.stripCentre} aria-hidden="true" />
               <span className={styles.stripAxis}>{t('game.stop_the_clock.reveal_axis')}</span>
-              {dots.map((d) => (
+              {dots.map((d, j) => (
                 <RevealIn
                   key={d.playerRowId}
                   as="span"
                   variant="dot"
-                  delayMs={i * STRIP_STAGGER_MS}
+                  delayMs={plan[i][j].delayMs}
+                  shards={plan[i][j].shards}
                   className={`${styles.revealDot} ${d.pinned ? styles.revealDotPinned : ''}`}
                   style={{ insetInlineStart: `${d.pos}%` }}
                   data-testid="stc-dot"

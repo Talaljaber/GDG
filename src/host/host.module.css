@@ -235,6 +235,25 @@
   font-size: var(--proj-min);
 }
 
+/* A toggle that is on (Reduce motion): blue tint fill + the state in aria-pressed. */
+.control[aria-pressed='true'] {
+  background: var(--gdg-blue-tint);
+  outline: var(--line-width-strong) solid var(--primary);
+  outline-offset: var(--line-width-strong);
+}
+
+/* Screen transitions (ScreenTransition): each screen cell keeps the host's column gap. */
+.screens > :global(.gdg-shatter-cell) {
+  gap: var(--proj-s-3);
+}
+
+/* The day-board merge stage (H4 → H5): the board area only, never the header/logo or the controls. */
+.mergeStage {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+}
+
 .hint {
   font-size: var(--proj-min);
   color: var(--text-muted);

@@ -3,7 +3,9 @@
  * Clock: the guess reveal) → session total 5 s → "Next: <game>" 3 s with
  * 3-2-1, then the host loop starts the next round. After the last round only
  * the round board shows, then H4. "Next round now" skips to the "Next" step.
- * The pending code stays in the corner.
+ * The pending code stays in the corner. Each step change plays the screen
+ * shatter (HostApp's ScreenTransition); the boards shatter in (Leaderboard)
+ * and the Stop the Clock dots burst in (StcReveal).
  */
 import { useEffect, useState } from 'react';
 import { formatNumber, useT } from '../i18n';
@@ -74,7 +76,9 @@ export function HostIntermission({ host, data }: { host: HostController; data: H
 
   let heading: React.ReactNode;
   let body: React.ReactNode;
-  if (state.step === 'next_intro' && next) {
+  // 'done' with a next round keeps the "Next" step until the round has started (no flash of the
+  // round board, and one screen transition "Next" → H2, DESIGN_SYSTEM §6.2).
+  if ((state.step === 'next_intro' || state.step === 'done') && next) {
     heading = null;
     body = (
       <div className={styles.nextIntro} data-testid="host-next-intro" data-game={next.game}>

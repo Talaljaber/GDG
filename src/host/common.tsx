@@ -15,13 +15,24 @@ import ui from '../components/ui.module.css';
 import styles from './host.module.css';
 import { isLineupValid, sameLineup, toggleLineup } from './lineup';
 import { REGISTERED_GAMES, type HostController } from './useHost';
+import { useHostMotion } from './motionContext';
 
 export function CornerControls({ children }: { children?: React.ReactNode }) {
   const t = useT();
   const { lang, setLang } = useLang();
+  const motion = useHostMotion();
   return (
     <div className={styles.controls}>
       {children}
+      <button
+        type="button"
+        className={`${ui.button} ${ui.buttonSecondary} ${styles.control}`}
+        aria-pressed={motion.reducedMotion}
+        onClick={() => motion.setReducedMotion(!motion.reducedMotion)}
+        data-testid="host-reduced-motion"
+      >
+        {t('host.settings.reduced_motion')}
+      </button>
       <button
         type="button"
         className={`${ui.button} ${ui.buttonSecondary} ${styles.control}`}

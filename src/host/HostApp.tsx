@@ -3,25 +3,31 @@
  * H3 intermission (×N) → H4 results → H5 day boards → New session. Only an admin JWT (`app_metadata.role`) gets
  * past H0 (ADR-101); the screen shown is reconstructed from the database.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { LangProvider, useT } from '../i18n';
 import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
+import { SHATTER_LOGO_CLASS, useReducedMotion } from '../effects/shatter';
+import { ScreenTransition } from '../components/ScreenTransition';
 import { Spinner } from '../components/Spinner';
 import { useOnline } from '../components/useOnline';
 import ui from '../components/ui.module.css';
 import styles from './host.module.css';
 import { useHost } from './useHost';
+import { hostScreenKey, showsLogo } from './screenKey';
 import { HostLobby, HostRound } from './screens';
 import { HostIntermission } from './Intermission';
-import { HostDayBoards, HostResults } from './Results';
+import { HostSessionEnd } from './Results';
+import { HostMotionProvider } from './motion';
 
 export function HostApp() {
   return (
     <LangProvider>
-      <HostRoot />
+      <HostMotionProvider>
+        <HostRoot />
+      </HostMotionProvider>
     </LangProvider>
   );
 }
@@ -109,7 +115,7 @@ function SignIn({
   const shown = error ?? notice;
   return (
     <form className={styles.signin} onSubmit={submit} data-testid="host-signin">
-      <img src={logo} alt={t('app.name')} className={ui.logo} />
+      <img src={logo} alt={t('app.name')} className={`${ui.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
       <h1 className={ui.title}>{t('host.signin.title')}</h1>
       <label className={styles.field}>
         <span>{t('host.signin.email')}</span>
@@ -149,6 +155,14 @@ function HostMain() {
   const t = useT();
   const host = useHost();
   const { data } = host;
+  const reduced = useReducedMotion();
+  const screenKey = hostScreenKey(host);
+  // `data-screen` names the screen actually shown: during a transition's fly-in that is still the
+  // previous one, so nothing (people or tests) acts on a screen that isn't there yet.
+  const screenOfKey = useRef(new Map<string, string>());
+  screenOfKey.current.set(screenKey, host.screen);
+  const [shownKey, setShownKey] = useState(screenKey);
+  const shownScreen = shownKey === screenKey ? host.screen : (screenOfKey.current.get(shownKey) ?? host.screen);
 
   const online = useOnline();
   const banner = host.dbDown
@@ -158,25 +172,30 @@ function HostMain() {
       : null;
 
   return (
-    <div className={styles.host} data-testid="host-root" data-screen={host.screen}>
+    <div className={styles.host} data-testid="host-root" data-screen={shownScreen}>
       {banner ? (
         <div className={styles.banner} role="status" data-testid="host-banner">
           {banner}
         </div>
       ) : null}
-      {!data || host.screen === 'loading' ? (
-        <Spinner />
-      ) : host.screen === 'lobby' ? (
-        <HostLobby key={data.session.id} host={host} data={data} />
-      ) : host.screen === 'round' ? (
-        <HostRound host={host} data={data} />
-      ) : host.screen === 'intermission' ? (
-        <HostIntermission host={host} data={data} />
-      ) : host.screen === 'results' ? (
-        <HostResults host={host} data={data} />
-      ) : (
-        <HostDayBoards host={host} data={data} />
-      )}
+      <ScreenTransition
+        screenKey={screenKey}
+        className={styles.screens}
+        onShown={setShownKey}
+        instantWhen={(from, to) => reduced && (showsLogo(from) || showsLogo(to))}
+      >
+        {!data || host.screen === 'loading' ? (
+          <Spinner />
+        ) : host.screen === 'lobby' ? (
+          <HostLobby key={data.session.id} host={host} data={data} />
+        ) : host.screen === 'round' ? (
+          <HostRound host={host} data={data} />
+        ) : host.screen === 'intermission' ? (
+          <HostIntermission host={host} data={data} />
+        ) : (
+          <HostSessionEnd host={host} data={data} />
+        )}
+      </ScreenTransition>
     </div>
   );
 }
