@@ -1,0 +1,913 @@
+{
+  "_meta": {
+    "purpose": "The 30-question trivia pool for the GDG booth game (5 drawn per player). Only status 'ready' entries are used. Format, schema and review checklist: see format_doc.",
+    "last_updated": "2026-09-24",
+    "format_doc": "docs/content/trivia-format.md",
+    "schema_version": 1
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "status": "ready",
+      "bucket": "google_dev",
+      "difficulty": "easy",
+      "question": {
+        "en": "What does HTML stand for?",
+        "ar": "ماذا يعني الاختصار HTML؟"
+      },
+      "options": [
+        {
+          "en": "HyperText Markup Language",
+          "ar": "لغة ترميز النص التشعبي"
+        },
+        {
+          "en": "High-Level Text Machine Language",
+          "ar": "لغة آلة النصوص عالية المستوى"
+        },
+        {
+          "en": "Hyperlink and Text Management Language",
+          "ar": "لغة إدارة الروابط والنصوص"
+        },
+        {
+          "en": "Home Tool Markup Language",
+          "ar": "لغة ترميز أدوات المنزل"
+        }
+      ],
+      "source": "https://developer.mozilla.org/en-US/docs/Web/HTML",
+      "reviewed_by": [],
+      "notes": "Example entry written with the docs; needs two human reviewers before freeze."
+    },
+    {
+      "id": "q02",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q03",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q04",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q05",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q06",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q07",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q08",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q09",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q10",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q11",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "hard",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q12",
+      "status": "draft",
+      "bucket": "google_dev",
+      "difficulty": "hard",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q13",
+      "status": "ready",
+      "bucket": "ai_basics",
+      "difficulty": "easy",
+      "question": {
+        "en": "When you chat with an AI assistant, what is a “prompt”?",
+        "ar": "عندما تتحدث مع مساعد ذكاء اصطناعي، ما هو «الموجّه» (Prompt)؟"
+      },
+      "options": [
+        {
+          "en": "The message or instruction you type to it",
+          "ar": "الرسالة أو التعليمات التي تكتبها له"
+        },
+        {
+          "en": "The chip that runs the AI",
+          "ar": "الشريحة التي تشغّل الذكاء الاصطناعي"
+        },
+        {
+          "en": "A virus that attacks chatbots",
+          "ar": "فيروس يهاجم روبوتات المحادثة"
+        },
+        {
+          "en": "The assistant's password",
+          "ar": "كلمة مرور المساعد"
+        }
+      ],
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "Example entry written with the docs; needs two human reviewers before freeze."
+    },
+    {
+      "id": "q14",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q15",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q16",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q17",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q18",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q19",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q20",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q21",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q22",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q23",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "hard",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q24",
+      "status": "draft",
+      "bucket": "ai_basics",
+      "difficulty": "hard",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q25",
+      "status": "ready",
+      "bucket": "gdg_community",
+      "difficulty": "easy",
+      "question": {
+        "en": "What does GDG stand for?",
+        "ar": "ماذا يعني الاختصار GDG؟"
+      },
+      "options": [
+        {
+          "en": "Google Developer Groups",
+          "ar": "مجموعات مطوّري Google"
+        },
+        {
+          "en": "Global Design Guild",
+          "ar": "نقابة التصميم العالمية"
+        },
+        {
+          "en": "Google Data Gateway",
+          "ar": "بوابة بيانات Google"
+        },
+        {
+          "en": "General Developers Gathering",
+          "ar": "التجمّع العام للمطوّرين"
+        }
+      ],
+      "source": "https://developers.google.com/community/gdg",
+      "reviewed_by": [],
+      "notes": "Example entry written with the docs; needs two human reviewers before freeze. Brand names stay in Latin script."
+    },
+    {
+      "id": "q26",
+      "status": "draft",
+      "bucket": "gdg_community",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q27",
+      "status": "draft",
+      "bucket": "gdg_community",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q28",
+      "status": "draft",
+      "bucket": "gdg_community",
+      "difficulty": "easy",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q29",
+      "status": "draft",
+      "bucket": "gdg_community",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    },
+    {
+      "id": "q30",
+      "status": "draft",
+      "bucket": "gdg_community",
+      "difficulty": "medium",
+      "question": {
+        "en": "",
+        "ar": ""
+      },
+      "options": [
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        },
+        {
+          "en": "",
+          "ar": ""
+        }
+      ],
+      "source": "",
+      "reviewed_by": []
+    }
+  ]
+}
