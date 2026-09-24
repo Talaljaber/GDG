@@ -291,7 +291,7 @@
   fill: var(--qr-light);
 }
 
-/* ---- Rows that entered or rose this session (H5), and the reveal hook ---- */
+/* ---- Rows that entered or rose this session (H5), and screen transitions ---- */
 
 .rowHighlight {
   background: var(--gdg-blue-tint);
@@ -299,19 +299,23 @@
   outline-offset: calc(-1 * var(--line-width-strong));
 }
 
-/* SHATTER HOOK (Phase 5): the stand-in entrance (opacity + scale only; reduced
-   motion sets the duration tokens to 0). See RevealIn.tsx. */
-.revealIn {
-  animation: reveal-in var(--dur-slow) var(--ease-emphasized) both;
+/* Screen transitions (ScreenTransition.tsx, DESIGN_SYSTEM §6.2): the shatter
+   stack fills its flex parent and each screen cell is a flex column, so
+   screens lay out exactly as without it. Row/dot/celebrate entrances are in
+   RevealIn.tsx (the shatter layer sets only transform/opacity). */
+.screenStack {
+  flex: 1;
+  min-block-size: 0;
 }
 
-@keyframes reveal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.screenStack > :global(.gdg-shatter-cell) {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+/* During the fly-in the previous screen is still shown under the shards, frozen with its last
+   props: it takes no taps (the reduced-motion leaving copy is already inert). */
+.screenStack[data-shatter-phase='in'] > :global(.gdg-shatter-cell) {
+  pointer-events: none;
 }
