@@ -31,6 +31,7 @@ Last updated: 2026-09-24
 | `common.lang_toggle` | العربية | English |
 | `common.cancel` | Cancel | إلغاء |
 | `common.confirm` | Yes, do it | نعم، تابع |
+| `common.done` | Done | تم |
 | `join.code.title` | Enter the code on the big screen | أدخل الرمز الظاهر على الشاشة الكبيرة |
 | `join.code.placeholder` | 4-digit code | رمز من 4 أرقام |
 | `join.code.next` | Next | التالي |
@@ -210,6 +211,7 @@ The lobby join strings (`host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.co
 | `host.corner.late` | Late? Join the next round | تأخرت؟ انضم إلى الجولة القادمة |
 | `host.results.winner` | Winner! | الفائز! |
 | `host.results.show_day_board` | Show day board | عرض لوحة اليوم |
+| `host.results.total` | Total | المجموع |
 | `host.new_session` | New session | جلسة جديدة |
 | `host.settings.language` | Screen language | لغة الشاشة |
 | `host.settings.theme` | Dark screen | شاشة داكنة |
@@ -244,6 +246,8 @@ The lobby join strings (`host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.co
 | `dash.session.end_reason.all_finished` | Everyone finished | أنهى الجميع |
 | `dash.session.end_reason.time_cap` | Time ran out | انتهى الوقت |
 | `dash.session.end_reason.force_end` | Ended by host | أنهاها المضيف |
+| `dash.session.col.round` | Round {n} | الجولة {n} |
+| `dash.session.col.total` | Total | المجموع |
 | `dash.results.best_toggle` | Best per name | الأفضل لكل اسم |
 | `dash.results.filter_day` | Day | اليوم |
 | `dash.results.filter_game` | Game | اللعبة |
@@ -253,23 +257,33 @@ The lobby join strings (`host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.co
 | `dash.results.col.score` | Score | النتيجة |
 | `dash.results.col.time` | Time | الوقت |
 | `dash.results.col.session` | Session | الجلسة |
+| `dash.results.empty` | No results yet | لا نتائج بعد |
 | `dash.export` | Export CSV | تصدير CSV |
 | `dash.names.hide_title` | Hide a name | إخفاء اسم |
 | `dash.names.hide_input` | Name to hide | الاسم المراد إخفاؤه |
 | `dash.names.hide_btn` | Hide everywhere | إخفاء من كل اللوحات |
 | `dash.hide_confirm` | Hide “{name}” from every leaderboard? | إخفاء «{name}» من كل لوحات الترتيب؟ |
+| `dash.names.hide_preview_empty` | No names match | لا توجد أسماء مطابقة |
+| `dash.names.hide_preview_count` (plural) | one: 1 name matches · other: {n} names match | zero: لا توجد أسماء مطابقة · one: اسم واحد مطابق · two: اسمان مطابقان · few: {n} أسماء مطابقة · many: {n} اسمًا مطابقًا · other: {n} اسم مطابق |
 | `dash.names.hidden_list` | Hidden names | الأسماء المخفية |
+| `dash.names.hidden_empty` | No hidden names | لا توجد أسماء مخفية |
 | `dash.names.unhide` | Unhide | إظهار |
 | `dash.names.blocked_title` | Blocked words | الكلمات المحظورة |
 | `dash.names.blocked_add` | Add word | إضافة كلمة |
+| `dash.names.blocked_empty` | No blocked words yet | لا توجد كلمات محظورة بعد |
 | `dash.names.match_word` | Whole word | كلمة كاملة |
 | `dash.names.match_substring` | Anywhere in the name | في أي جزء من الاسم |
 | `dash.names.remove` | Remove | حذف |
 | `dash.days.current` | Current day | اليوم الحالي |
+| `dash.days.current_badge` | Current | الحالي |
 | `dash.days.start_new` | Start new event day | بدء يوم فعالية جديد |
 | `dash.days.label` | Day label | اسم اليوم |
 | `dash.days.confirm` | Start a new day? Today's boards are archived and fresh day boards begin. | بدء يوم جديد؟ ستُؤرشف لوحات اليوم وتبدأ لوحات جديدة. |
 | `dash.days.blocked_running` | Finish the running session first | أنهِ الجلسة الجارية أولًا |
+| `dash.days.col.started` | Started | وقت البدء |
+| `dash.days.col.ended` | Ended | انتهى |
+| `dash.days.col.sessions` | Sessions | الجلسات |
+| `dash.sessions.empty` | No sessions yet | لا توجد جلسات بعد |
 | `status.pending` | Next up | التالية |
 | `status.lobby` | Lobby | الانتظار |
 | `status.playing` | Playing | قيد اللعب |
