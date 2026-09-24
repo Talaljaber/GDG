@@ -41,6 +41,12 @@ Adopted 2026-09-25 after the first real look at the big screen ("looks childish"
 
 ### 0.4 Dashboard (`/dashboard`)
 A data app, not a poster: left nav (Today, Sessions, Results, Names, Days) on desktop, top tabs on narrow screens; page header with title + actions; filter row; dense tables at `--type-small-size`, sticky header, tabular numbers, row hover `--surface-2`, small buttons; max content width `--dash-max-width`.
+- **Shell:** the side nav (`--dash-nav-width`, `--surface`, 1 px inline-end line) sits at the inline start, so it is on the right in Arabic. Top: the logo at `--logo-phone-height`, sized by height only, with no box, plus a muted "Dashboard" label. Items are 36 px text rows; the active one gets `--surface-2` and a 2 px blue inline-start rule. Bottom: a "Signed in as" eyebrow with the admin email, then the language toggle and Sign out as quiet text buttons. Under 768 px the nav becomes a top bar (logo · language · Sign out as an icon) with text tabs underlined in blue.
+- **Page header:** an optional eyebrow, the title at `--type-heading-size` 500, a muted description (at most 72ch) and actions at the inline end, over a 1 px line.
+- **Controls:** the shared `ui.button` / `buttonSecondary` / `buttonText` classes at `buttonSmall` (36 px; 44 px under 768 px). Selects and inputs are the same height with a 1 px `--line-strong` border. Best per name is a bordered checkbox chip; the blocked-word match type is a segmented control. Status uses `ui.badge`; "Playing" and the current day add a blue dot on `--primary-tint` (dot + text, never colour alone).
+- **Tables:** in flush panels. The header is muted at `--type-caption-size` and sticky at 1024 px and wider; numeric columns align to the inline end; clickable rows show a muted chevron and a focus ring. Under 768 px each row becomes a compact card: the primary cell (code, name, word or day) is its title, status or actions sit at its inline end, and every other cell reads "label value". Sorting then moves to a "Sort by" select.
+- **Dates and times** follow the UI language, with Western digits and a 24-hour clock (`src/dashboard/format.ts`); the CSV export keeps its own format.
+- **States:** loading = placeholder rows at row height (no pulse under reduced motion); empty = a centred title + muted hint inside the panel; errors = the shared `ui.error` callout.
 
 ## 1. Brand rules (from the brief)
 

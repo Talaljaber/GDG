@@ -96,7 +96,7 @@ Last updated: 2026-09-25
 | `results.session_ended` | This session has ended | انتهت هذه الجلسة |
 | `results.session_ended_body` | Enter the new code from the big screen to play again. | أدخل الرمز الجديد من الشاشة الكبيرة لتلعب مجددًا. |
 | `dayboard.title` | Today's best | أفضل نتائج اليوم |
-| `dayboard.empty` | No scores yet. Be the first! | لا نتائج بعد. من سيكون الأول؟ |
+| `dayboard.empty` | No scores for this game yet today | لا نتائج لهذه اللعبة اليوم بعد |
 
 ## 5. Games
 
@@ -222,7 +222,7 @@ The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby
 | `host.lobby.scan` | Scan to play | امسح الرمز لتلعب |
 | `host.lobby.join_title` | How to join | طريقة الانضمام |
 | `host.lobby.step_scan` | Scan the QR | امسح الرمز |
-| `host.lobby.step_code` | Enter the game code | أدخل رمز الجلسة |
+| `host.lobby.step_code` | Enter the code | أدخل الرمز |
 | `host.lobby.step_name` | Type your name | اكتب اسمك |
 | `host.lobby.or_visit` | or visit {url} | أو زُر {url} |
 | `host.lobby.code_label` | Game code | رمز الجلسة |
@@ -231,7 +231,7 @@ The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby
 | `host.lobby.remove` | Remove | إزالة |
 | `host.lobby.remove_confirm` | Remove {name} from this session? | إزالة {name} من هذه الجلسة؟ |
 | `host.lineup.title` | Lineup · pick {n} | الألعاب · اختر {n} |
-| `host.lineup.next_title` | Next session's games | ألعاب الجلسة القادمة |
+| `host.lineup.next_title` | Next session | الجلسة القادمة |
 | `host.lineup.need` (plural) | one: Pick 1 game · other: Pick {n} different games | zero: اختر {n} ألعاب مختلفة · one: اختر لعبة واحدة · two: اختر لعبتين مختلفتين · few: اختر {n} ألعاب مختلفة · many: اختر {n} لعبة مختلفة · other: اختر {n} لعبة مختلفة |
 | `host.start` | Start | ابدأ |
 | `host.start_disabled_hint` | Needs at least 1 player | يحتاج لاعبًا واحدًا على الأقل |
@@ -263,9 +263,9 @@ The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby
 | `dash.title` | Dashboard | لوحة التحكم |
 | `dash.nav.today` | Today | اليوم |
 | `dash.nav.sessions` | Sessions | الجلسات |
-| `dash.nav.results` | All results | كل النتائج |
+| `dash.nav.results` | Results | النتائج |
 | `dash.nav.names` | Names | الأسماء |
-| `dash.nav.days` | Event days | أيام الفعالية |
+| `dash.nav.days` | Days | أيام الفعالية |
 | `dash.today.running` | Running now | قيد التشغيل الآن |
 | `dash.today.none` | No session running | لا توجد جلسة قيد التشغيل |
 | `dash.stat.players` | Players | اللاعبون |
@@ -323,7 +323,7 @@ The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby
 | `dash.loading` | Loading… | جارٍ التحميل… |
 | `dash.account.signed_in` | Signed in as | تم الدخول باسم |
 | `dash.today.desc` | Started at {time} | بدأ الساعة {time} |
-| `dash.today.desc_none` | No event day is open. Start one under Event days. | لا يوجد يوم فعالية مفتوح. ابدأ يومًا من صفحة أيام الفعالية. |
+| `dash.today.desc_none` | No event day is open. Start one under Days. | لا يوجد يوم فعالية مفتوح. ابدأ يومًا من صفحة أيام الفعالية. |
 | `dash.today.none_hint` | The host starts one from the big screen. | يبدأ المضيف الجلسة من الشاشة الكبيرة. |
 | `dash.today.hide_note` | Removes the name from every leaderboard at once, the big screen included. | يُزال الاسم من كل لوحات الترتيب فورًا، ومنها الشاشة الكبيرة. |
 | `dash.sessions.desc` | Every session of the selected day. Open one to see its round scores. | كل جلسات اليوم المحدد. افتح أي جلسة لرؤية نتائج جولاتها. |
