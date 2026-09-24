@@ -4,25 +4,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatNumber, useT } from '../i18n';
 import { displayName } from '../lib/boards';
-import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
-import {
-  countJoinedPlayersForSession,
-  fetchCurrentEventDay,
-  fetchEventDays,
-  fetchPlayersForSession,
-  fetchRoundsForSession,
-  fetchScoresForSession,
-  fetchSessionById,
-  fetchSessionWinner,
-  fetchSessionsForDay,
-  type EventDayRow,
-  type PlayerRow,
-  type RoundRow,
-  type ScoreRow,
-  type SessionRow,
-  type SessionWinner,
-} from './api';
+import { useDashApi } from './apiContext';
+import { formatTime } from './format';
+import { Alert, EmptyState, Icon, PageHeader, Panel, Select, TableSkeleton } from './parts';
+import type { EventDayRow, PlayerRow, RoundRow, ScoreRow, SessionRow, SessionWinner } from './api';
 
 // ------------------------------------------------------------------ D2
 
@@ -32,13 +18,14 @@ interface SessionListRow {
   winner: SessionWinner | null;
 }
 
-function formatTime(iso: string | null): string {
-  if (!iso) return '–';
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function StatusTag({ status }: { status: SessionRow['status'] }) {
+  const t = useT();
+  return <span className={`${styles.tag} ${status === 'playing' ? styles.tagLive : ''}`}>{t(`status.${status}`)}</span>;
 }
 
 export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: string) => void }) {
   const t = useT();
+  const api = useDashApi();
   const [days, setDays] = useState<EventDayRow[]>([]);
   const [dayId, setDayId] = useState<string | null>(null);
   const [rows, setRows] = useState<SessionListRow[] | null>(null);
@@ -47,14 +34,14 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
   useEffect(() => {
     void (async () => {
       try {
-        const [all, current] = await Promise.all([fetchEventDays(), fetchCurrentEventDay()]);
+        const [all, current] = await Promise.all([api.fetchEventDays(), api.fetchCurrentEventDay()]);
         setDays(all);
         setDayId(current?.id ?? all[0]?.id ?? null);
       } catch {
         setError('sys.generic_error');
       }
     })();
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     if (!dayId) return;
@@ -62,12 +49,12 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
     setRows(null);
     void (async () => {
       try {
-        const sessions = await fetchSessionsForDay(dayId);
+        const sessions = await api.fetchSessionsForDay(dayId);
         const detailed = await Promise.all(
           sessions.map(async (session) => {
             const [players, winner] = await Promise.all([
-              countJoinedPlayersForSession(session.id),
-              fetchSessionWinner(session.id),
+              api.countJoinedPlayersForSession(session.id),
+              api.fetchSessionWinner(session.id),
             ]);
             return { session, players, winner };
           }),
@@ -80,31 +67,39 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
     return () => {
       alive = false;
     };
-  }, [dayId]);
+  }, [dayId, api]);
 
   return (
-    <div className={styles.main} data-testid="dash-sessions">
-      <section className={styles.card}>
-        <div className={styles.row}>
-          <label className={styles.field}>
-            <span>{t('dash.results.filter_day')}</span>
-            <select className={ui.input} value={dayId ?? ''} onChange={(e) => setDayId(e.target.value)} data-testid="sessions-day-select">
-              {days.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                  {d.is_current ? ` (${t('dash.days.current_badge')})` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {error ? (
-          <p className={ui.error} role="alert">
-            {t(error)}
-          </p>
+    <div className={styles.page} data-testid="dash-sessions">
+      <PageHeader title={t('dash.nav.sessions')} description={t('dash.sessions.desc')} />
+      <div className={styles.filters}>
+        <Select
+          label={t('dash.results.filter_day')}
+          value={dayId ?? ''}
+          onChange={(e) => setDayId(e.target.value)}
+          data-testid="sessions-day-select"
+        >
+          {days.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.label}
+              {d.is_current ? ` (${t('dash.days.current_badge')})` : ''}
+            </option>
+          ))}
+        </Select>
+        {rows && rows.length > 0 ? (
+          <span className={styles.filterCount}>{t('dash.sessions.count', { n: rows.length })}</span>
         ) : null}
-        {!rows ? null : rows.length === 0 ? (
-          <p className={ui.muted}>{t('dash.sessions.empty')}</p>
+      </div>
+      {error ? <Alert>{t(error)}</Alert> : null}
+      <Panel flush>
+        {!rows ? (
+          error ? (
+            <EmptyState title={t('dash.sessions.empty')} />
+          ) : (
+            <TableSkeleton columns={6} />
+          )
+        ) : rows.length === 0 ? (
+          <EmptyState title={t('dash.sessions.empty')} hint={t('dash.sessions.empty_hint')} />
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table} data-testid="sessions-table">
@@ -113,9 +108,12 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
                   <th>{t('dash.sessions.col.start')}</th>
                   <th>{t('dash.sessions.col.code')}</th>
                   <th>{t('dash.sessions.col.games')}</th>
-                  <th>{t('dash.sessions.col.players')}</th>
+                  <th className={styles.num}>{t('dash.sessions.col.players')}</th>
                   <th>{t('dash.sessions.col.top')}</th>
                   <th>{t('dash.sessions.col.status')}</th>
+                  <th className={styles.colAffordance}>
+                    <span className="visually-hidden">{t('dash.sessions.open')}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -134,13 +132,27 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
                     role="button"
                     data-testid="session-row"
                   >
-                    <td>{formatTime(session.started_at ?? session.created_at)}</td>
-                    <td dir="ltr">{session.code}</td>
-                    <td>{session.lineup.map((g) => t(`game.${g}.name`)).join(' · ')}</td>
-                    <td>{formatNumber(players)}</td>
-                    <td>{winner ? <bdi>{displayName(winner.name, winner.displaySuffix)}</bdi> : '–'}</td>
+                    <td className={styles.tabular}>{formatTime(session.started_at ?? session.created_at)}</td>
+                    <td className={styles.code} dir="ltr">
+                      {session.code}
+                    </td>
+                    <td className={styles.cellWrap}>{session.lineup.map((g) => t(`game.${g}.name`)).join(' · ')}</td>
+                    <td className={styles.num}>{formatNumber(players)}</td>
                     <td>
-                      <span className={styles.badge}>{t(`status.${session.status}`)}</span>
+                      {winner ? (
+                        <span className={styles.winner}>
+                          <bdi className={styles.nameCell}>{displayName(winner.name, winner.displaySuffix)}</bdi>
+                          <span className={styles.winnerScore}>{formatNumber(winner.total)}</span>
+                        </span>
+                      ) : (
+                        <span className={styles.dim}>–</span>
+                      )}
+                    </td>
+                    <td>
+                      <StatusTag status={session.status} />
+                    </td>
+                    <td className={styles.colAffordance}>
+                      <Icon name="chevron" mirror className={styles.rowChevron} />
                     </td>
                   </tr>
                 ))}
@@ -148,7 +160,7 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
             </table>
           </div>
         )}
-      </section>
+      </Panel>
     </div>
   );
 }
@@ -157,6 +169,7 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
 
 export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
   const t = useT();
+  const api = useDashApi();
   const [session, setSession] = useState<SessionRow | null>(null);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
@@ -168,10 +181,10 @@ export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; o
     void (async () => {
       try {
         const [s, p, r, sc] = await Promise.all([
-          fetchSessionById(sessionId),
-          fetchPlayersForSession(sessionId),
-          fetchRoundsForSession(sessionId),
-          fetchScoresForSession(sessionId),
+          api.fetchSessionById(sessionId),
+          api.fetchPlayersForSession(sessionId),
+          api.fetchRoundsForSession(sessionId),
+          api.fetchScoresForSession(sessionId),
         ]);
         if (!alive) return;
         setSession(s);
@@ -185,7 +198,7 @@ export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; o
     return () => {
       alive = false;
     };
-  }, [sessionId]);
+  }, [sessionId, api]);
 
   const scoreFor = useMemo(() => {
     const byPlayerRound = new Map<string, number>();
@@ -193,71 +206,108 @@ export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; o
     return (playerRowId: string, roundId: string) => byPlayerRound.get(`${playerRowId}\u0000${roundId}`);
   }, [scores]);
 
+  const activePlayers = players.filter((p) => p.status !== 'removed').length;
+
   return (
-    <div className={styles.main} data-testid="dash-session-detail">
-      <button type="button" className={`${ui.linkButton} ${styles.backLink}`} onClick={onBack} data-testid="session-back">
-        <svg className={styles.backIcon} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path
-            d="M15 5 L9 12 L15 19"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+    <div className={styles.page} data-testid="dash-session-detail">
+      <button type="button" className={styles.backLink} onClick={onBack} data-testid="session-back">
+        <Icon name="chevron" mirror className={styles.backIcon} />
         {t('dash.nav.sessions')}
       </button>
-      {error ? (
-        <p className={ui.error} role="alert">
-          {t(error)}
-        </p>
-      ) : null}
+      {error ? <Alert>{t(error)}</Alert> : null}
+      {!session && !error ? <TableSkeleton columns={5} rows={4} /> : null}
       {session ? (
         <>
-          <section className={styles.card}>
-            <h2 className={styles.sectionTitle}>{t('dash.session.detail_title', { code: session.code })}</h2>
-            <p>
-              {rounds
-                .map((r) => `${t('dash.session.col.round', { n: r.round_no })}: ${t(`game.${r.game}.name`)}${r.end_reason ? ` (${t(`dash.session.end_reason.${r.end_reason}`)})` : ''}`)
-                .join(' · ')}
-            </p>
-          </section>
-          <section className={styles.card}>
-            <div className={styles.tableWrap}>
-              <table className={styles.table} data-testid="session-players-table">
-                <thead>
-                  <tr>
-                    <th>{t('dash.results.col.name')}</th>
-                    {rounds.map((r) => (
-                      <th key={r.id}>{t('dash.session.col.round', { n: r.round_no })}</th>
-                    ))}
-                    <th>{t('dash.session.col.total')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {players.map((p) => {
-                    const roundScores = rounds.map((r) => scoreFor(p.id, r.id));
-                    const total = roundScores.reduce<number>((sum, s) => sum + (s ?? 0), 0);
-                    return (
-                      <tr key={p.id} data-testid="session-player-row">
-                        <td>
-                          <bdi>{displayName(p.name, p.display_suffix)}</bdi>
-                          {p.status === 'removed' ? (
-                            <span className={`${styles.badge} ${styles.badgeAmber}`}> {t('dash.session.removed')}</span>
-                          ) : null}
-                        </td>
-                        {roundScores.map((s, i) => (
-                          <td key={i}>{s === undefined ? t('results.breakdown_missing') : formatNumber(s)}</td>
-                        ))}
-                        <td>{formatNumber(total)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          <PageHeader
+            title={t('dash.session.detail_title', { code: session.code })}
+            actions={<StatusTag status={session.status} />}
+          />
+          <dl className={`${styles.meta} ${styles.metaBar}`}>
+            <div className={styles.metaItem}>
+              <dt className={styles.eyebrow}>{t('dash.sessions.col.start')}</dt>
+              <dd className={styles.tabular}>{formatTime(session.started_at ?? session.created_at)}</dd>
             </div>
-          </section>
+            <div className={styles.metaItem}>
+              <dt className={styles.eyebrow}>{t('dash.sessions.col.players')}</dt>
+              <dd className={styles.tabular}>{formatNumber(activePlayers)}</dd>
+            </div>
+            <div className={styles.metaItem}>
+              <dt className={styles.eyebrow}>{t('dash.sessions.col.code')}</dt>
+              <dd className={styles.code} dir="ltr">
+                {session.code}
+              </dd>
+            </div>
+          </dl>
+
+          <Panel title={t('dash.session.rounds')} flush>
+            <ol className={styles.roundList}>
+              {rounds.length > 0
+                ? rounds.map((r) => (
+                    <li key={r.id} className={styles.roundItem}>
+                      <span className={styles.roundNo}>{t('dash.session.col.round', { n: r.round_no })}</span>
+                      <span className={styles.roundGame}>{t(`game.${r.game}.name`)}</span>
+                      <span className={styles.roundReason}>
+                        {r.end_reason ? t(`dash.session.end_reason.${r.end_reason}`) : t(`status.${session.status}`)}
+                      </span>
+                    </li>
+                  ))
+                : session.lineup.map((g, i) => (
+                    <li key={`${g}-${i}`} className={styles.roundItem}>
+                      <span className={styles.roundNo}>{t('dash.session.col.round', { n: i + 1 })}</span>
+                      <span className={styles.roundGame}>{t(`game.${g}.name`)}</span>
+                      <span className={styles.roundReason}>–</span>
+                    </li>
+                  ))}
+            </ol>
+          </Panel>
+
+          <Panel title={t('dash.stat.players')} flush>
+            {players.length === 0 ? (
+              <EmptyState title={t('dash.session.no_players')} />
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table} data-testid="session-players-table">
+                  <thead>
+                    <tr>
+                      <th>{t('dash.results.col.name')}</th>
+                      {rounds.map((r) => (
+                        <th key={r.id} className={styles.num}>
+                          <span className={styles.thStack}>
+                            <span>{t('dash.session.col.round', { n: r.round_no })}</span>
+                            <span className={styles.thSub}>{t(`game.${r.game}.name`)}</span>
+                          </span>
+                        </th>
+                      ))}
+                      <th className={styles.num}>{t('dash.session.col.total')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {players.map((p) => {
+                      const roundScores = rounds.map((r) => scoreFor(p.id, r.id));
+                      const total = roundScores.reduce<number>((sum, s) => sum + (s ?? 0), 0);
+                      const removed = p.status === 'removed';
+                      return (
+                        <tr key={p.id} className={removed ? styles.rowRemoved : undefined} data-testid="session-player-row">
+                          <td>
+                            <span className={styles.nameWithTag}>
+                              <bdi className={styles.nameCell}>{displayName(p.name, p.display_suffix)}</bdi>
+                              {removed ? <span className={styles.tag}> {t('dash.session.removed')}</span> : null}
+                            </span>
+                          </td>
+                          {roundScores.map((s, i) => (
+                            <td key={i} className={`${styles.num} ${s === undefined ? styles.dim : ''}`}>
+                              {s === undefined ? t('results.breakdown_missing') : formatNumber(s)}
+                            </td>
+                          ))}
+                          <td className={`${styles.num} ${styles.strong}`}>{formatNumber(total)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
         </>
       ) : null}
     </div>

@@ -1,8 +1,9 @@
 /**
  * The admin dashboard (`SCREENS.md` §3): D0 sign-in (shared with `/host`,
  * same admin session storage key, `src/lib/supabase.ts`) -> D1 Today, with
- * tabs for D2 Sessions (-> D3 detail), D4 Results, D5 Names, D6 Days.
- * Phone-first layout; never projected.
+ * D2 Sessions (-> D3 detail), D4 Results, D5 Names, D6 Days.
+ * v2 layout (DESIGN_SYSTEM §0.4): a left nav on desktop (inline-start, so it
+ * moves to the right in Arabic), top tabs under 768 px. Never projected.
  */
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -12,8 +13,8 @@ import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
 import { SHATTER_LOGO_CLASS } from '../effects/shatter';
 import { Spinner } from '../components/Spinner';
-import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
+import { Alert, Icon } from './parts';
 import { TodayPanel } from './Today';
 import { SessionDetailPanel, SessionsPanel } from './Sessions';
 import { ResultsPanel } from './Results';
@@ -36,22 +37,27 @@ type AuthState = 'loading' | 'signed_out' | 'admin';
 
 function DashboardRoot() {
   const [auth, setAuth] = useState<AuthState>('loading');
+  const [email, setEmail] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     void supabase.auth.getSession().then(async ({ data }) => {
       if (!alive) return;
-      if (isAdmin(data.session)) setAuth('admin');
-      else {
+      if (isAdmin(data.session)) {
+        setEmail(data.session?.user.email ?? null);
+        setAuth('admin');
+      } else {
         if (data.session) await supabase.auth.signOut();
         setAuth('signed_out');
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!alive) return;
-      if (isAdmin(session)) setAuth('admin');
-      else if (!session) setAuth('signed_out');
+      if (isAdmin(session)) {
+        setEmail(session?.user.email ?? null);
+        setAuth('admin');
+      } else if (!session) setAuth('signed_out');
     });
     return () => {
       alive = false;
@@ -72,10 +78,27 @@ function DashboardRoot() {
       />
     );
   }
-  return <DashboardMain />;
+  return <DashboardMain adminEmail={email} />;
 }
 
-function SignIn({
+function LangToggle({ className }: { className: string }) {
+  const t = useT();
+  const { lang, setLang } = useLang();
+  return (
+    <button
+      type="button"
+      className={className}
+      lang={lang === 'en' ? 'ar' : 'en'}
+      onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+      data-testid="lang-toggle"
+    >
+      <Icon name="language" />
+      <span>{t('common.lang_toggle')}</span>
+    </button>
+  );
+}
+
+export function SignIn({
   notice,
   onNotAdmin,
   onSignedIn,
@@ -110,52 +133,70 @@ function SignIn({
 
   const shown = error ?? notice;
   return (
-    <form className={styles.main} onSubmit={submit} data-testid="dash-signin">
-      <img src={logo} alt={t('app.name')} className={`${ui.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
-      <h1 className={styles.sectionTitle}>{t('host.signin.title')}</h1>
-      <label className={styles.field}>
-        <span>{t('host.signin.email')}</span>
-        <input
-          className={ui.input}
-          type="email"
-          autoComplete="username"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          data-testid="signin-email"
-        />
-      </label>
-      <label className={styles.field}>
-        <span>{t('host.signin.password')}</span>
-        <input
-          className={ui.input}
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          data-testid="signin-password"
-        />
-      </label>
-      {shown ? (
-        <p className={ui.error} role="alert" data-testid="signin-error">
-          {t(shown)}
-        </p>
-      ) : null}
-      <button type="submit" className={`${ui.button} ${ui.buttonBlock}`} disabled={busy} data-testid="signin-submit">
-        {t('host.signin.submit')}
-      </button>
-    </form>
+    <div className={styles.signinPage}>
+      <form className={styles.signinPanel} onSubmit={submit} data-testid="dash-signin">
+        <div className={styles.signinTop}>
+          <img src={logo} alt={t('app.name')} className={`${styles.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
+          <LangToggle className={`${styles.btn} ${styles.btnGhost}`} />
+        </div>
+        <div className={styles.signinHeading}>
+          <span className={styles.eyebrow}>{t('dash.title')}</span>
+          <h1 className={styles.pageTitle}>{t('host.signin.title')}</h1>
+        </div>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>{t('host.signin.email')}</span>
+          <input
+            className={styles.input}
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            data-testid="signin-email"
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>{t('host.signin.password')}</span>
+          <input
+            className={styles.input}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            data-testid="signin-password"
+          />
+        </label>
+        {shown ? <Alert testId="signin-error">{t(shown)}</Alert> : null}
+        <button
+          type="submit"
+          className={`${styles.btn} ${styles.btnPrimary} ${styles.btnBlock}`}
+          disabled={busy}
+          data-testid="signin-submit"
+        >
+          {t('host.signin.submit')}
+        </button>
+      </form>
+    </div>
   );
 }
 
-type Tab = 'today' | 'sessions' | 'results' | 'names' | 'days';
+export type DashTab = 'today' | 'sessions' | 'results' | 'names' | 'days';
 
-function DashboardMain() {
+export function DashboardMain({
+  adminEmail = null,
+  initialTab = 'today',
+  initialSessionId = null,
+}: {
+  adminEmail?: string | null;
+  /** Dev preview only: open on this page. */
+  initialTab?: DashTab;
+  /** Dev preview only: open this session's detail (with `initialTab: 'sessions'`). */
+  initialSessionId?: string | null;
+}) {
   const t = useT();
-  const { lang, setLang } = useLang();
-  const [tab, setTab] = useState<Tab>('today');
-  const [openSessionId, setOpenSessionId] = useState<string | null>(null);
+  const [tab, setTab] = useState<DashTab>(initialTab);
+  const [openSessionId, setOpenSessionId] = useState<string | null>(initialSessionId);
 
-  const tabs: { id: Tab; label: string }[] = [
+  const tabs: { id: DashTab; label: string }[] = [
     { id: 'today', label: t('dash.nav.today') },
     { id: 'sessions', label: t('dash.nav.sessions') },
     { id: 'results', label: t('dash.nav.results') },
@@ -163,59 +204,65 @@ function DashboardMain() {
     { id: 'days', label: t('dash.nav.days') },
   ];
 
-  const goTo = (next: Tab) => {
+  const goTo = (next: DashTab) => {
     setOpenSessionId(null);
     setTab(next);
   };
 
   return (
     <div className={styles.root} data-testid="dashboard-root">
-      <header className={styles.header}>
-        <div className={styles.row}>
-          <img src={logo} alt={t('app.name')} className={`${ui.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
-          <span className={styles.sectionTitle}>{t('dash.title')}</span>
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}>
+          <img src={logo} alt={t('app.name')} className={`${styles.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
+          <span className={styles.brandLabel}>{t('dash.title')}</span>
         </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={`${ui.button} ${ui.buttonSecondary}`}
-            lang={lang === 'en' ? 'ar' : 'en'}
-            onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
-            data-testid="lang-toggle"
-          >
-            {t('common.lang_toggle')}
-          </button>
-          <button
-            type="button"
-            className={`${ui.button} ${ui.buttonSecondary}`}
-            onClick={() => void supabase.auth.signOut()}
-            data-testid="signout"
-          >
-            {t('host.signout')}
-          </button>
+        <nav className={styles.nav} aria-label={t('dash.title')} data-testid="dash-nav">
+          {tabs.map((x) => (
+            <button
+              key={x.id}
+              type="button"
+              className={`${styles.navButton} ${tab === x.id ? styles.navButtonOn : ''}`}
+              aria-current={tab === x.id ? 'page' : undefined}
+              onClick={() => goTo(x.id)}
+              data-testid={`nav-${x.id}`}
+            >
+              {x.label}
+            </button>
+          ))}
+        </nav>
+        <div className={styles.account}>
+          {adminEmail ? (
+            <div className={styles.accountWho}>
+              <span className={styles.eyebrow}>{t('dash.account.signed_in')}</span>
+              <span className={styles.accountEmail} title={adminEmail}>
+                <bdi>{adminEmail}</bdi>
+              </span>
+            </div>
+          ) : null}
+          <div className={styles.accountActions}>
+            <LangToggle className={`${styles.btn} ${styles.btnGhost} ${styles.accountButton}`} />
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnGhost} ${styles.accountButton}`}
+              onClick={() => void supabase.auth.signOut()}
+              data-testid="signout"
+            >
+              <Icon name="logout" mirror />
+              <span className={styles.signoutLabel}>{t('host.signout')}</span>
+            </button>
+          </div>
         </div>
-      </header>
-      <nav className={styles.nav} data-testid="dash-nav">
-        {tabs.map((x) => (
-          <button
-            key={x.id}
-            type="button"
-            className={`${styles.navButton} ${tab === x.id && !openSessionId ? styles.navButtonOn : ''}`}
-            onClick={() => goTo(x.id)}
-            data-testid={`nav-${x.id}`}
-          >
-            {x.label}
-          </button>
-        ))}
-      </nav>
-      {tab === 'today' ? <TodayPanel /> : null}
-      {tab === 'sessions' && !openSessionId ? <SessionsPanel onOpenSession={setOpenSessionId} /> : null}
-      {tab === 'sessions' && openSessionId ? (
-        <SessionDetailPanel sessionId={openSessionId} onBack={() => setOpenSessionId(null)} />
-      ) : null}
-      {tab === 'results' ? <ResultsPanel /> : null}
-      {tab === 'names' ? <NamesPanel /> : null}
-      {tab === 'days' ? <DaysPanel /> : null}
+      </aside>
+      <main className={styles.content}>
+        {tab === 'today' ? <TodayPanel /> : null}
+        {tab === 'sessions' && !openSessionId ? <SessionsPanel onOpenSession={setOpenSessionId} /> : null}
+        {tab === 'sessions' && openSessionId ? (
+          <SessionDetailPanel sessionId={openSessionId} onBack={() => setOpenSessionId(null)} />
+        ) : null}
+        {tab === 'results' ? <ResultsPanel /> : null}
+        {tab === 'names' ? <NamesPanel /> : null}
+        {tab === 'days' ? <DaysPanel /> : null}
+      </main>
     </div>
   );
 }
