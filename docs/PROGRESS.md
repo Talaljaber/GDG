@@ -10,7 +10,7 @@ Last updated: 2026-09-24
 
 ## Current phase
 
-**Phase 2: Sessions, rounds and leaderboards** (`PHASES.md`), built with real 3-round sessions (the other game modules already existed), plus the **Phase 3 integration items** (AC3.2–AC3.5: `ROUNDS_PER_SESSION = 3`, the 3-game lineup migration). Green locally: typecheck, lint, unit tests, `check:i18n`, `check:trivia`, `contrast`, build, `npm run e2e` (9 specs), `supabase test db` (450). Remaining: the real-device checks (Phase 1 AC1.2/AC1.3 and the manual items below), and Phase 3's AC3.1/AC3.6/AC3.7 sign-off per game. Phase 0's cloud items are tracked separately.
+**Phase 2: Sessions, rounds and leaderboards** (`PHASES.md`), built with real 3-round sessions (the other game modules already existed), plus the **Phase 3 integration items** (AC3.2–AC3.5: `ROUNDS_PER_SESSION = 3`, the 3-game lineup migration). Green locally: typecheck, lint, unit tests, `check:i18n`, `check:trivia`, `contrast`, build, `npm run e2e` (9 specs), `supabase test db` (490). Remaining: the real-device checks (Phase 1 AC1.2/AC1.3 and the manual items below), and Phase 3's AC3.1/AC3.6/AC3.7 sign-off per game. Phase 0's cloud items are tracked separately.
 
 ### Phase 2 acceptance criteria
 | AC | Status | How verified |
@@ -47,6 +47,7 @@ Last updated: 2026-09-24
 
 ## Done
 
+- 2026-09-24: **Phase 0 cloud (partial)**: one project `gdg-booth` (`ppikklvltpfdwbxtilme`, eu-central-1, ADR-127; the Seoul project is retired) with all 9 migrations via `supabase db push`; catalog checked: RLS on all 8 tables, anon executes only `keepalive()`, realtime publication correct. Supabase's automatic-RLS event trigger is on; pgTAP 01 skips event-trigger functions. Status: `DEPLOYMENT.md` §2.7.
 - 2026-09-24: **Phase 2 + Phase 3 integration** (this session): multi-round host loop with intermissions anchored on `ended_at` (`src/host/useHost.ts`, `schedule.ts`), pending session corner code + next-games picker (`common.tsx`), H3 with the Stop the Clock guess reveal (`StcReveal.tsx`, `reveal.ts`; shatter hook `src/components/RevealIn.tsx`), H4 table with round columns, H5 rotating day boards (`Results.tsx`); phones P3b, P7 `new_best`, P8, P9 from own rows, P10, P11 by event day, landscape overlay (E16) (`src/player/`); board ordering helpers (`src/lib/boards.ts`); API for rounds, day boards, hidden keys (`src/lib/api.ts`); `pending:` and `day:` channels (`realtime.ts`); `ROUNDS_PER_SESSION = 3` + migration `20260925000300`; pgTAP `07_boards.sql`; e2e `phase2.spec.ts`, `payloads.spec.ts`; Phase 1 e2e adapted to 3 rounds.
 
 - 2026-09-24: **Game modules built ahead of Phase 3** (pure scoring + screens + tests, each to its doc): Odd One Out, Simon, Perfect Circle, Trivia (`src/games/*`). Registered in `src/games/registry.ts`; Trivia is only offered once ≥ 5 questions are ready (currently 3). Sessions stay at `ROUNDS_PER_SESSION = 1` until Phase 2's multi-round sequencing lands (ADR-120). Perfect Circle metric fixes written back to `games/perfect-circle.md` (midpoint resampling; sweep measured around the stroke's centroid).
@@ -60,11 +61,11 @@ Last updated: 2026-09-24
 1. Real-device checks: Phase 1 AC1.2 (iPhone + Android) and AC1.3 (airplane mode); Phase 2 on a projector: H3 reveal and H4/H5 readability, the P8 steps next to the big screen, the landscape overlay (E16) and screen lock (E15) on real phones.
 2. Phase 3 sign-off per game (AC3.1, AC3.6, AC3.7) and E2E-2 (reload mid-round) for the four newer games in the browser (unit-tested today).
 3. Team answers the blocking open questions: OQ-01 (dates), OQ-02 (roles), OQ-03 (trivia writers), OQ-14 (Netlify account), and reviews Proposed ADRs (OQ-19).
-4. Phase 0 cloud tasks: Supabase projects, Netlify, **keepalive on day zero**.
+4. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), keepalive secrets (AC0.3), Netlify (AC0.4).
 
 ## Blockers
 
-- Phase 0 cloud setup needs the team's Supabase/Netlify accounts (OQ-14). Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia: the pool now has 30 questions marked ready (`check:trivia`); the review sign-off is OQ-03.
+- Netlify needs the team's account (OQ-14). Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia: the pool now has 30 questions marked ready (`check:trivia`); the review sign-off is OQ-03.
 
 ## Edge-case test coverage (E1–E29, `SESSION_LIFECYCLE.md` §6)
 
