@@ -39,333 +39,344 @@
     },
     {
       "id": "q02",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What does CSS stand for?",
+        "ar": "ماذا يعني الاختصار CSS؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Cascading Style Sheets",
+          "ar": "أوراق الأنماط المتتالية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Computer Style Syntax",
+          "ar": "صيغة أنماط الحاسوب"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Creative Style System",
+          "ar": "نظام الأنماط الإبداعي"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Coded Style Sheets",
+          "ar": "أوراق الأنماط المُرمّزة"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developer.mozilla.org/en-US/docs/Web/CSS",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q03",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "Which company created and owns the Android operating system?",
+        "ar": "أي شركة طوّرت نظام التشغيل Android وتملكه؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Google",
+          "ar": "Google"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Apple",
+          "ar": "Apple"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Microsoft",
+          "ar": "Microsoft"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Samsung",
+          "ar": "Samsung"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://www.android.com/history/",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q04",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What does \"www\" stand for in a website address?",
+        "ar": "ماذا يعني الاختصار www في عنوان الموقع؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "World Wide Web",
+          "ar": "الشبكة العنكبوتية العالمية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "World Wide Wire",
+          "ar": "السلك العالمي الواسع"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Web Wide World",
+          "ar": "عالم الويب الواسع"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Wide World Web",
+          "ar": "ويب العالم الواسع"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q05",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is the name of Google's web browser?",
+        "ar": "ما اسم متصفح الويب الذي أنشأته Google؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Chrome",
+          "ar": "Chrome"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Firefox",
+          "ar": "Firefox"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Safari",
+          "ar": "Safari"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Edge",
+          "ar": "Edge"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://www.google.com/chrome/",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q06",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What does \"HTTP\" stand for?",
+        "ar": "ماذا يعني الاختصار HTTP؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "HyperText Transfer Protocol",
+          "ar": "بروتوكول نقل النص التشعبي"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "High Transfer Text Protocol",
+          "ar": "بروتوكول النص عالي النقل"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "HyperText Transmission Process",
+          "ar": "عملية إرسال النص التشعبي"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Hyperlink Text Transfer Program",
+          "ar": "برنامج نقل نص الروابط"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developer.mozilla.org/en-US/docs/Web/HTTP",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q07",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is the tool \"Git\" mainly used for?",
+        "ar": "علام يُستخدم برنامج Git بشكل أساسي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Tracking changes in code over time",
+          "ar": "تتبّع تغييرات الشيفرة عبر الوقت"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Designing app icons",
+          "ar": "تصميم أيقونات التطبيقات"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Compressing image files",
+          "ar": "ضغط ملفات الصور"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Sending push notifications",
+          "ar": "إرسال الإشعارات الفورية"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://git-scm.com/about",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q08",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "In software, what does \"API\" stand for?",
+        "ar": "ماذا يعني الاختصار API في البرمجيات؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Application Programming Interface",
+          "ar": "واجهة برمجة التطبيقات"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Automated Program Installer",
+          "ar": "مثبّت البرامج الآلي"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Applied Programming Index",
+          "ar": "فهرس البرمجة التطبيقية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Application Process Integration",
+          "ar": "تكامل عمليات التطبيق"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developer.mozilla.org/en-US/docs/Glossary/API",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q09",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What does it mean when software is \"open source\"?",
+        "ar": "ماذا يعني أن يكون برنامج ما «مفتوح المصدر»؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Its source code is public and anyone can change it",
+          "ar": "شيفرته المصدرية عامة ويمكن لأي أحد تعديلها"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It is always free of charge",
+          "ar": "أنه مجاني دائمًا"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It was made by only one company",
+          "ar": "أنه من صنع شركة واحدة فقط"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It has no license at all",
+          "ar": "أنه بلا رخصة إطلاقًا"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://opensource.org/osd",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q10",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "Which language is mainly used to add interactivity to web pages?",
+        "ar": "أي لغة تُستخدم أساسًا لإضافة التفاعل إلى صفحات الويب؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "JavaScript",
+          "ar": "JavaScript"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Python",
+          "ar": "Python"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Swift",
+          "ar": "Swift"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "SQL",
+          "ar": "SQL"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q11",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "hard",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is the built-in Chrome tool for inspecting and debugging a web page called?",
+        "ar": "ما اسم الأداة المدمجة في Chrome لفحص صفحات الويب وتصحيح أخطائها؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "DevTools",
+          "ar": "DevTools"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Chrome Console",
+          "ar": "Chrome Console"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Web Sandbox",
+          "ar": "Web Sandbox"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Page Manager",
+          "ar": "Page Manager"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developer.chrome.com/docs/devtools/",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q12",
-      "status": "draft",
+      "status": "ready",
       "bucket": "google_dev",
       "difficulty": "hard",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What does \"DNS\" stand for in networking?",
+        "ar": "ماذا يعني الاختصار DNS في الشبكات؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Domain Name System",
+          "ar": "نظام أسماء النطاقات"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Digital Network Server",
+          "ar": "خادم الشبكة الرقمية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Data Naming Standard",
+          "ar": "معيار تسمية البيانات"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Direct Network Service",
+          "ar": "خدمة الشبكة المباشرة"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://www.cloudflare.com/learning/dns/what-is-dns/",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q13",
@@ -400,333 +411,344 @@
     },
     {
       "id": "q14",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is a \"chatbot\"?",
+        "ar": "ما هو «روبوت المحادثة» (Chatbot)؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "A computer program that can hold a conversation with you",
+          "ar": "برنامج حاسوبي يمكنه التحدّث معك"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A robot that cleans your house",
+          "ar": "روبوت ينظّف منزلك"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A type of computer virus",
+          "ar": "نوع من فيروسات الحاسوب"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A device that charges your phone",
+          "ar": "جهاز يشحن هاتفك"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q15",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What do we call it when an AI tool creates a picture from a text description?",
+        "ar": "ماذا نسمّي قيام أداة ذكاء اصطناعي بإنشاء صورة من وصف نصي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Image generation",
+          "ar": "توليد الصور"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Image compression",
+          "ar": "ضغط الصور"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Image encryption",
+          "ar": "تشفير الصور"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Image indexing",
+          "ar": "فهرسة الصور"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q16",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is \"training data\" used for in AI?",
+        "ar": "علام تُستخدم «بيانات التدريب» في الذكاء الاصطناعي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Teaching a model to recognize patterns",
+          "ar": "تعليم النموذج التعرّف على الأنماط"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Storing a user's private photos",
+          "ar": "تخزين صور المستخدم الخاصة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Charging the AI's battery",
+          "ar": "شحن بطارية الذكاء الاصطناعي"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Connecting the AI to Wi-Fi",
+          "ar": "ربط الذكاء الاصطناعي بشبكة Wi-Fi"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q17",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is it called when AI identifies objects like cats or cars in a photo?",
+        "ar": "ماذا نسمّي تعرّف الذكاء الاصطناعي على قطط أو سيارات في صورة؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Image recognition",
+          "ar": "التعرّف على الصور"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Image printing",
+          "ar": "طباعة الصور"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Image folding",
+          "ar": "طيّ الصور"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Image mailing",
+          "ar": "إرسال الصور بالبريد"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q18",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What does it mean when an AI chatbot \"hallucinates\"?",
+        "ar": "ماذا يعني أن «يهلوس» روبوت محادثة يعمل بالذكاء الاصطناعي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "It confidently states something false as if it were true",
+          "ar": "يذكر معلومة خاطئة بثقة وكأنها صحيحة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It repeats the same answer forever",
+          "ar": "يكرر الإجابة نفسها إلى الأبد"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It refuses to answer any question",
+          "ar": "يرفض الإجابة عن أي سؤال"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It shuts down unexpectedly",
+          "ar": "يتوقف عن العمل فجأة"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q19",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is \"machine learning\"?",
+        "ar": "ما هو «التعلّم الآلي» (Machine Learning)؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Learning patterns from data instead of fixed rules",
+          "ar": "تعلّم الأنماط من البيانات بدل قواعد ثابتة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A way to repair broken computer hardware",
+          "ar": "طريقة لإصلاح عتاد الحاسوب التالف"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A method for printing three-dimensional objects",
+          "ar": "طريقة لطباعة أجسام ثلاثية الأبعاد"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A system for managing email inboxes",
+          "ar": "نظام لإدارة صناديق البريد الإلكتروني"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q20",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "Why should you double-check facts an AI chatbot gives you?",
+        "ar": "لماذا يجب التحقق من الحقائق التي يقدّمها روبوت محادثة ذكاء اصطناعي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "It can sound confident while being wrong",
+          "ar": "قد يبدو واثقًا رغم أنه مخطئ"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It only tells jokes instead of facts",
+          "ar": "لأنه لا يقول سوى النكات بدل الحقائق"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It can only speak one language",
+          "ar": "لأنه لا يتحدّث سوى لغة واحدة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "It never remembers the question",
+          "ar": "لأنه لا يتذكّر السؤال أبدًا"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q21",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is \"bias\" in an AI system?",
+        "ar": "ما هو «التحيّز» (Bias) في نظام ذكاء اصطناعي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "It treats some groups unfairly due to its training data",
+          "ar": "يعامل بعض الفئات بغير عدل بسبب بيانات تدريبه"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "The system running slowly on old phones",
+          "ar": "بطء عمل النظام على الهواتف القديمة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "The system using too much mobile data",
+          "ar": "استهلاك النظام كمية كبيرة من بيانات الجوال"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "The system needing frequent software updates",
+          "ar": "حاجة النظام إلى تحديثات متكررة"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q22",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "In everyday terms, what is a \"large language model\"?",
+        "ar": "بعبارات بسيطة، ما هو «نموذج اللغة الكبير» (Large Language Model)؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "AI trained on huge text data to understand language",
+          "ar": "ذكاء اصطناعي دُرّب على نصوص هائلة لفهم اللغة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A large screen used to display AI results",
+          "ar": "شاشة كبيرة تُستخدم لعرض نتائج الذكاء الاصطناعي"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A database that only stores numbers",
+          "ar": "قاعدة بيانات لا تخزّن سوى الأرقام"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A tool that only translates single words",
+          "ar": "أداة لا تترجم سوى كلمات مفردة"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q23",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "hard",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "Why can two people get different answers from the same AI chatbot for the same question?",
+        "ar": "لماذا قد يحصل شخصان على إجابتين مختلفتين من روبوت المحادثة نفسه عن السؤال نفسه؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Many chatbots add randomness to each response",
+          "ar": "تضيف كثير من الروبوتات عشوائية لكل إجابة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "The chatbot secretly knows who is asking",
+          "ar": "لأن الروبوت يعرف سريًّا هوية السائل"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Each phone has a different chatbot installed",
+          "ar": "لأن كل هاتف مثبّت عليه روبوت مختلف"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "The chatbot changes its opinions based on politics",
+          "ar": "لأن الروبوت يغيّر آراءه حسب السياسة"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q24",
-      "status": "draft",
+      "status": "ready",
       "bucket": "ai_basics",
       "difficulty": "hard",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is the main difference between a rule-based program and a machine-learning model?",
+        "ar": "ما الفرق الأساسي بين برنامج قائم على قواعد ثابتة ونموذج تعلّم آلي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "One follows fixed rules, the other learns from data",
+          "ar": "أحدهما يتبع قواعد ثابتة والآخر يتعلّم من البيانات"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "One works offline and the other never does",
+          "ar": "أحدهما يعمل بلا إنترنت والآخر لا يعمل أبدًا"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "One is always faster than the other",
+          "ar": "أحدهما أسرع من الآخر دائمًا"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "One only works on phones and the other only on computers",
+          "ar": "أحدهما يعمل على الهواتف فقط والآخر على الحواسيب فقط"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "common knowledge",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q25",
@@ -761,153 +783,158 @@
     },
     {
       "id": "q26",
-      "status": "draft",
+      "status": "ready",
       "bucket": "gdg_community",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "How much does it usually cost to join a local GDG chapter's events?",
+        "ar": "كم تكلفة الانضمام عادةً إلى فعاليات مجموعة GDG محلية؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "They're free",
+          "ar": "إنها مجانية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A yearly membership fee",
+          "ar": "رسوم اشتراك سنوية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A one-time signup fee",
+          "ar": "رسوم تسجيل لمرة واحدة"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A donation required at the door",
+          "ar": "تبرّع إلزامي عند الباب"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developers.google.com/community/gdg",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q27",
-      "status": "draft",
+      "status": "ready",
       "bucket": "gdg_community",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "Who mainly organizes and runs local GDG chapters?",
+        "ar": "من الذي يُنظّم مجموعات GDG المحلية ويديرها بشكل أساسي؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "Volunteers from the local developer community",
+          "ar": "متطوّعون من مجتمع المطوّرين المحلي"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Paid Google employees only",
+          "ar": "موظفو Google بأجر فقط"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "Government technology agencies",
+          "ar": "وكالات حكومية تقنية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "University administration offices only",
+          "ar": "مكاتب إدارة الجامعات فقط"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developers.google.com/community/gdg/groups",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q28",
-      "status": "draft",
+      "status": "ready",
       "bucket": "gdg_community",
       "difficulty": "easy",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is a \"DevFest\"?",
+        "ar": "ما هو «DevFest»؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "A community-led tech conference hosted by GDG",
+          "ar": "مؤتمر تقني يقوده المجتمع وتستضيفه مجموعات GDG"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A private Google product launch event",
+          "ar": "حدث خاص لإطلاق منتج من Google"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A paid coding bootcamp",
+          "ar": "معسكر برمجة مدفوع"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A Google internal hiring event",
+          "ar": "حدث توظيف داخلي في Google"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developers.google.com/community/devfest/faq",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q29",
-      "status": "draft",
+      "status": "ready",
       "bucket": "gdg_community",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is \"Women Techmakers\"?",
+        "ar": "ما هو برنامج «Women Techmakers»؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "A Google program supporting women in tech",
+          "ar": "برنامج من Google يدعم النساء في التقنية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A fashion event for tech companies",
+          "ar": "حدث أزياء لشركات التقنية"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A Google internal training for new hires",
+          "ar": "تدريب داخلي في Google للموظفين الجدد"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A conference open only to senior engineers",
+          "ar": "مؤتمر مخصص فقط لكبار المهندسين"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://www.womentechmakers.com/programs",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     },
     {
       "id": "q30",
-      "status": "draft",
+      "status": "ready",
       "bucket": "gdg_community",
       "difficulty": "medium",
       "question": {
-        "en": "",
-        "ar": ""
+        "en": "What is a \"Google Developer Expert\" (GDE)?",
+        "ar": "من هو «Google Developer Expert» (GDE)؟"
       },
       "options": [
         {
-          "en": "",
-          "ar": ""
+          "en": "An independent expert recognized by Google",
+          "ar": "خبير مستقل تعترف به Google"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A Google employee who fixes software bugs",
+          "ar": "موظف في Google يصلح أخطاء البرمجيات"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A university degree program offered by Google",
+          "ar": "برنامج شهادة جامعية تقدّمه Google"
         },
         {
-          "en": "",
-          "ar": ""
+          "en": "A certification exam anyone can purchase",
+          "ar": "اختبار شهادة يمكن لأي أحد شراؤه"
         }
       ],
-      "source": "",
-      "reviewed_by": []
+      "source": "https://developers.google.com/community/experts",
+      "reviewed_by": [],
+      "notes": "AI-drafted; needs two human reviewers (trivia-format §5) before content freeze."
     }
   ]
 }
