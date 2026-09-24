@@ -150,8 +150,14 @@
   cursor: pointer;
 }
 
-.tableRowClickable:hover {
+.tableRowClickable:hover,
+.tableRowClickable:focus-visible {
   background: var(--gdg-blue-tint);
+}
+
+.tableRowClickable:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: -2px;
 }
 
 .sortButton {
@@ -215,4 +221,20 @@
 
 .backLink {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+}
+
+/* Back navigation icon: a logical "toward inline-start" chevron, direction-
+   aware so it flips for Arabic (docs/DESIGN_SYSTEM.md §7-8: directional
+   icons mirror in RTL; back points toward where the user came from). */
+.backIcon {
+  inline-size: 1.2em;
+  block-size: 1.2em;
+  flex: none;
+}
+
+:global([dir='rtl']) .backIcon {
+  scale: -1 1;
 }

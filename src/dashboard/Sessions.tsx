@@ -124,6 +124,14 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
                     key={session.id}
                     className={styles.tableRowClickable}
                     onClick={() => onOpenSession(session.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onOpenSession(session.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
                     data-testid="session-row"
                   >
                     <td>{formatTime(session.started_at ?? session.created_at)}</td>
@@ -188,7 +196,17 @@ export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; o
   return (
     <div className={styles.main} data-testid="dash-session-detail">
       <button type="button" className={`${ui.linkButton} ${styles.backLink}`} onClick={onBack} data-testid="session-back">
-        ← {t('dash.nav.sessions')}
+        <svg className={styles.backIcon} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M15 5 L9 12 L15 19"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {t('dash.nav.sessions')}
       </button>
       {error ? (
         <p className={ui.error} role="alert">

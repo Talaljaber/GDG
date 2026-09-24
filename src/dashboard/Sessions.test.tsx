@@ -75,6 +75,27 @@ describe('SessionsPanel (D2)', () => {
     expect(onOpenSession).toHaveBeenCalledWith('s1');
   });
 
+  it('opens a session row via the keyboard (Enter/Space), not just a click', async () => {
+    const onOpenSession = vi.fn();
+    render(
+      <LangProvider initial="en">
+        <SessionsPanel onOpenSession={onOpenSession} />
+      </LangProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('session-row')).toBeInTheDocument());
+    const row = screen.getByTestId('session-row');
+    expect(row).toHaveAttribute('tabIndex', '0');
+    expect(row).toHaveAttribute('role', 'button');
+
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(onOpenSession).toHaveBeenCalledWith('s1');
+
+    onOpenSession.mockClear();
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(onOpenSession).toHaveBeenCalledWith('s1');
+  });
+
   it('shows the empty state when the day has no sessions', async () => {
     fetchSessionsForDay.mockResolvedValue([]);
     render(
