@@ -336,6 +336,18 @@
   color: var(--text);
 }
 
+/* Big-screen tabs (H5 day boards): --proj-min text, a heavier underline that survives projection. */
+.tabsProj {
+  gap: var(--proj-s-3);
+  font-size: var(--proj-min);
+}
+
+.tabsProj .tab {
+  min-block-size: var(--proj-control-height);
+  border-block-end-width: var(--proj-rank-rule);
+  margin-block-end: calc(-1 * var(--line-width));
+}
+
 /* Small label / count. Squared, never a pill. */
 .badge {
   display: inline-flex;

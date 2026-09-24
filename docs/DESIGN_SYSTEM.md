@@ -73,8 +73,8 @@ Ink and paper are our proposal, pending chapter-lead approval (OQ-07).
 |---|---|---|
 | `--gdg-blue-strong` | `#146A9E` (blue, darker than both logo tones) | Small blue text on paper (logo blues are 3.57:1 and 4.44:1, below 4.5:1 for body text) |
 | `--gdg-ink-muted` | `#5B6168` | Secondary text (5.86:1 on paper) |
-| `--gdg-blue-tint` | blue at 12 % over paper | Selected row, chip background |
-| `--gdg-amber-tint` | amber at 18 % over paper | #1 row background |
+| `--gdg-blue-tint` | blue at 12 % over paper | Own / new rows, text selection (components use `--primary-tint`) |
+| `--gdg-amber-tint` | amber at 18 % over paper | #1 row background (components use `--highlight-tint`) |
 | `--gdg-line` | ink at 15 % | Dividers, borders |
 
 ### 2.3 Semantic tokens (what components use)
@@ -87,7 +87,7 @@ Ink and paper are our proposal, pending chapter-lead approval (OQ-07).
 | `--text-muted` | `--gdg-ink-muted` | paper at 70 % |
 | `--primary` | `--gdg-blue` | `--gdg-blue` |
 | `--primary-text` (blue text) | `--gdg-blue-strong` | `--gdg-blue` |
-| `--on-primary` | `#FFFFFF` (only ≥ 20 px bold, see §2.4) | `--gdg-ink` |
+| `--on-primary` | `#FFFFFF` (any size on `--primary-text`; on `--primary` only ≥ 20 px bold, §2.4) | `--gdg-ink` |
 | `--highlight` | `--gdg-amber` | `--gdg-amber` |
 | `--on-highlight` | `--gdg-ink` | `--gdg-ink` |
 | `--focus` | `--gdg-blue-strong`, 3 px ring | `--gdg-amber` |
@@ -144,7 +144,7 @@ v2 semantic pairs (light theme unless marked; translucent tokens composited on `
 
 ## 3. Typography
 
-- **Latin: Roboto.** **Arabic: Cairo** (Tajawal as fallback if Cairo's Arabic looks too wide in testing). Both from Google Fonts, `display=swap`, subsets `latin` and `arabic` only, weights 400, 500, 700 (Cairo 400, 600, 700).
+- **Latin: Roboto.** **Arabic: Cairo** (Tajawal as fallback if Cairo's Arabic looks too wide in testing). Both from Google Fonts, `display=swap`, subsets `latin` and `arabic` only, weights 400, 500, 700 for both.
 - Font stack: `"Roboto", "Cairo", system-ui, sans-serif` in EN; `"Cairo", "Roboto", system-ui, sans-serif` in AR (so Latin brand names inside Arabic text use Roboto).
 - Numbers: `font-variant-numeric: tabular-nums` on scores, timers and ranks (utility `.tabular-nums`). Western digits in both languages (ADR-123).
 - **Weights (v2, §0.1):** `--weight-regular` 400 for body text, `--weight-medium` 500 for headings, labels, buttons, tabs and names, `--weight-bold` 700 **only** for hero numbers and the #1 board row (global class `.hero`). `base.css` sets h1–h6, `b`, `strong` and `th` to 500, so nothing is bold by default. Cairo is currently requested at 400/600/700 (`index.html`), so Arabic at 500 renders at 400 until 500 is added to the font request.
@@ -165,7 +165,7 @@ v2 semantic pairs (light theme unless marked; translucent tokens composited on `
 | `--type-target-size` | 64 / 700 | Stop the Clock target, code input |
 | `--type-score-size` | 88 / 700 | own score hero |
 
-`--type-title-size` / `--type-title-weight` (28 / 700) and `--type-button-size` / `--type-button-weight` (20 / 700) are the v1 values, kept because game internals still use them (their specs don't change); v2 chrome uses `--type-heading-size` at `--weight-medium` for titles and `--type-body-size` at `--weight-medium` for buttons.
+Each phone type token is a `-size` / `-weight` pair in `tokens.css` (e.g. `--type-body-size` / `--type-body-weight`, `--type-score-size` / `--type-score-weight`); the projector code also has `--proj-code-weight`. `--type-title-size` / `--type-title-weight` (28 / 700) and `--type-button-size` / `--type-button-weight` (20 / 700) are the v1 values, kept because game internals still use them (their specs don't change); v2 chrome uses `--type-heading-size` at `--weight-medium` for titles and `--type-body-size` at `--weight-medium` for buttons.
 
 Supports the phone's text-size setting up to 130 % without clipping (test in `TESTING.md` §6).
 
@@ -176,7 +176,7 @@ Designed for a ≥ 2 m wide projection read from 6–8 m.
 | Token | Size | Use |
 |---|---|---|
 | `--proj-min` | 3.2vh (35 px) | smallest text allowed on the big screen (operator bar, secondary text) |
-| `--proj-eyebrow` | 2.4vh (26 px) / 500, Latin uppercase + tracking | section eyebrows (`.eyebrow.eyebrowProj`); the one size below `--proj-min`, only for uppercase labels next to large content |
+| `--proj-eyebrow` | 3.2vh (35 px, = `--proj-min`) / 500, Latin uppercase + tracking (never tracked in Arabic) | section eyebrows (`.eyebrow.eyebrowProj`), table column heads, small icons next to them; readable from across the booth |
 | `--proj-row` | 4.6vh (50 px) / 500; #1 row 700 | leaderboard rows (name and score) |
 | `--proj-heading` | 7vh (76 px) / 500 | board titles, screen headings |
 | `--proj-code` | 20vh (216 px) / 700, letter-spacing 0.08em | session code in the lobby (the hero) |
@@ -186,7 +186,7 @@ Designed for a ≥ 2 m wide projection read from 6–8 m.
 
 `--proj-heading-weight` and `--proj-row-weight` (700) are the v1 values; v2 uses `--weight-medium` for headings and rows and `--weight-bold` only for the code, hero numbers and the #1 row.
 
-Layout tokens: `--proj-header-height` 9vh (header strip), `--proj-operator-height` 10vh (operator bar), `--proj-rank-rule` 0.6vh (#1 row's inline-start rule), `--proj-row-pad` 0.4vh (board row block padding). A board row is ≈ 6.4vh tall (4.6vh × 1.2 + padding + 1 px line), so **10 rows take ≈ 64vh**; leaderboards on the big screen show at most **10 rows** so each row stays ≥ 4.6vh.
+Layout tokens: `--proj-header-height` 9vh (header strip), `--proj-operator-height` 10vh (operator bar), `--proj-control-height` 5.6vh (operator-bar buttons, never below `--touch-target-floor`), `--proj-rank-rule` 0.6vh (#1 row's inline-start rule), `--proj-row-pad` 0.4vh (board row block padding), `--proj-row-leading` 1.1 (line height of the host's own board tables, so 10 rows fit between the header strip and the operator bar). A board row is ≈ 6.4vh tall (4.6vh × 1.2 + padding + 1 px line), so **10 rows take ≈ 64vh**; leaderboards on the big screen show at most **10 rows** so each row stays ≥ 4.6vh.
 
 ## 4. Spacing, shape, layout
 
@@ -196,8 +196,8 @@ Layout tokens: `--proj-header-height` 9vh (header strip), `--proj-operator-heigh
 - Lines: `--line-width` 1 px (borders, separators), `--line-width-strong` 2 px (tab underline, own-row outline, dashed breaks), `--focus-width` 3 px + `--focus-offset` 2 px (focus ring), `--rank-rule` 3 px (phone #1 / own row inline-start rule).
 - Control sizes: `--button-height` 52 px (phone buttons and inputs), `--button-height-small` 36 px (dashboard and dense desktop rows only: below the touch floor), `--code-cell-height` 56 px (join code cells), `--phone-bar-height` 56 px (phone top bar).
 - Dashboard: `--dash-max-width` 1200 px, `--dash-nav-width` 240 px (side nav), `--dash-signin-width` 400 px (sign-in panel).
-- Touch targets ≥ **48 × 48** CSS px (hard floor 44 × 44 for the densest grid, see Odd One Out).
-- Big screen: 16:9 layout, 5vh safe margins (projectors crop edges).
+- Touch targets ≥ **48 × 48** CSS px, `--touch-target-min` (hard floor 44 × 44, `--touch-target-floor`, for the densest grid, see Odd One Out). Minimum phone width `--phone-min-width` 320 px.
+- Big screen: 16:9 layout, 5vh safe margins (`--big-screen-safe-margin`; projectors crop edges).
 - Layout helper tokens in `tokens.css` (added with the Phase 1 screens): `--phone-max-width` 430 px, `--logo-phone-height` 32 px / `--logo-proj-height` 8vh (§5 minimums), `--line-width` 1 px / `--line-width-strong` 2 px / `--focus-width` 3 px, `--dot-size` / `--proj-dot-size` (presence dots), projector spacing `--proj-s-1…4` (1, 2, 3, 5vh) and `--proj-radius`, `--dialog-max-width`, `--qr-light` (QR background, always white), the layers below, and durations `--dur-spin` (busy spinner) and `--dur-countdown` (one 3-2-1 step, §6.3).
 - Layers (z-index tokens, lowest first): `--z-shatter` **40** (every shard overlay, `.gdg-shatter-layer`, fixed and click-through) < `--z-shatter-logo` **45** (the logo, class `gdg-shatter-logo-safe` / `SHATTER_LOGO_CLASS`, §5) < `--z-banner` **50** (offline / reconnecting banners) < `--z-dialog` **100** (confirm dialogs). Defined in `tokens.css`; `src/effects/shatter/shatter.css` only references them.
 
@@ -219,7 +219,7 @@ Import as `ui` from `src/components/ui.module.css`. Flat, no shadows, no gradien
 | Title | `title` | `--type-heading-size` 24 / 500 |
 | Name tag | `nameTag` > `dot` + `<bdi className={ui.nameTagText}>` | `--surface`, 1 px line, `--r-tag`, 500 name with ellipsis |
 | Presence dot | `dot` (+ `dotAway`, `dotProj`) | live = filled `--primary`; away = hollow `--line-strong` ring (shape differs, not only colour) |
-| Tabs | `tabs` > `tab` with `aria-selected="true"` / `aria-current="page"` (or `tabActive`) | text tabs on a 1 px bottom line; selected = ink text + 2 px `--primary` underline |
+| Tabs | `tabs` (+ `tabsProj` on the big screen: `--proj-min` text, `--proj-control-height` targets, `--proj-rank-rule` underline) > `tab` with `aria-selected="true"` / `aria-current="page"` (or `tabActive`) | text tabs on a 1 px bottom line; selected = ink text + 2 px `--primary` underline |
 | Badge | `badge` (+ `badgeHighlight` for #1 / new best) | squared `--r-tag`, `--surface-2`, 14 / 500 tabular; highlight = `--highlight-tint` with an amber border, ink text |
 | Label · value list | `keyValues` on a `<dl>` | two columns, muted label, 500 tabular value at the inline end, 1 px separators |
 | Number-only text | `counter`, `ltrNumber` | `direction: ltr; unicode-bidi: isolate`, so "3 / 12" never reorders under `dir="rtl"` |

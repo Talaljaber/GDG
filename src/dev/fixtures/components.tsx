@@ -9,6 +9,7 @@ import { Leaderboard } from '../../components/Leaderboard';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { Spinner } from '../../components/Spinner';
 import { TopBar } from '../../components/TopBar';
+import { Trans } from '../../components/Trans';
 import { useT } from '../../i18n';
 import type { RankedRow } from '../../lib/boards';
 import ui from '../../components/ui.module.css';
@@ -107,7 +108,7 @@ function Primitives() {
 
         <Section label="Field">
           <label className={ui.field}>
-            <span className={ui.label}>{t('join.name.placeholder')}</span>
+            <span className={ui.label}>{t('join.name.label')}</span>
             <input className={ui.input} defaultValue="عبدالرحمن محمد" />
             <span className={ui.helper}>
               <span>{t('join.name.hint')}</span>
@@ -188,26 +189,85 @@ function PhoneBoard() {
   );
 }
 
+const projPage: CSSProperties = {
+  minBlockSize: '100vh',
+  padding: 'var(--big-screen-safe-margin)',
+  background: 'var(--bg)',
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 'var(--proj-s-4)',
+  alignItems: 'start',
+};
+const projStack: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 'var(--proj-s-2)', minInlineSize: 0 };
+const projHeading: CSSProperties = { fontSize: 'var(--proj-heading)', fontWeight: 'var(--weight-medium)' as CSSProperties['fontWeight'] };
+
 function ProjectorBoard({ highlight }: { highlight?: boolean }) {
+  const t = useT();
   return (
-    <div
-      style={{
-        minBlockSize: '100vh',
-        padding: 'var(--big-screen-safe-margin)',
-        background: 'var(--bg)',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 'var(--proj-s-4)',
-        alignItems: 'start',
-      }}
-    >
+    <div style={projPage}>
+      <div style={projStack}>
+        <span className={`${ui.eyebrow} ${ui.eyebrowProj}`}>{t('host.results.total')}</span>
+        <Leaderboard rows={rows(null)} projector reveal={false} />
+      </div>
+      <div style={projStack}>
+        <span className={`${ui.eyebrow} ${ui.eyebrowProj}`}>{t('host.board.score')}</span>
+        <h2 style={projHeading}>Odd One Out</h2>
+        <Leaderboard
+          rows={rows(null).slice(0, 6)}
+          projector
+          reveal={false}
+          highlightIds={highlight ? new Set(['p2', 'p4']) : undefined}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Big-screen primitives: eyebrows at --proj-eyebrow, a projector panel, name tags, operator buttons. */
+function ProjectorPrimitives() {
+  const t = useT();
+  const projButton: CSSProperties = { fontSize: 'var(--proj-min)', minBlockSize: 'var(--proj-control-height)' };
+  return (
+    <div style={projPage}>
+      <div className={`${ui.panel} ${ui.panelProj}`} style={projStack}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--proj-s-2)' }}>
+          <span className={`${ui.eyebrow} ${ui.eyebrowProj}`}>{t('host.lobby.players', { n: 4 })}</span>
+          <span className={`${ui.eyebrow} ${ui.eyebrowProj}`}>{t('host.lobby.join_title')}</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--proj-s-1)', fontSize: 'var(--proj-min)' }}>
+          {['Sara', 'عبدالرحمن محمد', 'Alexandrina K', 'نور'].map((n, i) => (
+            <span key={n} className={ui.nameTag} style={{ paddingBlock: 'var(--proj-s-1)', paddingInline: 'var(--proj-s-2)' }}>
+              <span className={`${ui.dot} ${ui.dotProj} ${i === 2 ? ui.dotAway : ''}`} />
+              <bdi className={ui.nameTagText}>{n}</bdi>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className={`${ui.panel} ${ui.panelProj}`} style={projStack}>
+        <span className={`${ui.eyebrow} ${ui.eyebrowProj}`}>{t('host.lobby.code_label')}</span>
+        <div className={`${ui.tabs} ${ui.tabsProj}`} role="tablist">
+          <button type="button" role="tab" aria-selected="true" className={ui.tab}>Odd One Out</button>
+          <button type="button" role="tab" aria-selected="false" className={ui.tab}>Simon</button>
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--proj-s-2)', flexWrap: 'wrap' }}>
+          <button type="button" className={ui.button} style={projButton}>{t('host.round.force_end')}</button>
+          <button type="button" className={`${ui.button} ${ui.buttonSecondary}`} style={projButton}>
+            {t('host.results.show_day_board')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectorDialog() {
+  const t = useT();
+  return (
+    <div style={projPage}>
       <Leaderboard rows={rows(null)} projector reveal={false} />
-      <Leaderboard
-        rows={rows(null).slice(0, 6)}
-        projector
-        reveal={false}
-        highlightIds={highlight ? new Set(['p2', 'p4']) : undefined}
-      />
+      <ConfirmDialog onConfirm={noop} onCancel={noop}>
+        {t('host.round.force_end_confirm')}
+      </ConfirmDialog>
     </div>
   );
 }
@@ -221,7 +281,7 @@ function Dialog() {
         <h1 className={ui.title}>{t('join.name.title')}</h1>
       </div>
       <ConfirmDialog onConfirm={noop} onCancel={noop}>
-        {t('host.lobby.remove_confirm', { name: 'عبدالرحمن محمد' })}
+        <Trans k="host.lobby.remove_confirm" nodes={{ name: <bdi>عبدالرحمن محمد</bdi> }} />
       </ConfirmDialog>
     </div>
   );
@@ -246,6 +306,8 @@ export const fixtures: Fixture[] = [
   { name: 'components.board-phone', frame: 'phone', render: () => <PhoneBoard /> },
   { name: 'components.board-projector', frame: 'projector', render: () => <ProjectorBoard /> },
   { name: 'components.board-projector-highlight', frame: 'projector', render: () => <ProjectorBoard highlight /> },
+  { name: 'components.projector-primitives', frame: 'projector', render: () => <ProjectorPrimitives /> },
   { name: 'components.dialog', frame: 'phone', render: () => <Dialog /> },
+  { name: 'components.dialog-projector', frame: 'projector', render: () => <ProjectorDialog /> },
   { name: 'components.banner-offline', frame: 'phone', render: () => <Banner /> },
 ];

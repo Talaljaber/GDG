@@ -48,11 +48,12 @@
   --r-panel: 12px;
   --r-control: 10px;
   --r-tag: 8px;
-  --proj-eyebrow: 2.4vh;
+  --proj-eyebrow: 3.2vh; /* = --proj-min: readable across the booth */
   --proj-header-height: 9vh;
   --proj-operator-height: 10vh;
   --proj-rank-rule: 0.6vh;
   --proj-control-height: 5.6vh; /* host operator-bar buttons (never below --touch-target-floor) */
+  --proj-row-leading: 1.1; /* host board rows: 10 rows fit between header and operator bar */
   --dash-max-width: 1200px;
   /* v2 dashboard (DESIGN_SYSTEM §0.4): side-nav width, sign-in panel width */
   --dash-nav-width: 240px;
