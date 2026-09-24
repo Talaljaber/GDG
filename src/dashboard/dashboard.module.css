@@ -1,0 +1,218 @@
+/* Admin dashboard (docs/SCREENS.md §3). Phone-first: the admin often uses it
+   on their phone, so this is the default layout; a wider viewport gets more
+   breathing room via the same tokens. Logical properties only (RTL). */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-block: var(--s-3);
+  padding-inline: var(--phone-gutter);
+  border-block-end: var(--line-width) solid var(--gdg-line);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.nav {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--s-2);
+  padding-block: var(--s-2);
+  padding-inline: var(--phone-gutter);
+  border-block-end: var(--line-width) solid var(--gdg-line);
+}
+
+.navButton {
+  flex: none;
+  min-block-size: var(--touch-target-min);
+  padding-inline: var(--s-4);
+  border: var(--line-width) solid transparent;
+  border-radius: var(--r-chip);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  white-space: nowrap;
+}
+
+.navButtonOn {
+  border-color: var(--primary);
+  background: var(--gdg-blue-tint);
+  color: var(--primary-text);
+}
+
+.main {
+  flex: 1;
+  padding: var(--phone-gutter);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  max-inline-size: 960px;
+  inline-size: 100%;
+  margin-inline: auto;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  border: var(--line-width) solid var(--gdg-line);
+}
+
+.sectionTitle {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--s-3);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-4);
+  border-radius: var(--r-button);
+  background: var(--gdg-blue-tint);
+  text-align: center;
+}
+
+.statValue {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+.statLabel {
+  font-size: var(--type-caption-size);
+  color: var(--text-muted);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  flex: 1;
+  min-inline-size: 160px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-caption-size);
+}
+
+.table th,
+.table td {
+  padding-block: var(--s-2);
+  padding-inline: var(--s-3);
+  text-align: start;
+  border-block-end: var(--line-width) solid var(--gdg-line);
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  cursor: default;
+}
+
+.tableRowClickable {
+  cursor: pointer;
+}
+
+.tableRowClickable:hover {
+  background: var(--gdg-blue-tint);
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-weight: var(--type-caption-weight);
+  font-size: var(--type-caption-size);
+  min-block-size: var(--touch-target-min);
+}
+
+.sortButton[aria-sort='ascending'],
+.sortButton[aria-sort='descending'] {
+  color: var(--primary-text);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding-block: var(--s-1);
+  padding-inline: var(--s-3);
+  border-radius: var(--r-chip);
+  background: var(--gdg-blue-tint);
+  color: var(--primary-text);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+}
+
+.badgeAmber {
+  background: var(--gdg-amber-tint);
+  color: var(--text);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-block: var(--s-2);
+  padding-inline: var(--s-3);
+  border-radius: var(--s-2);
+  background: var(--gdg-blue-tint);
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-block-size: var(--touch-target-min);
+}
+
+.backLink {
+  align-self: flex-start;
+}
