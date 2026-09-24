@@ -115,7 +115,7 @@
   gap: var(--s-1);
 }
 
-.accountButton {
+.root .accountButton {
   justify-content: flex-start;
   padding-inline: var(--s-2);
 }
@@ -136,20 +136,6 @@
 }
 
 /* ------------------------------------------------------------------ type */
-
-.eyebrow {
-  color: var(--text-muted);
-  font-size: var(--type-eyebrow-size);
-  font-weight: var(--type-eyebrow-weight);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
-}
-
-:global(:lang(ar)) .eyebrow {
-  font-size: var(--type-caption-size);
-  letter-spacing: normal;
-  text-transform: none;
-}
 
 .pageHeader {
   display: flex;
@@ -175,7 +161,7 @@
 
 .pageDescription {
   color: var(--text-muted);
-  max-inline-size: 60ch;
+  max-inline-size: 72ch;
 }
 
 .pageActions {
@@ -263,6 +249,20 @@
 .panelForm {
   padding: var(--s-4) var(--s-5);
   border-block-end: var(--line-width) solid var(--line);
+}
+
+/* Blocked words: the word on its own row, match type + Add under it. */
+.panelForm .field {
+  flex-basis: 100%;
+}
+
+.panelForm .segmented {
+  flex: 1;
+}
+
+.panelForm .segment {
+  flex: 1;
+  justify-content: center;
 }
 
 .split {
@@ -451,8 +451,10 @@
 }
 
 .filterCount {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--ctl-h);
   margin-inline-start: auto;
-  align-self: center;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -539,7 +541,7 @@
 
 .toggle:has(input:checked) {
   border-color: var(--primary);
-  background: var(--gdg-blue-tint);
+  background: var(--primary-tint);
 }
 
 .toggle input {
@@ -588,68 +590,22 @@
 
 /* ------------------------------------------------------------------ buttons */
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-2);
+/* Shared ui.button* classes do the look; these only size them for this app. */
+.root .ctl,
+.signinPage .ctl {
   min-block-size: var(--ctl-h);
-  padding-inline: var(--s-4);
-  border: var(--line-width) solid transparent;
-  border-radius: var(--r-control);
-  font-size: var(--type-small-size);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
-  transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-standard);
 }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.btn:disabled {
-  opacity: 0.45;
-}
-
-.btnPrimary {
-  background: var(--primary-text);
-  color: var(--on-primary);
-}
-
-.btnPrimary:hover:not(:disabled) {
-  background: var(--primary-hover);
-}
-
-.btnSecondary {
-  background: var(--surface);
-  border-color: var(--line-strong);
-  color: var(--text);
-}
-
-.btnSecondary:hover:not(:disabled) {
-  background: var(--surface-2);
-}
-
-.btnGhost {
-  background: transparent;
+.root .quiet {
   color: var(--text-muted);
 }
 
-.btnGhost:hover:not(:disabled) {
-  background: var(--surface-2);
+.root .quiet:hover:not(:disabled) {
   color: var(--text);
 }
 
-.btnSmall {
-  min-block-size: var(--s-6);
-  padding-inline: var(--s-3);
-}
-
-.btnBlock {
-  inline-size: 100%;
+.signinPage .signinSubmit {
+  margin-block-start: var(--s-2);
 }
 
 .backLink {
@@ -688,30 +644,14 @@
 
 /* ------------------------------------------------------------------ tags */
 
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  padding-block: 0;
-  padding-inline: var(--s-2);
-  min-block-size: var(--s-5);
-  border: var(--line-width) solid var(--line);
-  border-radius: var(--r-tag);
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-size: var(--type-caption-size);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
-}
-
-/* "Live" (playing / current day): a blue dot plus the text, never colour alone. */
-.tagLive {
-  background: var(--gdg-blue-tint);
+/* "Live" (playing / current day) on top of ui.badge: a blue dot plus the text, never colour alone. */
+.root .tagLive {
   border-color: transparent;
+  background: var(--primary-tint);
   color: var(--primary-text);
 }
 
-.tagLive::before {
+.root .tagLive::before {
   content: '';
   inline-size: var(--s-2);
   block-size: var(--s-2);
@@ -978,17 +918,6 @@
   }
 }
 
-.alert {
-  padding-block: var(--s-3);
-  padding-inline: var(--s-4);
-  border: var(--line-width) solid var(--line);
-  border-inline-start: var(--rank-rule) solid var(--highlight);
-  border-radius: var(--r-control);
-  background: var(--gdg-amber-tint);
-  color: var(--text);
-  font-weight: var(--weight-medium);
-}
-
 .inlineForm .alert {
   flex-basis: 100%;
 }
@@ -1050,10 +979,6 @@
   flex-direction: column;
   gap: var(--s-1);
   margin-block-end: var(--s-2);
-}
-
-.signinPanel .btnPrimary {
-  margin-block-start: var(--s-2);
 }
 
 /* ------------------------------------------------------------------ responsive */
@@ -1215,7 +1140,7 @@
     min-inline-size: 100%;
   }
 
-  .inlineForm > .btn {
+  .inlineForm > .ctl {
     flex: 1;
   }
 
@@ -1238,7 +1163,7 @@
     white-space: nowrap;
   }
 
-  .accountButton {
+  .root .accountButton {
     min-inline-size: var(--touch-target-floor);
     justify-content: center;
     padding-inline: var(--s-2);
@@ -1246,5 +1171,76 @@
 
   .signinPanel {
     padding: var(--s-5);
+  }
+
+  /* Tables become compact cards: the primary cell is the title, status/actions sit at its
+     inline end, every other cell reads "label value" (data-label). The header row stays for
+     screen readers only; sorting moves to the "Sort by" select. */
+  .table thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .table,
+  .table tbody {
+    display: block;
+  }
+
+  .table tbody tr {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-1) var(--s-4);
+    padding-block: var(--s-3);
+    padding-inline: var(--s-4);
+    border-block-end: var(--line-width) solid var(--line);
+  }
+
+  .table tbody tr:last-child {
+    border-block-end: none;
+  }
+
+  .table tbody td,
+  .table tbody td:first-child,
+  .table tbody td:last-child {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    block-size: auto;
+    padding: 0;
+    border: none;
+    white-space: normal;
+  }
+
+  .table tbody td[data-label]::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: var(--type-caption-size);
+    font-weight: var(--weight-regular);
+    letter-spacing: normal;
+  }
+
+  .table tbody td.primaryCell {
+    order: -1;
+    flex-basis: 100%;
+    padding-inline-end: var(--s-8);
+    font-weight: var(--weight-medium);
+  }
+
+  .table tbody td.statusCell,
+  .table tbody td.actionsCol {
+    position: absolute;
+    inset-block-start: var(--s-2);
+    inset-inline-end: var(--s-4);
+    inline-size: auto;
+  }
+
+  .table tbody td.colAffordance {
+    display: none;
   }
 }

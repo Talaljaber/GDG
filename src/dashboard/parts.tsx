@@ -6,6 +6,7 @@
  */
 import type { ReactNode, SelectHTMLAttributes } from 'react';
 import { useT } from '../i18n';
+import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
 
 export function PageHeader({
@@ -22,7 +23,7 @@ export function PageHeader({
   return (
     <header className={styles.pageHeader}>
       <div className={styles.pageHeaderText}>
-        {eyebrow ? <span className={styles.eyebrow}>{eyebrow}</span> : null}
+        {eyebrow ? <span className={ui.eyebrow}>{eyebrow}</span> : null}
         <h1 className={styles.pageTitle}>{title}</h1>
         {description ? <p className={styles.pageDescription}>{description}</p> : null}
       </div>
@@ -101,7 +102,7 @@ export function EmptyState({ title, hint }: { title: ReactNode; hint?: ReactNode
 
 export function Alert({ children, role = 'alert', testId }: { children: ReactNode; role?: 'alert' | 'status'; testId?: string }) {
   return (
-    <p className={styles.alert} role={role} data-testid={testId}>
+    <p className={`${ui.error} ${styles.alert}`} role={role} data-testid={testId}>
       {children}
     </p>
   );

@@ -4,12 +4,14 @@
  * (AC4.2), and a client-side CSV export of exactly what's shown (AC4.3).
  */
 import { useEffect, useMemo, useState } from 'react';
-import { formatNumber, useT } from '../i18n';
+import { formatNumber, useLang, useT } from '../i18n';
 import { displayName } from '../lib/boards';
+import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
 import { buildCsv, csvFilename, downloadCsv } from './csv';
-import { bestPerName, formatTimestamp, rowsToCsv, sortCombined, type SortDir, type SortKey } from './combinedResults';
-import { useDashApi } from './apiContext';
+import { bestPerName, rowsToCsv, sortCombined, type SortDir, type SortKey } from './combinedResults';
+import { useDashApi } from './dashApi';
+import { formatDateTime } from './format';
 import { Alert, EmptyState, Icon, PageHeader, Panel, Select, TableSkeleton } from './parts';
 import type { CombinedScoreRow, EventDayRow, GameId } from './api';
 
@@ -23,6 +25,7 @@ const NUMERIC: ReadonlySet<SortKey> = new Set<SortKey>(['score']);
 
 export function ResultsPanel() {
   const t = useT();
+  const { lang } = useLang();
   const api = useDashApi();
   const [days, setDays] = useState<EventDayRow[]>([]);
   const [currentDay, setCurrentDay] = useState<EventDayRow | null>(null);
@@ -107,7 +110,7 @@ export function ResultsPanel() {
         actions={
           <button
             type="button"
-            className={`${styles.btn} ${styles.btnSecondary}`}
+            className={`${ui.button} ${ui.buttonSecondary} ${ui.buttonSmall} ${styles.ctl}`}
             onClick={exportCsv}
             disabled={!rows || shown.length === 0}
             data-testid="export-csv"
@@ -198,14 +201,18 @@ export function ResultsPanel() {
               <tbody>
                 {shown.map((r) => (
                   <tr key={r.id} data-testid="results-row">
-                    <td>
+                    <td className={styles.primaryCell}>
                       <bdi className={styles.nameCell}>{displayName(r.name, r.displaySuffix)}</bdi>
                     </td>
-                    <td>{t(`game.${r.game}.name`)}</td>
-                    <td className={`${styles.num} ${styles.strong}`}>{formatNumber(r.score)}</td>
-                    <td className={`${styles.tabular} ${styles.dim}`}>{formatTimestamp(r.createdAt)}</td>
-                    <td className={styles.code} dir="ltr">
-                      {r.sessionCode ?? '–'}
+                    <td data-label={t('dash.results.col.game')}>{t(`game.${r.game}.name`)}</td>
+                    <td className={`${styles.num} ${styles.strong}`} data-label={t('dash.results.col.score')}>
+                      {formatNumber(r.score)}
+                    </td>
+                    <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.results.col.time')}>
+                      {formatDateTime(r.createdAt, lang, true)}
+                    </td>
+                    <td className={styles.code} data-label={t('dash.results.col.session')}>
+                      <span dir="ltr">{r.sessionCode ?? '–'}</span>
                     </td>
                   </tr>
                 ))}

@@ -8,13 +8,14 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { formatNumber, useT } from '../i18n';
+import { formatNumber, useLang, useT } from '../i18n';
 import { nameKey as computeNameKey } from '../lib/names';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Trans } from '../components/Trans';
+import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
 import { ApiError, type BlockedTermRow, type DayBoardRow, type HiddenNameRow, type TermMatch } from './api';
-import { useDashApi } from './apiContext';
+import { useDashApi } from './dashApi';
 import { formatTime } from './format';
 import { Alert, EmptyState, PageHeader, Panel, TableSkeleton } from './parts';
 
@@ -78,7 +79,7 @@ export function HideNameField({ onHidden }: { onHidden?: () => void }) {
       </label>
       <button
         type="submit"
-        className={`${styles.btn} ${styles.btnPrimary}`}
+        className={`${ui.button} ${ui.buttonSmall} ${styles.ctl}`}
         disabled={!key || previewing}
         data-testid="hide-name-preview-btn"
       >
@@ -107,6 +108,7 @@ export function HideNameField({ onHidden }: { onHidden?: () => void }) {
 
 export function NamesPanel() {
   const t = useT();
+  const { lang } = useLang();
   const api = useDashApi();
   const [hidden, setHidden] = useState<HiddenNameRow[] | null>(null);
   const [blocked, setBlocked] = useState<BlockedTermRow[] | null>(null);
@@ -204,14 +206,14 @@ export function NamesPanel() {
                   <tbody>
                     {hidden.map((h) => (
                       <tr key={h.name_key} data-testid="hidden-row">
-                        <td>
+                        <td className={styles.primaryCell}>
                           <bdi className={styles.nameCell}>{h.name_key}</bdi>
                         </td>
-                        <td className={`${styles.tabular} ${styles.dim}`}>{formatTime(h.hidden_at)}</td>
+                        <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.names.col.hidden_at')}>{formatTime(h.hidden_at, lang)}</td>
                         <td className={styles.actionsCol}>
                           <button
                             type="button"
-                            className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
+                            className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet}`}
                             disabled={busy}
                             onClick={() => void unhide(h.name_key)}
                             data-testid="unhide-btn"
@@ -267,7 +269,7 @@ export function NamesPanel() {
             </div>
             <button
               type="submit"
-              className={`${styles.btn} ${styles.btnSecondary}`}
+              className={`${ui.button} ${ui.buttonSecondary} ${ui.buttonSmall} ${styles.ctl}`}
               disabled={busy || !newTerm.trim()}
               data-testid="blocked-add-btn"
             >
@@ -293,16 +295,16 @@ export function NamesPanel() {
                 <tbody>
                   {blocked.map((b) => (
                     <tr key={b.term_key} data-testid="blocked-row">
-                      <td>
+                      <td className={styles.primaryCell}>
                         <bdi className={styles.nameCell}>{b.term_key}</bdi>
                       </td>
-                      <td className={styles.dim}>
+                      <td className={styles.dim} data-label={t('dash.names.col.match')}>
                         {t(b.match === 'word' ? 'dash.names.match_word' : 'dash.names.match_substring')}
                       </td>
                       <td className={styles.actionsCol}>
                         <button
                           type="button"
-                          className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
+                          className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet}`}
                           disabled={busy}
                           onClick={() => void removeTerm(b.term_key)}
                           data-testid="blocked-remove-btn"

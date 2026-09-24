@@ -4,10 +4,11 @@
  * field (AC4.4).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { formatNumber, useT } from '../i18n';
+import { formatNumber, useLang, useT } from '../i18n';
+import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
 import { HideNameField } from './Names';
-import { useDashApi, type DashApi } from './apiContext';
+import { useDashApi, type DashApi } from './dashApi';
 import { Alert, EmptyState, PageHeader, Panel } from './parts';
 import { formatTime } from './format';
 import type { EventDayRow, SessionRow } from './api';
@@ -33,6 +34,7 @@ async function load(api: DashApi): Promise<TodayData> {
 
 export function TodayPanel() {
   const t = useT();
+  const { lang } = useLang();
   const api = useDashApi();
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export function TodayPanel() {
         eyebrow={data?.day ? t('dash.days.current') : undefined}
         title={data?.day ? data.day.label : t('dash.nav.today')}
         description={
-          data?.day ? t('dash.today.desc', { time: formatTime(data.day.started_at) }) : t('dash.today.desc_none')
+          data?.day ? t('dash.today.desc', { time: formatTime(data.day.started_at, lang) }) : t('dash.today.desc_none')
         }
       />
       {error ? <Alert>{t(error)}</Alert> : null}
@@ -70,7 +72,7 @@ export function TodayPanel() {
       <section className={styles.stats} aria-busy={!data}>
         {stats.map((s) => (
           <div key={s.id} className={styles.stat}>
-            <span className={styles.eyebrow}>{s.label}</span>
+            <span className={ui.eyebrow}>{s.label}</span>
             <span className={`${styles.statValue} ${!data ? styles.statValueLoading : ''}`} data-testid={`stat-${s.id}`}>
               {formatNumber(s.value ?? 0)}
             </span>
@@ -83,7 +85,7 @@ export function TodayPanel() {
           title={t('dash.today.running')}
           aside={
             data?.running ? (
-              <span className={`${styles.tag} ${data.running.status === 'playing' ? styles.tagLive : ''}`}>
+              <span className={`${ui.badge} ${data.running.status === 'playing' ? styles.tagLive : ''}`}>
                 {t(`status.${data.running.status}`)}
               </span>
             ) : null
@@ -94,17 +96,17 @@ export function TodayPanel() {
           ) : data.running ? (
             <dl className={styles.meta} data-testid="today-running">
               <div className={styles.metaItem}>
-                <dt className={styles.eyebrow}>{t('dash.sessions.col.code')}</dt>
-                <dd className={styles.metaCode} dir="ltr">
-                  {data.running.code}
+                <dt className={ui.eyebrow}>{t('dash.sessions.col.code')}</dt>
+                <dd className={styles.metaCode}>
+                  <span dir="ltr">{data.running.code}</span>
                 </dd>
               </div>
               <div className={styles.metaItem}>
-                <dt className={styles.eyebrow}>{t('dash.sessions.col.status')}</dt>
+                <dt className={ui.eyebrow}>{t('dash.sessions.col.status')}</dt>
                 <dd>{t(`status.${data.running.status}`)}</dd>
               </div>
               <div className={`${styles.metaItem} ${styles.metaWide}`}>
-                <dt className={styles.eyebrow}>{t('dash.sessions.col.games')}</dt>
+                <dt className={ui.eyebrow}>{t('dash.sessions.col.games')}</dt>
                 <dd>
                   <ol className={styles.lineup}>
                     {data.running.lineup.map((g, i) => (

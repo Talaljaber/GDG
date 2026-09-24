@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
 import { SHATTER_LOGO_CLASS } from '../effects/shatter';
 import { Spinner } from '../components/Spinner';
+import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
 import { Alert, Icon } from './parts';
 import { TodayPanel } from './Today';
@@ -137,10 +138,10 @@ export function SignIn({
       <form className={styles.signinPanel} onSubmit={submit} data-testid="dash-signin">
         <div className={styles.signinTop}>
           <img src={logo} alt={t('app.name')} className={`${styles.logo} ${SHATTER_LOGO_CLASS}`} data-testid="logo" />
-          <LangToggle className={`${styles.btn} ${styles.btnGhost}`} />
+          <LangToggle className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet}`} />
         </div>
         <div className={styles.signinHeading}>
-          <span className={styles.eyebrow}>{t('dash.title')}</span>
+          <span className={ui.eyebrow}>{t('dash.title')}</span>
           <h1 className={styles.pageTitle}>{t('host.signin.title')}</h1>
         </div>
         <label className={styles.field}>
@@ -168,7 +169,7 @@ export function SignIn({
         {shown ? <Alert testId="signin-error">{t(shown)}</Alert> : null}
         <button
           type="submit"
-          className={`${styles.btn} ${styles.btnPrimary} ${styles.btnBlock}`}
+          className={`${ui.button} ${ui.buttonSmall} ${ui.buttonBlock} ${styles.ctl} ${styles.signinSubmit}`}
           disabled={busy}
           data-testid="signin-submit"
         >
@@ -233,17 +234,17 @@ export function DashboardMain({
         <div className={styles.account}>
           {adminEmail ? (
             <div className={styles.accountWho}>
-              <span className={styles.eyebrow}>{t('dash.account.signed_in')}</span>
+              <span className={ui.eyebrow}>{t('dash.account.signed_in')}</span>
               <span className={styles.accountEmail} title={adminEmail}>
                 <bdi>{adminEmail}</bdi>
               </span>
             </div>
           ) : null}
           <div className={styles.accountActions}>
-            <LangToggle className={`${styles.btn} ${styles.btnGhost} ${styles.accountButton}`} />
+            <LangToggle className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet} ${styles.accountButton}`} />
             <button
               type="button"
-              className={`${styles.btn} ${styles.btnGhost} ${styles.accountButton}`}
+              className={`${ui.button} ${ui.buttonText} ${ui.buttonSmall} ${styles.ctl} ${styles.quiet} ${styles.accountButton}`}
               onClick={() => void supabase.auth.signOut()}
               data-testid="signout"
             >

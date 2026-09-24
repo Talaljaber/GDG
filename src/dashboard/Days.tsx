@@ -5,11 +5,13 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { formatNumber, useT } from '../i18n';
+import { formatNumber, useLang, useT } from '../i18n';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
 import { isNewDayBlocked } from './combinedResults';
-import { useDashApi } from './apiContext';
+import { useDashApi } from './dashApi';
+import { formatDateTime } from './format';
 import { Alert, PageHeader, Panel, TableSkeleton } from './parts';
 import type { EventDayRow } from './api';
 
@@ -20,6 +22,7 @@ interface DayRow {
 
 export function DaysPanel() {
   const t = useT();
+  const { lang } = useLang();
   const api = useDashApi();
   const [rows, setRows] = useState<DayRow[] | null>(null);
   const [blocked, setBlocked] = useState(false);
@@ -87,7 +90,7 @@ export function DaysPanel() {
           </label>
           <button
             type="submit"
-            className={`${styles.btn} ${styles.btnPrimary}`}
+            className={`${ui.button} ${ui.buttonSmall} ${styles.ctl}`}
             disabled={blocked || !label.trim()}
             data-testid="new-day-submit"
           >
@@ -123,19 +126,23 @@ export function DaysPanel() {
               <tbody>
                 {rows.map(({ day, sessions }) => (
                   <tr key={day.id} data-testid="day-row">
-                    <td>
+                    <td className={styles.primaryCell}>
                       <span className={styles.nameWithTag}>
                         <span className={styles.strong}>{day.label}</span>
                         {day.is_current ? (
-                          <span className={`${styles.tag} ${styles.tagLive}`}> {t('dash.days.current_badge')}</span>
+                          <span className={`${ui.badge} ${styles.tagLive}`}> {t('dash.days.current_badge')}</span>
                         ) : null}
                       </span>
                     </td>
-                    <td className={`${styles.tabular} ${styles.dim}`}>{new Date(day.started_at).toLocaleString()}</td>
-                    <td className={`${styles.tabular} ${styles.dim}`}>
-                      {day.ended_at ? new Date(day.ended_at).toLocaleString() : '–'}
+                    <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.days.col.started')}>
+                      {formatDateTime(day.started_at, lang)}
                     </td>
-                    <td className={styles.num}>{formatNumber(sessions)}</td>
+                    <td className={`${styles.tabular} ${styles.dim}`} data-label={t('dash.days.col.ended')}>
+                      {formatDateTime(day.ended_at, lang)}
+                    </td>
+                    <td className={styles.num} data-label={t('dash.days.col.sessions')}>
+                      {formatNumber(sessions)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

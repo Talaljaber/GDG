@@ -2,10 +2,11 @@
  * D2 session history and D3 session detail (`SCREENS.md` §3).
  */
 import { useEffect, useMemo, useState } from 'react';
-import { formatNumber, useT } from '../i18n';
+import { formatNumber, useLang, useT } from '../i18n';
 import { displayName } from '../lib/boards';
+import ui from '../components/ui.module.css';
 import styles from './dashboard.module.css';
-import { useDashApi } from './apiContext';
+import { useDashApi } from './dashApi';
 import { formatTime } from './format';
 import { Alert, EmptyState, Icon, PageHeader, Panel, Select, TableSkeleton } from './parts';
 import type { EventDayRow, PlayerRow, RoundRow, ScoreRow, SessionRow, SessionWinner } from './api';
@@ -20,11 +21,12 @@ interface SessionListRow {
 
 function StatusTag({ status }: { status: SessionRow['status'] }) {
   const t = useT();
-  return <span className={`${styles.tag} ${status === 'playing' ? styles.tagLive : ''}`}>{t(`status.${status}`)}</span>;
+  return <span className={`${ui.badge} ${status === 'playing' ? styles.tagLive : ''}`}>{t(`status.${status}`)}</span>;
 }
 
 export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: string) => void }) {
   const t = useT();
+  const { lang } = useLang();
   const api = useDashApi();
   const [days, setDays] = useState<EventDayRow[]>([]);
   const [dayId, setDayId] = useState<string | null>(null);
@@ -132,13 +134,13 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
                     role="button"
                     data-testid="session-row"
                   >
-                    <td className={styles.tabular}>{formatTime(session.started_at ?? session.created_at)}</td>
-                    <td className={styles.code} dir="ltr">
-                      {session.code}
+                    <td className={styles.tabular} data-label={t('dash.sessions.col.start')}>{formatTime(session.started_at ?? session.created_at, lang)}</td>
+                    <td className={`${styles.code} ${styles.primaryCell}`} data-label={t('dash.sessions.col.code')}>
+                      <span dir="ltr">{session.code}</span>
                     </td>
-                    <td className={styles.cellWrap}>{session.lineup.map((g) => t(`game.${g}.name`)).join(' · ')}</td>
-                    <td className={styles.num}>{formatNumber(players)}</td>
-                    <td>
+                    <td className={styles.cellWrap} data-label={t('dash.sessions.col.games')}>{session.lineup.map((g) => t(`game.${g}.name`)).join(' · ')}</td>
+                    <td className={styles.num} data-label={t('dash.sessions.col.players')}>{formatNumber(players)}</td>
+                    <td data-label={t('dash.sessions.col.top')}>
                       {winner ? (
                         <span className={styles.winner}>
                           <bdi className={styles.nameCell}>{displayName(winner.name, winner.displaySuffix)}</bdi>
@@ -148,7 +150,7 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
                         <span className={styles.dim}>–</span>
                       )}
                     </td>
-                    <td>
+                    <td className={styles.statusCell}>
                       <StatusTag status={session.status} />
                     </td>
                     <td className={styles.colAffordance}>
@@ -169,6 +171,7 @@ export function SessionsPanel({ onOpenSession }: { onOpenSession: (sessionId: st
 
 export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
   const t = useT();
+  const { lang } = useLang();
   const api = useDashApi();
   const [session, setSession] = useState<SessionRow | null>(null);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
@@ -224,17 +227,17 @@ export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; o
           />
           <dl className={`${styles.meta} ${styles.metaBar}`}>
             <div className={styles.metaItem}>
-              <dt className={styles.eyebrow}>{t('dash.sessions.col.start')}</dt>
-              <dd className={styles.tabular}>{formatTime(session.started_at ?? session.created_at)}</dd>
+              <dt className={ui.eyebrow}>{t('dash.sessions.col.start')}</dt>
+              <dd className={styles.tabular}>{formatTime(session.started_at ?? session.created_at, lang)}</dd>
             </div>
             <div className={styles.metaItem}>
-              <dt className={styles.eyebrow}>{t('dash.sessions.col.players')}</dt>
+              <dt className={ui.eyebrow}>{t('dash.sessions.col.players')}</dt>
               <dd className={styles.tabular}>{formatNumber(activePlayers)}</dd>
             </div>
             <div className={styles.metaItem}>
-              <dt className={styles.eyebrow}>{t('dash.sessions.col.code')}</dt>
-              <dd className={styles.code} dir="ltr">
-                {session.code}
+              <dt className={ui.eyebrow}>{t('dash.sessions.col.code')}</dt>
+              <dd className={styles.code}>
+                <span dir="ltr">{session.code}</span>
               </dd>
             </div>
           </dl>
@@ -288,18 +291,24 @@ export function SessionDetailPanel({ sessionId, onBack }: { sessionId: string; o
                       const removed = p.status === 'removed';
                       return (
                         <tr key={p.id} className={removed ? styles.rowRemoved : undefined} data-testid="session-player-row">
-                          <td>
+                          <td className={styles.primaryCell}>
                             <span className={styles.nameWithTag}>
                               <bdi className={styles.nameCell}>{displayName(p.name, p.display_suffix)}</bdi>
-                              {removed ? <span className={styles.tag}> {t('dash.session.removed')}</span> : null}
+                              {removed ? <span className={ui.badge}> {t('dash.session.removed')}</span> : null}
                             </span>
                           </td>
                           {roundScores.map((s, i) => (
-                            <td key={i} className={`${styles.num} ${s === undefined ? styles.dim : ''}`}>
+                            <td
+                              key={i}
+                              className={`${styles.num} ${s === undefined ? styles.dim : ''}`}
+                              data-label={t('dash.session.col.round', { n: rounds[i].round_no })}
+                            >
                               {s === undefined ? t('results.breakdown_missing') : formatNumber(s)}
                             </td>
                           ))}
-                          <td className={`${styles.num} ${styles.strong}`}>{formatNumber(total)}</td>
+                          <td className={`${styles.num} ${styles.strong}`} data-label={t('dash.session.col.total')}>
+                            {formatNumber(total)}
+                          </td>
                         </tr>
                       );
                     })}
