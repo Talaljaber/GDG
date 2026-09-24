@@ -4,6 +4,8 @@ import {
   decideRoundAction,
   hostScreenFor,
   isIgnorableHostError,
+  latestDoneRound,
+  nextUpcomingRound,
   roundDeadlineMs,
   roundTimeLeftSeconds,
 } from './hostLoop';
@@ -95,9 +97,28 @@ describe('host helpers', () => {
   });
 
   it('maps the running session to a screen', () => {
+    const r = (round_no: number, status: 'upcoming' | 'playing' | 'done') => ({ round_no, status });
     expect(hostScreenFor(null)).toBe('lobby');
-    expect(hostScreenFor({ status: 'playing' })).toBe('round');
-    expect(hostScreenFor({ status: 'results' })).toBe('results');
+    expect(hostScreenFor({ status: 'playing' }, [r(1, 'playing'), r(2, 'upcoming')])).toBe('round');
+    // between rounds: round 1 done, round 2 upcoming -> intermission (reconstructed on reload, E8)
+    expect(hostScreenFor({ status: 'playing' }, [r(1, 'done'), r(2, 'upcoming')])).toBe('intermission');
+    expect(hostScreenFor({ status: 'results' }, [r(1, 'done')])).toBe('results');
+    // the last round's board still showing its 7 s
+    expect(hostScreenFor({ status: 'results' }, [r(1, 'done')], true)).toBe('intermission');
+    expect(hostScreenFor({ status: 'results', day_board_shown_at: '2026-09-24T10:00:00Z' }, [], true)).toBe('dayboard');
+  });
+
+  it('finds the latest done round and the next upcoming one', () => {
+    const rounds = [
+      { id: 'a', round_no: 1, status: 'done' as const },
+      { id: 'b', round_no: 2, status: 'done' as const },
+      { id: 'c', round_no: 3, status: 'upcoming' as const },
+    ];
+    expect(latestDoneRound(rounds)?.id).toBe('b');
+    expect(nextUpcomingRound(rounds, rounds[1])?.id).toBe('c');
+    expect(nextUpcomingRound(rounds, rounds[2])).toBeNull();
+    expect(latestDoneRound([{ id: 'x', round_no: 1, status: 'playing' as const }])).toBeNull();
+    expect(nextUpcomingRound(rounds, null)).toBeNull();
   });
 });
 

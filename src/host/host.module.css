@@ -296,3 +296,293 @@
   flex-direction: column;
   gap: var(--s-2);
 }
+
+.subheading {
+  margin-block-end: var(--proj-s-2);
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+  color: var(--text-muted);
+}
+
+/* ---- corner code (H2–H5, ADR-015) ---- */
+
+.corner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-1);
+  padding-block: var(--proj-s-1);
+  padding-inline: var(--proj-s-2);
+  border: var(--line-width-strong) solid var(--primary);
+  border-radius: var(--proj-radius);
+  background: var(--surface);
+}
+
+.cornerCode {
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+}
+
+.cornerDigits {
+  font-size: var(--proj-code-corner);
+  font-weight: var(--proj-code-weight);
+  letter-spacing: var(--proj-code-letter-spacing);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+/* ---- next-games picker popover ---- */
+
+.popover {
+  position: fixed;
+  inset-block-end: calc(var(--big-screen-safe-margin) + var(--proj-row) * 2);
+  inset-inline-end: var(--big-screen-safe-margin);
+  z-index: var(--z-dialog);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--proj-s-2);
+  max-inline-size: calc(100vw - 2 * var(--big-screen-safe-margin));
+  padding: var(--proj-s-2);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: 0 0 0 var(--line-width) var(--gdg-line);
+}
+
+/* ---- H3 intermission ---- */
+
+.versus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--proj-s-3);
+}
+
+.chevron {
+  inline-size: var(--proj-heading);
+  block-size: calc(var(--proj-heading) * 1.33);
+  flex: none;
+  animation: chevron-in var(--dur-slow) var(--ease-emphasized) both;
+}
+
+.chevronStart {
+  fill: var(--gdg-blue);
+  --from: -100%;
+}
+
+.chevronEnd {
+  fill: var(--gdg-amber);
+  --from: 100%;
+}
+
+:global([dir='rtl']) .chevron {
+  scale: -1 1;
+}
+
+:global([dir='rtl']) .chevronStart {
+  --from: 100%;
+}
+
+:global([dir='rtl']) .chevronEnd {
+  --from: -100%;
+}
+
+@keyframes chevron-in {
+  from {
+    transform: translateX(var(--from));
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.nextIntro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--proj-s-3);
+  block-size: 100%;
+}
+
+.nextGame {
+  font-size: var(--proj-heading);
+  font-weight: var(--proj-heading-weight);
+  text-align: center;
+}
+
+.countdown {
+  font-size: var(--proj-code);
+  font-weight: var(--proj-code-weight);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--primary-text);
+  animation: count-pop var(--dur-countdown) var(--ease-standard) both;
+}
+
+@keyframes count-pop {
+  from {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .countdown {
+    animation: none;
+  }
+}
+
+/* ---- Stop the Clock guess reveal (games/stop-the-clock.md §6) ---- */
+
+.reveal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-3);
+}
+
+.strip {
+  display: grid;
+  grid-template-columns: calc(var(--proj-row) * 6) 1fr;
+  align-items: center;
+  gap: var(--proj-s-2);
+}
+
+.stripLabel {
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+  color: var(--primary-text);
+}
+
+.stripTrack {
+  position: relative;
+  block-size: calc(var(--proj-row) * 3);
+  border-radius: var(--proj-radius);
+  background: var(--surface);
+}
+
+.stripCentre {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  inline-size: var(--line-width-strong);
+  background: var(--text);
+}
+
+.stripAxis {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  font-size: var(--proj-min);
+  color: var(--text-muted);
+}
+
+.revealDot {
+  position: absolute;
+  inset-block-start: 50%;
+  inline-size: var(--proj-dot-size);
+  block-size: var(--proj-dot-size);
+  margin-block-start: calc(var(--proj-dot-size) / -2);
+  margin-inline-start: calc(var(--proj-dot-size) / -2);
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.revealDotPinned {
+  background: transparent;
+  border: var(--line-width-strong) solid var(--primary);
+}
+
+.revealName {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  padding-block-end: var(--proj-s-1);
+  font-size: var(--proj-min);
+  font-weight: var(--proj-row-weight);
+  white-space: nowrap;
+}
+
+/* ---- H4 session board with round scores ---- */
+
+.sessionTable {
+  inline-size: 100%;
+  margin-block-start: var(--proj-s-2);
+  border-collapse: separate;
+  border-spacing: 0 var(--proj-s-1);
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.sessionTable th {
+  font-size: var(--proj-min);
+  color: var(--text-muted);
+  font-weight: var(--proj-row-weight);
+}
+
+.sessionRow td {
+  padding-block: var(--proj-s-1);
+  padding-inline: var(--proj-s-2);
+  background: var(--surface);
+}
+
+.sessionRowFirst td {
+  background: var(--gdg-amber-tint);
+}
+
+.colRank {
+  inline-size: 3em;
+  text-align: start;
+  color: var(--text-muted);
+}
+
+.colName {
+  text-align: start;
+}
+
+.colScore {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.colTotal {
+  color: var(--primary-text);
+}
+
+/* ---- H5 day-board tabs ---- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--proj-s-1);
+}
+
+.tab {
+  min-block-size: var(--touch-target-min);
+  padding-block: var(--proj-s-1);
+  padding-inline: var(--proj-s-3);
+  border: var(--line-width-strong) solid var(--gdg-line);
+  border-radius: var(--r-chip);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--proj-row);
+  font-weight: var(--proj-row-weight);
+}
+
+.tabOn {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}

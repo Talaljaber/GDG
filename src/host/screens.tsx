@@ -1,25 +1,13 @@
 /**
- * Host screens H1 lobby, H2 round live, H4 results (`SCREENS.md` §2.2).
- * Everything is on the projector scale; host controls are small and grouped
- * in the inline-end bottom corner.
+ * Host screens H1 lobby and H2 round live (`SCREENS.md` §2.2). H3 is in
+ * Intermission.tsx, H4/H5 in Results.tsx. Everything is on the projector
+ * scale; host controls are small and grouped in the inline-end bottom corner.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { BOARD_POLL_MS, ROUNDS_PER_SESSION } from '../config';
-import { formatNumber, translate, useLang, useT, type Lang } from '../i18n';
-import {
-  adminNewSession,
-  adminRemovePlayer,
-  adminSetLineup,
-  adminStartSession,
-  fetchRoundBoard,
-  fetchSessionBoard,
-  fetchSessionRoundScores,
-  type PlayerRow,
-  type RoundScoreRow,
-} from '../lib/api';
+import { ROUNDS_PER_SESSION } from '../config';
+import { formatNumber, useT } from '../i18n';
+import { adminRemovePlayer, adminStartSession, fetchRoundBoard, type PlayerRow } from '../lib/api';
 import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
-import { supabase } from '../lib/supabase';
-import type { GameId } from '../games/types';
 import logo from '../assets/logo.png';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Leaderboard } from '../components/Leaderboard';
@@ -27,59 +15,14 @@ import { QrCode } from '../components/QrCode';
 import { Trans } from '../components/Trans';
 import ui from '../components/ui.module.css';
 import styles from './host.module.css';
+import { Bilingual, CornerCode, CornerControls, LineupPicker, NextGamesButton } from './common';
+import { displayUrl, shortUrl } from './urls';
 import { roundTimeLeftSeconds } from './hostLoop';
-import { isLineupValid, sameLineup, toggleLineup } from './lineup';
+import { isLineupValid } from './lineup';
 import { presenceDot, updateLastSeen } from './presence';
 import { REGISTERED_GAMES, type HostController, type HostData } from './useHost';
 
 const PRESENCE_TICK_MS = 1000;
-
-function shortUrl(): string {
-  return import.meta.env.VITE_PUBLIC_SHORT_URL || window.location.origin;
-}
-
-function displayUrl(url: string): string {
-  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-}
-
-function CornerControls({ children }: { children?: React.ReactNode }) {
-  const t = useT();
-  const { lang, setLang } = useLang();
-  return (
-    <div className={styles.controls}>
-      {children}
-      <button
-        type="button"
-        className={`${ui.button} ${ui.buttonSecondary} ${styles.control}`}
-        lang={lang === 'en' ? 'ar' : 'en'}
-        onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
-      >
-        {t('common.lang_toggle')}
-      </button>
-      <button
-        type="button"
-        className={`${ui.button} ${ui.buttonSecondary} ${styles.control}`}
-        onClick={() => void supabase.auth.signOut()}
-      >
-        {t('host.signout')}
-      </button>
-    </div>
-  );
-}
-
-/** A host join string in both languages at once (SCREENS H1): the audience is mixed. */
-function Bilingual({ k, params, className }: { k: string; params?: Record<string, string>; className?: string }) {
-  const langs: Lang[] = ['ar', 'en'];
-  return (
-    <div className={styles.bilingual}>
-      {langs.map((l) => (
-        <p key={l} lang={l} dir={l === 'ar' ? 'rtl' : 'ltr'} className={className}>
-          {translate(l, k, params)}
-        </p>
-      ))}
-    </div>
-  );
-}
 
 // ------------------------------------------------------------------ H1
 
@@ -103,21 +46,10 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
     setLastSeen((prev) => updateLastSeen(prev, host.presentIds, joinedIds ? joinedIds.split(',') : [], Date.now()));
   }, [host.presentIds, joinedIds, now]);
 
-  // ---- lineup picker (ADR-012, ADR-120): registered games only, ROUNDS_PER_SESSION of them
-  const [picker, setPicker] = useState<GameId[]>(() => [...session.lineup]);
-  const sessionLineup = session.lineup.join(',');
-  useEffect(() => {
-    setPicker(sessionLineup ? (sessionLineup.split(',') as GameId[]) : []);
-  }, [sessionLineup]);
-  const lineupValid = isLineupValid(picker, REGISTERED_GAMES, ROUNDS_PER_SESSION);
-  const lineupSynced = sameLineup(picker, session.lineup);
-  useEffect(() => {
-    if (!lineupValid || lineupSynced) return;
-    void host.act(() => adminSetLineup(session.id, picker)).catch(() => setError('sys.generic_error'));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picker.join(','), lineupValid, lineupSynced, session.id]);
-
-  const canStart = joined.length >= 1 && lineupValid && lineupSynced && session.status === 'lobby' && !busy;
+  // Start needs the saved lineup to be valid (the picker saves valid picks at once).
+  const [pickerSynced, setPickerSynced] = useState(true);
+  const lineupValid = isLineupValid(session.lineup, REGISTERED_GAMES, ROUNDS_PER_SESSION);
+  const canStart = joined.length >= 1 && lineupValid && pickerSynced && session.status === 'lobby' && !busy;
 
   const start = async () => {
     setBusy(true);
@@ -203,29 +135,8 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
         </div>
       </div>
       <footer className={styles.footer}>
-        <div className={styles.lineup} data-testid="host-lineup">
-          <span className={styles.hint}>{t('host.lineup.title', { n: formatNumber(ROUNDS_PER_SESSION) })}</span>
-          {REGISTERED_GAMES.map((g) => {
-            const idx = picker.indexOf(g);
-            return (
-              <button
-                key={g}
-                type="button"
-                className={`${styles.gameCard} ${idx >= 0 ? styles.gameCardOn : ''}`}
-                aria-pressed={idx >= 0}
-                onClick={() => setPicker((l) => toggleLineup(l, g, ROUNDS_PER_SESSION))}
-                data-testid={`lineup-${g}`}
-              >
-                {idx >= 0 ? <span className={styles.gameNo}>{formatNumber(idx + 1)}</span> : null}
-                {t(`game.${g}.name`)}
-              </button>
-            );
-          })}
-          {!lineupValid ? (
-            <span className={styles.hint} role="status">
-              {t('host.lineup.need', { n: formatNumber(ROUNDS_PER_SESSION), count: ROUNDS_PER_SESSION })}
-            </span>
-          ) : null}
+        <div data-testid="host-lineup">
+          <LineupPicker host={host} session={session} titleKey="host.lineup.title" onSyncedChange={setPickerSynced} />
         </div>
         <CornerControls>
           {error ? (
@@ -272,7 +183,8 @@ export function HostRound({ host, data }: { host: HostController; data: HostData
     return () => window.clearInterval(timer);
   }, []);
 
-  // Board: re-queried on every (debounced) score insert (ADR-112).
+  // Board: re-queried on every (throttled) score insert or hidden-name change (ADR-112).
+  // Scores only: Stop the Clock guesses stay hidden until the intermission reveal.
   const roundId = round?.id ?? null;
   useEffect(() => {
     if (!roundId) return;
@@ -306,7 +218,7 @@ export function HostRound({ host, data }: { host: HostController; data: HostData
   return (
     <>
       <header className={styles.header}>
-        <h1 className={styles.heading}>
+        <h1 className={styles.heading} data-testid="host-round-title">
           {round
             ? `${t('round.label', { n: round.round_no, total: data.rounds.length })} · ${t(`game.${round.game}.name`)}`
             : null}
@@ -323,8 +235,9 @@ export function HostRound({ host, data }: { host: HostController; data: HostData
           </p>
         </div>
       </header>
-      <div className={styles.main} data-testid="host-round">
+      <div className={styles.main} data-testid="host-round" data-round={round?.round_no} data-game={round?.game}>
         <div className={styles.boardWrap}>
+          <h2 className={styles.subheading}>{t('round.board_title')}</h2>
           {board && board.length > 0 ? (
             <Leaderboard rows={board} projector testId="host-round-board" />
           ) : board ? (
@@ -333,8 +246,9 @@ export function HostRound({ host, data }: { host: HostController; data: HostData
         </div>
       </div>
       <footer className={styles.footer}>
-        <span />
+        <CornerCode pending={data.pending} joined={data.pendingPlayers} />
         <CornerControls>
+          <NextGamesButton host={host} pending={data.pending} />
           <button
             type="button"
             className={`${ui.button} ${styles.control}`}
@@ -351,104 +265,6 @@ export function HostRound({ host, data }: { host: HostController; data: HostData
           {t('host.round.force_end_confirm')}
         </ConfirmDialog>
       ) : null}
-    </>
-  );
-}
-
-// ------------------------------------------------------------------ H4
-
-export function HostResults({ host, data }: { host: HostController; data: HostData }) {
-  const t = useT();
-  const { session } = data;
-  const [board, setBoard] = useState<RankedRow[] | null>(null);
-  const [breakdown, setBreakdown] = useState<RoundScoreRow[]>([]);
-  const [busy, setBusy] = useState(false);
-
-  // Late scores (≤ 15 s after the round ended, E22) still arrive: re-query on inserts and every 3 s.
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const [page, rows] = await Promise.all([fetchSessionBoard(session.id), fetchSessionRoundScores(session.id)]);
-        if (!alive) return;
-        setBoard(mergeBoard(page.top, null, null));
-        setBreakdown(rows);
-      } catch {
-        // keep last
-      }
-    };
-    void load();
-    const timer = window.setInterval(() => void load(), BOARD_POLL_MS);
-    return () => {
-      alive = false;
-      window.clearInterval(timer);
-    };
-  }, [session.id, host.scoresVersion]);
-
-  const winner = board?.[0] ?? null;
-  const newSession = async () => {
-    setBusy(true);
-    try {
-      await host.act(() => adminNewSession());
-    } catch {
-      // re-read either way
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <>
-      <header className={styles.header}>
-        <h1 className={styles.heading}>{t('results.title')}</h1>
-        <img src={logo} alt={t('app.name')} className={ui.projLogo} />
-      </header>
-      <div className={styles.main} data-testid="host-results">
-        <div className={styles.boardWrap}>
-          {winner ? (
-            <div className={styles.winner} data-testid="host-winner">
-              <span className={styles.winnerLabel}>{t('host.results.winner')}</span>
-              <bdi>{displayName(winner.name, winner.displaySuffix)}</bdi>
-              <span className={styles.winnerScore}>{formatNumber(winner.value)}</span>
-            </div>
-          ) : null}
-          {board && board.length > 0 ? (
-            <Leaderboard rows={board} projector testId="host-session-board" />
-          ) : board ? (
-            <p className={`${styles.big} ${styles.muted}`}>{t('results.no_scores')}</p>
-          ) : null}
-          {session.lineup.length > 1 && board && board.length > 0 ? (
-            <ul className={styles.hint}>
-              {board.map((r) => (
-                <li key={r.playerRowId}>
-                  <bdi>{displayName(r.name, r.displaySuffix)}</bdi>
-                  {': '}
-                  {session.lineup
-                    .map((g) => {
-                      const s = breakdown.find((b) => b.playerRowId === r.playerRowId && b.game === g);
-                      return s ? formatNumber(s.score) : t('results.breakdown_missing');
-                    })
-                    .join(' · ')}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      </div>
-      <footer className={styles.footer}>
-        <span />
-        <CornerControls>
-          <button
-            type="button"
-            className={`${ui.button} ${styles.control}`}
-            onClick={() => void newSession()}
-            disabled={busy}
-            data-testid="host-new-session"
-          >
-            {t('host.new_session')}
-          </button>
-        </CornerControls>
-      </footer>
     </>
   );
 }

@@ -61,11 +61,39 @@ export function isIgnorableHostError(kind: ErrorKind): boolean {
   return kind === 'invalid_state';
 }
 
-export type HostScreen = 'lobby' | 'round' | 'results';
+export type HostScreen = 'lobby' | 'round' | 'intermission' | 'results' | 'dayboard';
 
-/** Which host screen the database state calls for (reconstructed on every load, §3.1 step 2). */
-export function hostScreenFor(running: { status: string } | null): HostScreen {
-  if (running?.status === 'playing') return 'round';
-  if (running?.status === 'results') return 'results';
+type RoundLite = Pick<RoundRow, 'status' | 'round_no'>;
+
+/**
+ * Which host screen the database state calls for (reconstructed on every
+ * load, §3.1 step 2). `finalBoardShowing` is true while the last round's
+ * board (the Stop the Clock reveal) is still on its 7 s after the session
+ * went to `results` (see schedule.ts).
+ */
+export function hostScreenFor(
+  running: { status: string; day_board_shown_at?: string | null } | null,
+  rounds: readonly RoundLite[] = [],
+  finalBoardShowing = false,
+): HostScreen {
+  if (!running) return 'lobby';
+  if (running.status === 'playing') {
+    return rounds.some((r) => r.status === 'playing') ? 'round' : 'intermission';
+  }
+  if (running.status === 'results') {
+    if (running.day_board_shown_at) return 'dayboard';
+    return finalBoardShowing ? 'intermission' : 'results';
+  }
   return 'lobby';
+}
+
+/** The most recently ended round (highest round_no that is done), or null. */
+export function latestDoneRound<R extends RoundLite>(rounds: readonly R[]): R | null {
+  return [...rounds].filter((r) => r.status === 'done').sort((a, b) => b.round_no - a.round_no)[0] ?? null;
+}
+
+/** The round after `after`, if it is still upcoming. */
+export function nextUpcomingRound<R extends RoundLite>(rounds: readonly R[], after: RoundLite | null): R | null {
+  if (!after) return null;
+  return rounds.find((r) => r.round_no === after.round_no + 1 && r.status === 'upcoming') ?? null;
 }

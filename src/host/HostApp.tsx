@@ -1,6 +1,6 @@
 /**
  * The big screen (`SCREENS.md` §2): H0 sign-in → H1 lobby → H2 round live →
- * H4 results → New session. Only an admin JWT (`app_metadata.role`) gets
+ * H3 intermission (×N) → H4 results → H5 day boards → New session. Only an admin JWT (`app_metadata.role`) gets
  * past H0 (ADR-101); the screen shown is reconstructed from the database.
  */
 import { useEffect, useState } from 'react';
@@ -14,7 +14,9 @@ import { useOnline } from '../components/useOnline';
 import ui from '../components/ui.module.css';
 import styles from './host.module.css';
 import { useHost } from './useHost';
-import { HostLobby, HostResults, HostRound } from './screens';
+import { HostLobby, HostRound } from './screens';
+import { HostIntermission } from './Intermission';
+import { HostDayBoards, HostResults } from './Results';
 
 export function HostApp() {
   return (
@@ -156,20 +158,24 @@ function HostMain() {
       : null;
 
   return (
-    <div className={styles.host} data-testid="host-root" data-screen={data?.screen ?? 'loading'}>
+    <div className={styles.host} data-testid="host-root" data-screen={host.screen}>
       {banner ? (
         <div className={styles.banner} role="status" data-testid="host-banner">
           {banner}
         </div>
       ) : null}
-      {!data ? (
+      {!data || host.screen === 'loading' ? (
         <Spinner />
-      ) : data.screen === 'lobby' ? (
-        <HostLobby host={host} data={data} />
-      ) : data.screen === 'round' ? (
+      ) : host.screen === 'lobby' ? (
+        <HostLobby key={data.session.id} host={host} data={data} />
+      ) : host.screen === 'round' ? (
         <HostRound host={host} data={data} />
-      ) : (
+      ) : host.screen === 'intermission' ? (
+        <HostIntermission host={host} data={data} />
+      ) : host.screen === 'results' ? (
         <HostResults host={host} data={data} />
+      ) : (
+        <HostDayBoards host={host} data={data} />
       )}
     </div>
   );
