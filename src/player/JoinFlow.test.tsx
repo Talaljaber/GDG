@@ -110,6 +110,68 @@ describe('JoinFlow P2 (name)', () => {
     expect(screen.getByTestId('screen-removed')).toBeInTheDocument();
   });
 
+  it('after too many wrong codes (GD013) counts down with Join disabled, keeping name and code (ADR-130)', async () => {
+    vi.useFakeTimers();
+    joinSession
+      .mockRejectedValueOnce(new ApiError({ kind: 'too_many_tries', copyKey: 'join.error_wait' }, 'GD013', 'GD013', 3))
+      .mockResolvedValueOnce({
+        session_id: 's1',
+        player_row_id: 'p1',
+        name: 'Sara',
+        display_suffix: null,
+        session_status: 'lobby',
+      });
+    const { onJoined } = toName();
+    fireEvent.change(screen.getByTestId('name-input'), { target: { value: 'Sara' } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('name-submit'));
+    });
+    expect(screen.getByTestId('name-wait')).toHaveTextContent(en['join.error_wait'].replace('{s}', '3'));
+    expect(screen.getByTestId('name-submit')).toBeDisabled();
+    expect(screen.getByTestId('name-input')).toHaveValue('Sara');
+    expect(screen.getByText('4821')).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByTestId('name-wait')).toHaveTextContent(en['join.error_wait'].replace('{s}', '2'));
+    // Enter on the form does nothing while waiting.
+    fireEvent.submit(screen.getByTestId('screen-name'));
+    expect(joinSession).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(screen.queryByTestId('name-wait')).not.toBeInTheDocument();
+    expect(screen.getByTestId('name-submit')).toBeEnabled();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('name-submit'));
+    });
+    expect(joinSession).toHaveBeenCalledTimes(2);
+    expect(joinSession).toHaveBeenLastCalledWith('4821', 'Sara');
+    expect(onJoined).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the wait when going back to change the code', async () => {
+    vi.useFakeTimers();
+    joinSession.mockRejectedValueOnce(
+      new ApiError({ kind: 'too_many_tries', copyKey: 'join.error_wait' }, 'GD013', 'GD013', 10),
+    );
+    toName();
+    fireEvent.change(screen.getByTestId('name-input'), { target: { value: 'Sara' } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('name-submit'));
+    });
+    fireEvent.click(screen.getByTestId('name-back'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+    fireEvent.change(screen.getByTestId('code-input'), { target: { value: '5307' } });
+    expect(screen.getByTestId('name-wait')).toHaveTextContent(en['join.error_wait'].replace('{s}', '6'));
+    expect(screen.getByTestId('name-submit')).toBeDisabled();
+    expect(screen.getByTestId('name-input')).toHaveValue('Sara');
+  });
+
   it('retries once after 5 s when rate-limited (E29)', async () => {
     vi.useFakeTimers();
     joinSession.mockRejectedValueOnce(apiError('rate_limited')).mockResolvedValueOnce({

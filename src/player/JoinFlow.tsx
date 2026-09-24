@@ -1,7 +1,9 @@
 /**
  * P1 Enter code → P2 Enter name (→ P4 Removed on GD004). Nothing is sent to
  * the server until a 4-digit code and a valid name are submitted; the
- * anonymous sign-in happens then (ADR-007, ADR-102).
+ * anonymous sign-in happens then (ADR-007, ADR-102). After too many wrong
+ * codes (GD013, ADR-130) P2 counts down the server's wait with Join disabled;
+ * the deadline lives here so going back to P1 and returning keeps it.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -17,6 +19,10 @@ const CODE_LENGTH = 4;
 const NAME_MAX = 12;
 /** E29: auto-retry once after 5 s when anonymous sign-in is rate-limited. */
 const RATE_RETRY_MS = 5000;
+/** Countdown refresh while waiting out the wrong-code lock (ADR-130). */
+const WAIT_TICK_MS = 250;
+/** Used only if a GD013 result ever arrived without retry_after_s: the server's lock length. */
+const WAIT_FALLBACK_S = 30;
 
 type Step = 'code' | 'name' | 'removed';
 
@@ -25,6 +31,8 @@ export function JoinFlow({ onJoined }: { onJoined(payload: JoinPayload): void })
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
   const [name, setName] = useState(() => getLastName() ?? '');
+  /** Date.now() at which the wrong-code lock ends (GD013), or null. */
+  const [waitUntil, setWaitUntil] = useState<number | null>(null);
 
   if (step === 'removed') {
     return (
@@ -65,6 +73,8 @@ export function JoinFlow({ onJoined }: { onJoined(payload: JoinPayload): void })
         setStep('code');
       }}
       onRemoved={() => setStep('removed')}
+      waitUntil={waitUntil}
+      onWait={(seconds) => setWaitUntil(Date.now() + seconds * 1000)}
       onJoined={(payload) => {
         setLastName(name.trim());
         onJoined(payload);
@@ -148,6 +158,8 @@ function NameScreen({
   onBack,
   onCodeInvalid,
   onRemoved,
+  waitUntil,
+  onWait,
   onJoined,
 }: {
   code: string;
@@ -156,14 +168,33 @@ function NameScreen({
   onBack(): void;
   onCodeInvalid(): void;
   onRemoved(): void;
+  waitUntil: number | null;
+  onWait(seconds: number): void;
   onJoined(payload: JoinPayload): void;
 }) {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const retriedRate = useRef(false);
   const alive = useRef(true);
   const retryTimer = useRef<number | null>(null);
+
+  // Wrong-code lock (GD013): tick until the deadline, then stop.
+  useEffect(() => {
+    if (waitUntil === null) return;
+    let id = 0;
+    const tick = () => {
+      const ms = Date.now();
+      setNow(ms);
+      if (ms >= waitUntil) window.clearInterval(id);
+    };
+    id = window.setInterval(tick, WAIT_TICK_MS);
+    tick();
+    return () => window.clearInterval(id);
+  }, [waitUntil]);
+  const waitLeft = waitUntil === null ? 0 : Math.max(0, Math.ceil((waitUntil - now) / 1000));
+  const waiting = waitLeft > 0;
 
   useEffect(() => {
     alive.current = true;
@@ -206,6 +237,11 @@ function NameScreen({
         case 'name_blocked':
           setError('join.name.error_blocked');
           return;
+        case 'too_many_tries':
+          setError(null);
+          setNow(Date.now());
+          onWait(err instanceof ApiError && err.retryAfterS ? err.retryAfterS : WAIT_FALLBACK_S);
+          return;
         case 'rate_limited':
           setError('join.error_rate');
           if (!retriedRate.current) {
@@ -225,7 +261,7 @@ function NameScreen({
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || waiting) return;
     const v = validateName(name);
     if (!v.ok) {
       setError(v.reason === 'empty' ? 'join.name.error_empty' : 'join.name.error_invalid');
@@ -269,7 +305,11 @@ function NameScreen({
           </span>
         </div>
       </div>
-      {error ? (
+      {waiting ? (
+        <p className={ui.error} role="status" data-testid="name-wait">
+          {t('join.error_wait', { s: waitLeft })}
+        </p>
+      ) : error ? (
         <p className={ui.error} role="alert" data-testid="name-error">
           {t(error)}
         </p>
@@ -278,7 +318,7 @@ function NameScreen({
       <button
         type="submit"
         className={`${ui.button} ${ui.buttonBlock}`}
-        disabled={submitting}
+        disabled={submitting || waiting}
         aria-busy={submitting}
         data-testid="name-submit"
       >

@@ -17,6 +17,7 @@ stateDiagram-v2
     [*] --> P1_code: open URL (QR / short URL)
     P1_code --> P2_name: 4 digits entered
     P2_name --> P1_code: GD001 code invalid (name kept)
+    P2_name --> P2_name: GD013 too many wrong codes (countdown, ADR-130)
     P2_name --> P3_lobby: joined a lobby
     P2_name --> P3b_next: joined a pending session
     P2_name --> P4_removed: GD004
@@ -72,9 +73,9 @@ Strings: `join.code.title`, `join.code.placeholder`, `join.code.next`, `join.cod
 │  [     Let's play      ] │
 └──────────────────────────┘
 ```
-States: `empty`, `typing`, `submitting` (button spinner), `error_empty`, `error_invalid` (GD002), `error_blocked` (GD003), `error_rate` (auto-retry once after 5 s, E29), `error_network`, `error_warming` (E18).
+States: `empty`, `typing`, `submitting` (button spinner), `error_empty`, `error_invalid` (GD002), `error_blocked` (GD003), `error_rate` (auto-retry once after 5 s, E29), `error_network`, `error_warming` (E18), `wait` (GD013 after 5 wrong codes, ADR-130: `join.error_wait` counts down the server's `retry_after_s` once a second, Join is disabled, name and code stay; the deadline survives "Change code" and back; at 0 the message goes and Join works again).
 Behaviour: name pre-filled from the last session on this phone; `maxlength` enforced as cleaned characters (≤ 12: a keystroke that would exceed it is ignored), with a live `n / 12` counter; empty/invalid names are caught on the phone (`SCORING.md` §6 mirror) before anything is sent; submit calls anonymous sign-in (if no session yet) then `join_session`.
-Strings: `join.back`, `join.name.title`, `join.name.placeholder`, `join.name.hint`, `join.name.counter`, `join.name.submit`, `join.name.error_empty`, `join.name.error_invalid`, `join.name.error_blocked`, `join.error_rate`, `join.error_network`, `join.error_warming`.
+Strings: `join.back`, `join.name.title`, `join.name.placeholder`, `join.name.hint`, `join.name.counter`, `join.name.submit`, `join.name.error_empty`, `join.name.error_invalid`, `join.name.error_blocked`, `join.error_rate`, `join.error_network`, `join.error_warming`, `join.error_wait`.
 
 **P3 Lobby (joined, waiting).**
 ```

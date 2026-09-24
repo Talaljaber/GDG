@@ -18,6 +18,7 @@ export type ErrorKind =
   | 'invalid_state'
   | 'lineup_invalid'
   | 'not_signed_in'
+  | 'too_many_tries'
   | 'already_saved'
   | 'rate_limited'
   | 'network'
@@ -49,6 +50,8 @@ const SQLSTATE_MAP: Record<string, { kind: ErrorKind; copyKey: string }> = {
   GD010: { kind: 'invalid_state', copyKey: 'sys.generic_error' },
   GD011: { kind: 'lineup_invalid', copyKey: 'sys.generic_error' },
   GD012: { kind: 'not_signed_in', copyKey: 'sys.generic_error' },
+  // GD001 and GD013 come back from join_session as data, not raised (ADR-130); api.ts maps them here too.
+  GD013: { kind: 'too_many_tries', copyKey: 'join.error_wait' },
 };
 
 /** Postgres unique-violation: a retried score insert that already landed (E14) — treated as success. */

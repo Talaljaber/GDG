@@ -49,6 +49,7 @@ Last updated: 2026-09-24
 | `join.error_rate` | Lots of people joining right now. Trying again… | كثيرون ينضمّون الآن. نحاول مرة أخرى… |
 | `join.error_network` | No connection. Check your mobile data and try again. | لا يوجد اتصال. تحقّق من بيانات الجوال وحاول مجددًا. |
 | `join.error_warming` | We're warming up. Try again in a minute. | نجهّز اللعبة. حاول مجددًا بعد دقيقة. |
+| `join.error_wait` | Too many tries. Wait {s} s and try again. | محاولات كثيرة. يمكنك المحاولة مجددًا بعد {s} ث. |
 
 ## 4. Lobby, rounds, results
 

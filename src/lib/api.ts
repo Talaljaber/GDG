@@ -23,12 +23,15 @@ export type RoundEndReason = Database['public']['Enums']['round_end_reason'];
 export class ApiError extends Error {
   readonly mapped: MappedError;
   readonly code: string | undefined;
+  /** `too_many_tries` only: whole seconds until `join_session` accepts a code again (ADR-130). */
+  readonly retryAfterS: number | undefined;
 
-  constructor(mapped: MappedError, code?: string, message?: string) {
+  constructor(mapped: MappedError, code?: string, message?: string, retryAfterS?: number) {
     super(message ?? mapped.kind);
     this.name = 'ApiError';
     this.mapped = mapped;
     this.code = code;
+    this.retryAfterS = retryAfterS;
   }
 }
 
@@ -115,11 +118,34 @@ export interface JoinPayload {
   session_status: SessionRow['status'];
 }
 
-/** Signs in anonymously if needed, then `join_session(code, name)`. */
+/**
+ * `join_session`'s refusals that come back as data instead of a raise, so the
+ * wrong-code log commits (ADR-130, `DATA_MODEL.md` §6): `GD001` wrong code,
+ * `GD013` too many wrong codes (with the seconds left).
+ */
+interface JoinRefusal {
+  error: string;
+  retry_after_s?: number;
+}
+
+function isJoinRefusal(data: unknown): data is JoinRefusal {
+  return typeof data === 'object' && data !== null && typeof (data as { error?: unknown }).error === 'string';
+}
+
+/**
+ * Signs in anonymously if needed, then `join_session(code, name)`. A wrong
+ * code or the wrong-code lock throws an ApiError like any raised error;
+ * for the lock (`too_many_tries`) `retryAfterS` holds the seconds left.
+ */
 export async function joinSession(code: string, name: string): Promise<JoinPayload> {
   await ensureAnonymousSession();
-  const data = await run(() => supabase.rpc('join_session', { p_code: code, p_name: name }));
-  return data as unknown as JoinPayload;
+  const data: unknown = await run(() => supabase.rpc('join_session', { p_code: code, p_name: name }));
+  if (isJoinRefusal(data)) {
+    const retry = data.retry_after_s;
+    const retryAfterS = typeof retry === 'number' && Number.isFinite(retry) ? Math.max(1, Math.ceil(retry)) : undefined;
+    throw new ApiError(mapDbError({ code: data.error, message: data.error }), data.error, data.error, retryAfterS);
+  }
+  return required(data as JoinPayload | null);
 }
 
 // ---------------------------------------------------------------- state rows

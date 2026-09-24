@@ -84,6 +84,13 @@ describe('mapDbError: SQLSTATEs from DATA_MODEL.md §5', () => {
       kind: 'not_signed_in',
     });
   });
+
+  it('GD013 -> too_many_tries / join.error_wait (ADR-130)', () => {
+    expect(mapDbError({ code: 'GD013', message: 'GD013' })).toMatchObject({
+      kind: 'too_many_tries',
+      copyKey: 'join.error_wait',
+    });
+  });
 });
 
 describe('mapDbError: other cases', () => {
