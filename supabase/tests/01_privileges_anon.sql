@@ -69,12 +69,18 @@ select ok(has_column_privilege('authenticated', 'public.players', 'progress', 'U
 select ok(not has_table_privilege('authenticated', 'public.keepalive', 'SELECT'), 'authenticated cannot read keepalive');
 
 -- ============ Function security ============
+-- Event-trigger functions are skipped in the next two checks: they can't be called directly (only
+-- as event triggers), and a cloud project with Supabase's "automatic RLS" option adds one to public
+-- (public.rls_auto_enable, definer, search_path=pg_catalog). The anon check below stays unfiltered,
+-- so such a function still may not be executable by anon.
 select is(
-  array(select p.proname::text collate "C" from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef order by 1),
+  array(select p.proname::text collate "C" from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef
+          and p.prorettype <> 'event_trigger'::regtype order by 1),
   array['join_session', 'keepalive'],
   'join_session and keepalive are the only SECURITY DEFINER functions in public');
 select is(
   (select count(*)::int from pg_proc p where p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
+     and p.prorettype <> 'event_trigger'::regtype
      and not coalesce(p.proconfig @> array['search_path=""'], false)),
   0, 'every public/private function sets search_path = empty');
 select is(
