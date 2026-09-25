@@ -47,8 +47,8 @@ Decision: one laptop runs the admin/host view and is what's projected. Lobby sho
 Decision: once started, no remove/kick and no admin controls except: the lineup picker (edits the *next* session only), force-end (ends the current round), and a "Next round now" skip during intermissions (ADR-117). After **each round** the big screen shows the leaderboard (round scores + running session total). Consequences: the running session can't be altered except by ending rounds.
 
 ### ADR-010 Session end flow: results → day board → new session
-**Accepted** · changed in chat 2026-09-24
-Decision: session results (ranked by session total) stay on screen until the host taps **Show day board**, which plays the ~15 s shatter merge into the per-game day boards. Then **New session** turns the pending lobby into the lobby, with the lineup the picker currently shows (the last lineup if untouched). Consequences: two host taps per session; `SESSION_LIFECYCLE.md` §2.
+**Accepted** · changed in chat 2026-09-24; merge removed in chat 2026-09-25
+Decision: session results (ranked by session total) stay on screen until the host taps **Show day board**, which shows the per-game day boards at once with one short crossfade (the ~15 s shatter merge was removed at the team's request on 2026-09-25: boards render all at once, never row by row). Then **New session** turns the pending lobby into the lobby, with the lineup the picker currently shows (the last lineup if untouched). Consequences: two host taps per session; `SESSION_LIFECYCLE.md` §2.
 
 ### ADR-011 Admin dashboard
 **Accepted** · brief §2.2
