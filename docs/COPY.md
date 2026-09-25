@@ -107,11 +107,15 @@ Last updated: 2026-09-25
 | `game.simon.name` | Simon | سايمون |
 | `game.perfect_circle.name` | Perfect Circle | الدائرة المثالية |
 | `game.trivia.name` | Trivia | أسئلة سريعة |
+| `game.close_brackets.name` | Close the Brackets | أغلق الأقواس |
+| `game.color_clash.name` | Color Clash | صراع الألوان |
 | `game.odd_one_out.pitch` (`game.ooo.pitch`) | One chevron is different. Find it fast. | شكل واحد مختلف. اعثر عليه بسرعة. |
 | `game.stop_the_clock.pitch` (`game.stc.pitch`) | No clock, no hints. Stop it when you feel the time is up. | لا ساعة ولا تلميحات. اضغط «أوقف» حين تشعر أن الوقت انتهى. |
 | `game.simon.pitch` | Watch the pads light up, then repeat the pattern. | راقب الأزرار وهي تضيء، ثم كرّر التسلسل. |
 | `game.perfect_circle.pitch` (`game.pc.pitch`) | Draw one circle with your finger. How round can you go? | ارسم دائرة واحدة بإصبعك. هل ستكون مثالية؟ |
 | `game.trivia.pitch` | 5 quick questions. Faster right answers score more. | 5 أسئلة سريعة. كلما أسرعت في الإجابة الصحيحة زادت نقاطك. |
+| `game.close_brackets.pitch` | Close every bracket, last one first. Beat the clock. | أغلق كل الأقواس، من الأخير إلى الأول. سابق الوقت. |
+| `game.color_clash.pitch` | Tap the color of the ink, not the word. | اضغط لون الحبر، لا الكلمة. |
 
 Key aliasing: game docs use short ids (`ooo`, `stc`, `pc`) for readability; the string files use the full game id (`odd_one_out`, `stop_the_clock`, `perfect_circle`). `game.ooo.x` in a game doc = `game.odd_one_out.x` in the JSON.
 
@@ -206,6 +210,45 @@ Key aliasing: game docs use short ids (`ooo`, `stc`, `pc`) for readability; the 
 | `game.trivia.result_value` | {n} / 5 | {n} من 5 |
 | `game.trivia.unavailable` | Needs 5+ ready questions | يحتاج 5 أسئلة جاهزة على الأقل |
 
+### 5.6 Close the Brackets
+
+| Key | English | العربية |
+|---|---|---|
+| `game.close_brackets.intro` | 30 s · one more bracket each time | 30 ثانية · قوس إضافي في كل مرة |
+| `game.close_brackets.length` | Length {n} | الطول {n} |
+| `game.close_brackets.solved` | Closed {n} | أُغلقت {n} |
+| `game.close_brackets.wrong` | Wrong bracket | قوس خاطئ |
+| `game.close_brackets.timeout` | Too slow for this one | انتهى وقت هذه السلسلة |
+| `game.close_brackets.times_up` | Time's up | انتهى الوقت |
+| `game.close_brackets.key.round` | Close round bracket | أغلق القوس الدائري |
+| `game.close_brackets.key.square` | Close square bracket | أغلق القوس المربّع |
+| `game.close_brackets.key.curly` | Close curly bracket | أغلق القوس المعقوف |
+| `game.close_brackets.key.angle` | Close angle bracket | أغلق قوس الزاوية |
+| `game.close_brackets.result_solved` | Sequences closed | السلاسل المُغلقة |
+| `game.close_brackets.result_longest` | Longest | الأطول |
+| `game.close_brackets.result_misses` | Misses | الأخطاء |
+
+### 5.7 Color Clash
+
+The words (`word.*`) are the stimulus and the names (`ink.*`) label the buttons; both are in the player's language. Arabic uses the everyday «برتقالي» (orange) for the amber ink and «أسود» (black) for the charcoal ink, so the word is instant to read; confirm in the Arabic review (OQ-04).
+
+| Key | English | العربية |
+|---|---|---|
+| `game.color_clash.intro` | 30 s · tap the ink, not the word | 30 ثانية · اضغط لون الحبر لا الكلمة |
+| `game.color_clash.correct` | Correct {n} | صحيحة {n} |
+| `game.color_clash.too_slow` | Too slow | تأخّرت |
+| `game.color_clash.times_up` | Time's up | انتهى الوقت |
+| `game.color_clash.word.blue` | BLUE | أزرق |
+| `game.color_clash.word.amber` | AMBER | برتقالي |
+| `game.color_clash.word.charcoal` | CHARCOAL | أسود |
+| `game.color_clash.ink.blue` | Blue | أزرق |
+| `game.color_clash.ink.amber` | Amber | برتقالي |
+| `game.color_clash.ink.charcoal` | Charcoal | أسود |
+| `game.color_clash.result_correct` | Correct | صحيحة |
+| `game.color_clash.result_wrong` | Wrong or missed | خاطئة أو فائتة |
+| `game.color_clash.result_speed` | Average time | متوسط الوقت |
+| `game.color_clash.result_speed_value` | {s} s | {s} ث |
+
 ## 6. Host view (big screen)
 
 The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby.code_label`) are rendered in **both** languages at once, on one line: the screen language first, then `·` and the other language, muted (SCREENS H1). Big-screen tone is calm: no exclamation marks, no jokes.
@@ -228,13 +271,14 @@ The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby
 | `host.lobby.code_label` | Game code | رمز الجلسة |
 | `host.lobby.players` (plural) | one: 1 player · other: {n} players | zero: لا يوجد لاعبون بعد · one: لاعب واحد · two: لاعبان · few: {n} لاعبين · many: {n} لاعبًا · other: {n} لاعب |
 | `host.lobby.empty` | Waiting for players | بانتظار اللاعبين |
+| `host.lobby.empty_hint` | Names appear here as people join | تظهر الأسماء هنا عند انضمام اللاعبين |
 | `host.lobby.remove` | Remove | إزالة |
 | `host.lobby.remove_confirm` | Remove {name} from this session? | إزالة {name} من هذه الجلسة؟ |
 | `host.lineup.title` | Lineup · pick {n} | الألعاب · اختر {n} |
 | `host.lineup.next_title` | Next session | الجلسة القادمة |
 | `host.lineup.need` (plural) | one: Pick 1 game · other: Pick {n} different games | zero: اختر {n} ألعاب مختلفة · one: اختر لعبة واحدة · two: اختر لعبتين مختلفتين · few: اختر {n} ألعاب مختلفة · many: اختر {n} لعبة مختلفة · other: اختر {n} لعبة مختلفة |
 | `host.start` | Start | ابدأ |
-| `host.start_disabled_hint` | Needs at least 1 player | يحتاج لاعبًا واحدًا على الأقل |
+| `host.start_disabled_hint` | Needs 1 player to start | يلزم لاعب واحد للبدء |
 | `host.round.finished` | {done}/{total} finished | {done}/{total} أنهوا |
 | `host.round.force_end` | End round | إنهاء الجولة |
 | `host.round.force_end_confirm` | End this round now? Scores so far count. | إنهاء هذه الجولة الآن؟ النتائج الحالية تُحتسب. |
