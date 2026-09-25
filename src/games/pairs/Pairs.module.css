@@ -1,0 +1,260 @@
+/* Pairs screen. Tokens only (docs/DESIGN_SYSTEM.md §2-7, docs/games/pairs.md §7);
+   logical properties only. The 4 x 4 grid is game geometry and keeps its
+   order in RTL (direction: ltr, as Odd One Out). Cards flip with `transform`
+   only; reduced motion zeroes the durations (tokens.css §6.2) and the
+   .noFlip class (set from prefers-reduced-motion) swaps the faces instantly
+   without any 3D turn. Colour carries nothing: every icon is one ink. */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-4);
+  flex: 1;
+  min-height: 100%;
+  padding-block: var(--s-5);
+  padding-inline: var(--phone-gutter);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.screenCenter {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--weight-medium);
+}
+
+.pitch {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+}
+
+.caption {
+  margin: 0;
+  min-block-size: 1.5em;
+  text-align: center;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+/* ---- countdown (as Trivia / Color Clash) ---- */
+.countdownWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.countdownBar {
+  flex: 1;
+  block-size: var(--s-2);
+  border-radius: var(--r-tag);
+  background: var(--gdg-line);
+  overflow: hidden;
+}
+
+.countdownFill {
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--primary);
+  transition: transform var(--dur-base) linear;
+}
+
+.countdownFillAmber {
+  background: var(--highlight);
+}
+
+.countdownNumber {
+  min-inline-size: 2ch;
+  text-align: end;
+  font-size: var(--type-button-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+/* Amber is a fill, never text on paper: the number sits on an amber tag. */
+.countdownNumberAmber {
+  color: var(--on-highlight);
+  background: var(--highlight);
+  border-radius: var(--r-tag);
+  padding-inline: var(--s-2);
+}
+
+.counter {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the board ---- */
+.stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Square, full width of the phone column: (360 - 2 x 16 - 3 x 8) / 4 = 76 px tiles. */
+.grid {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(var(--touch-target-min), 1fr));
+  grid-template-rows: repeat(4, minmax(var(--touch-target-min), 1fr));
+  gap: var(--s-2);
+  inline-size: 100%;
+  max-inline-size: calc(var(--phone-max-width) - 2 * var(--phone-gutter));
+  aspect-ratio: 1 / 1;
+}
+
+.tile {
+  position: relative;
+  min-inline-size: var(--touch-target-min);
+  min-block-size: var(--touch-target-min);
+  padding: 0;
+  border: none;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--primary-text);
+  cursor: pointer;
+  perspective: calc(var(--s-8) * 6);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tile:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+/* The two-face card: back (face down) and front (the icon). */
+.card {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-style: preserve-3d;
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+
+.tileUp .card {
+  transform: rotateY(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.back {
+  background: var(--surface-2);
+}
+
+.front {
+  background: var(--surface);
+  transform: rotateY(180deg);
+}
+
+/* A thin ink outline of the brand chevron (not the logo), centred on the back. */
+.backMark {
+  inline-size: 44%;
+  block-size: 44%;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.backMarkOuter {
+  stroke: var(--line-strong);
+  stroke-width: 26;
+}
+
+.backMarkInner {
+  stroke: var(--surface-2);
+  stroke-width: 20;
+}
+
+.icon {
+  inline-size: 58%;
+  block-size: 58%;
+}
+
+/* Matched: an amber ring, kept for the rest of the round. */
+.tileMatched .front {
+  border-color: var(--highlight);
+  box-shadow: inset 0 0 0 var(--line-width-strong) var(--highlight);
+}
+
+/* The 0.3 s match feedback: an amber tint behind the icon. */
+.tileFresh .front {
+  background: var(--highlight-tint);
+}
+
+/* Mismatch lock: both cards face up, muted; input ignored. */
+.tileMuted .front {
+  color: var(--text-muted);
+}
+
+/* Reduced motion: no turn at all; the faces swap instantly. */
+.noFlip .card {
+  transition: none;
+  transform: none;
+}
+
+.noFlip .front {
+  transform: none;
+  visibility: hidden;
+}
+
+.noFlip .tileUp .front {
+  visibility: visible;
+}
+
+.noFlip .tileUp .back {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
