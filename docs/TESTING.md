@@ -141,6 +141,17 @@ Settings to cover: Arabic device language (RTL auto), English; text size 130 %; 
 
 **Projector check:** real projector (or the venue's if accessible), lights on. From 6 m: code, QR scan (from 3 m with 3 different phones), leaderboard names and scores all readable/scannable. Compare light and dark big-screen themes (ADR-122) and pick one; record in `DECISIONS.md`.
 
+**Host v3 "Stage and Rail" checklist** (added from `docs/plans/host-v3.md` §8, real-projector risks that a laptop screen can't confirm):
+- [ ] From 6 m: H1 hairline player rows and `--slot-line` empty rows are visible, not washed out; if not, raise `--slot-line`/`--line` (token change only).
+- [ ] From 6 m: the rail (7 vh / 12 vh on H1) sits fully inside the projected image; nothing crops at the safe margin.
+- [ ] `--text-muted` labels (eyebrows, rail text) stay legible under hall lighting; fallback is `--text-muted` → ink 70 % if not.
+- [ ] Arabic names on H2–H5 boards: no clipped ascenders/descenders in the 6.6 vh row height (try «عبدالرحمن سا», «لإ»).
+- [ ] The QR (24 vh) scans from 3 m at 1080p projection with three different phones; if marginal, raise `--proj-qr` to 28 vh.
+- [ ] H1 with 10 registered games: the lineup tray's unpicked-games line wraps onto a second/third line without pushing the rail off the safe margin, in English and Arabic.
+- [ ] Show day board reads as one quick crossfade (~300 ms), not a jump cut or a leftover animation; compare with the host's Reduce motion toggle on (should be instant either way; see 2026-09-25 ADR-010 update below).
+
+Day-board note (2026-09-25): the ~15 s shatter merge between H4 and H5 was removed after review feedback ("so bad"); Show day board now crossfades the whole stage once. The dry run no longer needs a "merge timing" check, only the one line above.
+
 ## 7. End-to-end scenarios (Playwright)
 
 | # | Scenario | Checks |
@@ -200,7 +211,7 @@ Run by two people: host + tester, with **at least five real phones** covering th
 - [ ] During session 1, a latecomer joins via the corner code and is in session 2's lobby.
 - [ ] One phone reloads mid-round (resumes), one locks its screen for 20 s (continues), one goes offline during submit (retries).
 - [ ] Force-end once.
-- [ ] Results → Show day board (merge animation) → New session.
+- [ ] Results → Show day board (instant crossfade to the day boards, no merge animation) → New session.
 
 **D. Admin (10 min)**
 - [ ] Hide a name from the dashboard on the admin phone while it's on the big screen.
@@ -254,7 +265,9 @@ Measured 2026-09-25 on the local stack: dev server with HMR off, 1 host (1920 ×
 | Host intermission (round board → total → Next) | 15 s | 78 / 1475 (Stop the Clock reveal), 77 / 1070 | 23 / 131 |
 | Phone intermission | 15 s | 76 / 532 | 8–14 / 29–67 |
 | Host results idle / phone results idle | 15 s | 5 / 60, 11 / 102 | 0 / 0, 0 / 0 |
-| Host day board (merge + rotation) / phone day board | 25 s | 11 / 140, 15 / 58 | 11 / 85, 6 / 17 |
+| Host day board (rotation only, no merge) / phone day board | 25 s | 11 / 140, 15 / 58 | 11 / 85, 6 / 17 |
+
+**Re-measured 2026-09-25 on the `/__preview` fixtures** (`window.__gdgRenders`, dev server, 1920×1080, no phones — a quick regression check after the day-board merge was removed and every board's row cascade was set to fire at once, `--stagger-row: 0`; see `DECISIONS.md` ADR-010 update): `host.lobby-3` idle 30 s → **0 commits**; `host.results-1` idle 30 s (podium settled, celebrate already played) → **0 commits**; `host.dayboard` 30 s (auto-rotating every `DAYBOARD_ROTATE_MS` = 8 s, no merge to add commits) → **3 commits** (one per rotation, as the table above already expected). Both idle budgets hold; the fixture numbers match the driven-by-Playwright scenarios above.
 
 What made the difference:
 - **Clocks at the top of a tree.** The host lobby re-rendered twice a second for its presence dots, H2 four times a second for "time left", H3 four times a second for the intermission step, and the phone's member flow four times a second for the whole session (game screen included). They now use `useSteppedNow` (`src/components/useSteppedNow.ts`): it still checks on the same interval, but sets state only when the value on screen changes. The H2 time and the H3 3-2-1 are their own leaves (`TimeLeft`, `StepCountdown`). The lobby dots use `usePresenceDots` (`src/host/presence.ts`), which keeps last-seen times in a ref and re-renders when a dot flips. Grey-out timing is unchanged. Games still measure with `performance.now()` and stored epochs; no display clock feeds a measurement.

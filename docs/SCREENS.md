@@ -199,7 +199,7 @@ Strings: `app.name`, `results.session_ended`, `results.session_ended_body`, `res
 
 ## 2. Big screen (host view, projected)
 
-Everything on this screen uses the projector scale (`DESIGN_SYSTEM.md` §3.2) and the v2 layout (§0.2): a header strip (logo · `host.header.tagline` or the screen title · inline-end the next-session code during play), a 12-column body, and one operator bar at the bottom (lineup / next session's games inline-start; `host.settings.title` menu with Reduce motion, language and Sign out; then the screen's one solid primary action). Boards are tables (`host.board.rank`, `host.board.player`, `host.board.score`). On H2/H3 the logo sits outside the screen transitions (`HostShell`), so it never fades.
+"Stage and Rail" (host v3, ADR-135, `docs/plans/host-v3.md`): a chrome-free **stage** (type, hairlines, tints — no panels, no chips) between a 9 vh brand strip (logo · `host.header.tagline`, plus the pending session's corner code inline-end on H2–H5) and a 7 vh (12 vh on H1) unfilled **rail** that carries every control (the lineup tray or the next-session summary inline-start; `host.settings.title` menu with dark screen, reduce motion, language and sign out, then the one ink-filled primary action, inline-end). Boards are fixed 10-slot broadcast tables (`host.board.rank`, `host.board.player`, `host.board.score`; column heads visually hidden except H4's per-round columns). One hero per screen (the code, the board, the winner's total); blue means "live" only, amber means rank 1. On H2/H3 the logo sits outside the screen transitions (`HostShell`), so it never fades. Every board renders all its rows in one frame (`--stagger-row` is 0ms, `TESTING.md` §9) — no row-by-row cascade; a rank change still FLIPs to its new place and pulses.
 
 ### 2.1 Flow
 
@@ -211,87 +211,78 @@ stateDiagram-v2
     H2_round --> H3_intermission: round done
     H3_intermission --> H2_round: after 15 s / Next round now
     H3_intermission --> H4_results: last round done
-    H4_results --> H5_day_board: Show day board (merge animation)
+    H4_results --> H5_day_board: Show day board (instant crossfade)
     H4_results --> H1_lobby: New session
     H5_day_board --> H1_lobby: New session
 ```
 
-Transitions (`DESIGN_SYSTEM.md` §6.2, projector density): the screen shatter plays on every arrow above except H0 → H1 and H4 → H5 (the ~15 s day-board merge), and on each H3 step. A reload lands on its screen without an effect. With reduced motion (OS or the host's toggle) they are 200 ms crossfades, and H1/H4/H5 (the screens with the logo) swap instantly.
+Transitions (`DESIGN_SYSTEM.md` §6.2, projector density): the screen shatter plays on every arrow above except H0 → H1, and on each H3 step (a `--dur-step` crossfade inside the same shell, not the screen shatter). **H4 → H5 is a single `--dur-step` (~300 ms) crossfade of the whole stage — no merge, no shatter tiles, no per-game stepping** (superseded 2026-09-25: the old ~15 s day-board merge read as "so bad" in review; see `DECISIONS.md`). A reload lands on its screen without an effect (H4/H5's crossfade still plays once on mount, harmlessly). With reduced motion (OS or the host's toggle) every duration is 0 ms, so every transition above — including H4 → H5 — is an instant swap.
 
 ### 2.2 Screens
 
-**H0 Sign-in.** Email, password, submit; errors. Not projected in normal use (sign in before plugging in the projector).
-Strings: `host.signin.title`, `host.signin.email`, `host.signin.password`, `host.signin.submit`, `host.signin.error`, `host.signin.not_admin`.
+**H0 Sign-in.** A single centred column, no card: logo, title, email/password fields, submit as a full-width ink button, `host.signin.hint` underneath ("Sign in before connecting the projector"). Not projected in normal use.
+Strings: `host.signin.title`, `host.signin.email`, `host.signin.password`, `host.signin.submit`, `host.signin.error`, `host.signin.not_admin`, `host.signin.hint`.
 
 **H1 Lobby.**
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│ [GDG logo]                                         14 players      │
-│                                                                    │
-│   ┌──────────┐      Game code            Omar ●   Lina ●   Sara ●  │
-│   │  QR      │      4 8 2 1              Sara 2 ● Adam ○   …       │
-│   │          │                           (each with [×] remove)    │
-│   └──────────┘      Scan to play · امسح لتلعب                      │
-│   gdg-booth.example  or visit … · أو زُر …                          │
-│                                                                    │
-│  Games: ① Stop the Clock ② Odd One Out ③ Trivia  [edit]   [ Start ] │
-└────────────────────────────────────────────────────────────────────┘
+brand strip:  [logo] · GDG on Campus · AI Expo Jordan
+stage:  cols 1–7 "join"                        cols 8–12 "players"
+        Game code (+ عربي, muted 2nd line)      Players 12
+        ‹ 4 8 2 1 ›   (30vh hero, ink)          ● Sara   ● Maximilian R
+        [QR 24vh]  gdg-booth.example            ● عبدالرحمن سا   ○ Adam
+                   1 Scan  2 Enter code  3 Name  … (newest first, scrolls)
+rail (12vh, the lineup tray):
+  Lineup · pick 3 | 1 Stop the Clock › 2 Odd One Out › 3 Simon   ⚙ Settings  [Start]
+  Perfect Circle · Trivia · Close the Brackets · Color Clash · How Many · Swipe Sort · Pairs
 ```
-- v2 body: three columns (roughly 11 : 12 : 13 of the width) on one three-row grid (head · main · foot, CSS subgrid), vertically centred in the body: the three column labels share one baseline (`host.lobby.scan`, `host.lobby.code_label`, the `host.lobby.players` count), the code sits centred against the QR, and the players panel ends where the steps end. Join column: the QR in a white bordered panel at 85 % of `--proj-qr`, then `host.lobby.or_visit` with the URL and three numbered steps `host.lobby.step_scan`/`step_code`/`step_name` (`host.lobby.join_title` is the column's accessible label). Code: framed by thin facing chevrons; it shrinks below `--proj-code` only when its column is too narrow for four digits and both chevrons. Players panel: name tags in as many columns as fit (2 at 16:9), **newest first** so a guest who just joined finds their name at the top; a long list scrolls inside the panel; the remove `×` appears on hover/focus at the tag's inline end; grey presence = hollow dot + muted name. Empty = a calm centred message: `host.lobby.empty` + `host.lobby.empty_hint`. At 16:10 and 4:3 the join column takes the inline-start side and the code sits above the players; the operator bar may wrap to two lines there.
-- Big-screen labels are sentence case, medium weight, muted, never tracked or uppercased. The join labels (`host.lobby.scan`, the steps, `host.lobby.code_label`) are shown **in both languages at once, on one line** (screen language, then `·` and the other language, muted); everything else follows the host's screen language.
-- Players appear with a shatter-in; presence dot `●` blue when connected, `○` grey after 10 s without presence (ADR-103).
-- Remove `[×]` → confirm → `admin_remove_player`.
-- Lineup picker, **in pick order**: the label line reads `host.lineup.title` (replaced by `host.lineup.need`, in ink, while the lineup is incomplete) followed by the unpicked **registered** games (`src/games/registry.ts`, any number) as quiet "+ <game>" add buttons (the row scrolls sideways if they don't fit; disabled while the lineup is full); below it the picks as ordered slots "1 A → 2 B → 3 C" (an empty slot shows only its number). Tap an add button to append it, tap a pick to remove it (its × shows on hover); at most `ROUNDS_PER_SESSION`. Every game keeps one button `lineup-<game>` with `aria-pressed` = picked; a picked button's text starts with its number. A valid pick is saved at once with `admin_set_lineup` (phones' P3 follows); the lobby itself comes from `admin_open_lobby` with the default lineup (first `ROUNDS_PER_SESSION` registered games).
-- Operator bar (every host screen): inline-start the lineup (H1) or the next session's games (H2–H5); inline-end the Settings text button (gear icon; opens a one-row strip just above it, aligned to its inline-end edge: Reduce motion, the language toggle, Sign out) and the screen's primary action.
-- Start disabled until ≥ 1 player and a valid lineup; a disabled primary button is neutral (`--surface-2` fill, line border, muted text). With no players, `host.start_disabled_hint` sits as a small muted line right above Start (beside it at 16:10 and 4:3).
+- The code is the screen's one hero (30 vh, ink, tabular, framed by thin facing chevrons — blue at inline-start, amber at inline-end); it never shrinks or wraps. Below it, the QR (24 vh, white quiet-zone box) and the URL + three numbered steps, one language only (the screen's).
+- Players panel: a two-column list of hairline rows (no panel, no borders), **newest first**; a long list scrolls inside its area; the remove `×` appears on hover/focus; presence dot filled `--live` (connected) or a hollow ring (grey ≥ 10 s without presence, ADR-103); the newest row plays a one-shot tint pulse + fade-in (no shatter on names). Empty: six placeholder rows (`--slot-line`) with `host.lobby.empty` + `host.lobby.empty_hint` centred over them.
+- Remove `[×]` → confirm (`confirm-dialog`) → `admin_remove_player`.
+- Lineup tray (the whole rail on H1): line 1 = `host.lineup.title` (or `host.lineup.need`, in ink, while incomplete) + the three ordered slots (`›` between them, a picked slot's text starts with its ordinal); line 2 = every unpicked **registered** game (`src/games/registry.ts`, up to 10) as a quiet "+ <game>" button, wrapping onto more lines rather than scrolling. Every game keeps one button `lineup-<game>` (`aria-pressed` = picked). A valid pick saves at once with `admin_set_lineup`.
+- Start disabled until ≥ 1 player and a valid lineup; with no players, `host.start_disabled_hint` sits beside it.
 States: `empty`, `players`, `lineup_invalid`, `starting`.
-Strings: `host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.code_label`, `host.lobby.players`, `host.lobby.empty`, `host.lobby.empty_hint`, `host.lobby.join_title`, `host.lobby.step_scan`, `host.lobby.step_code`, `host.lobby.step_name`, `host.lobby.remove`, `host.lobby.remove_confirm`, `host.lineup.title`, `host.lineup.need`, `host.settings.title`, `host.settings.reduced_motion`, `common.lang_toggle`, `host.signout`, `game.trivia.unavailable`, `host.start`, `host.start_disabled_hint`, `game.*.name`, `common.cancel`, `common.confirm`.
+Strings: `host.lobby.scan`, `host.lobby.or_visit`, `host.lobby.code_label`, `host.lobby.players`, `host.lobby.empty`, `host.lobby.empty_hint`, `host.lobby.join_title`, `host.lobby.step_scan`, `host.lobby.step_code`, `host.lobby.step_name`, `host.lobby.remove`, `host.lobby.remove_confirm`, `host.lineup.title`, `host.lineup.need`, `host.settings.title`, `host.settings.theme`, `host.settings.reduced_motion`, `common.lang_toggle`, `host.signout`, `game.trivia.unavailable`, `host.start`, `host.start_disabled_hint`, `game.*.name`, `common.cancel`, `common.confirm`.
 
 **H2 Round live.**
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│ Round 1 of 3 · Stop the Clock                      1:42 left       │
-│                                                     9/14 finished  │
-│   1  Omar            938                                           │
-│   2  Lina            812                                           │
-│   3  Sara 2          750                                           │
-│   …  (top 10)                                                      │
-│                                                                    │
-│ ┌──────────────────┐                     [next games ▾] [End round] │
-│ │Next game: 5307   │  Late? Join the next round                    │
-│ └──────────────────┘                                               │
-└────────────────────────────────────────────────────────────────────┘
+brand strip:  [logo]                    Late? Join the next session  5307
+stage:  cols 1–4 (scorebug)             cols 5–12 (board, 10 slots)
+        Round 2 of 3 · Odd One Out      1  عبدالرحمن سا              940 ← amber
+        68 s left                      2  Maximilian R                903
+        ▮▮▮▮▮░░ 12/18 finished          …  (empty slots below, --slot-line)
+        Stop the Clock → Odd One Out → Simon (current in ink, --live underline)
+rail:  Next session  Simon → Perfect Circle → …     ⚙ Settings   [End round]
 ```
-- Board updates live (host subscribes to scores). New #1 → celebrate shatter on that row.
-- "next games ▾" opens the lineup picker for the **pending** session (ADR-009).
-- End round → confirm → `admin_end_round(force_end)`.
-- The host loop (`SESSION_LIFECYCLE.md` §3.1) ends the round by itself with `all_finished` when score rows ≥ joined players, or `time_cap` at the 128 s deadline (server time via one `server_now()` offset). "x/y finished" = score rows / joined players. Time left counts down the phones' 3 s + 120 s.
-- Next-session code (header inline-end, H2–H5): `host.corner.late` as an eyebrow + the pending session's code in tabular digits. H2 body: side panel (round eyebrow + game title, time left, `host.round.finished`, the lineup with the current round in blue) + the live board table; `host.round.no_scores_yet` before the first score. The operator bar's inline-start (H2–H5) is a text button, `host.lineup.next_title` eyebrow + the pending lineup (`A → B → C`), that opens the same segmented picker as H1 for the pending session, with `common.done` to close it. The H2 board has no title of its own (the table head says it); its region is labelled `round.board_title`.
+- Board updates live (host subscribes to scores); all ten slots are always drawn (filled + empty). A rank change FLIPs to its new place and the moved rows pulse once (`--live-tint`); a new #1 gets the same pulse (`celebrateLeader`, no shatter).
+- The rail's "Next session" button opens the same lineup picker as H1 for the **pending** session (ADR-009).
+- End round → confirm (`confirm-dialog`, "End this round now?") → `admin_end_round(force_end)`.
+- The host loop (`SESSION_LIFECYCLE.md` §3.1) ends the round by itself with `all_finished` when score rows ≥ joined players, or `time_cap` at the 128 s deadline (server time via one `server_now()` offset). "x/y finished" = score rows / joined players, shown with a thin progress bar. Time left counts down the phones' 3 s + 120 s.
+- Corner code (brand strip, inline-end, H2–H5): `host.corner.late` eyebrow + the pending session's code, ink tabular digits.
 - Stop the Clock rounds show scores only; guesses stay hidden until the intermission reveal.
 States: `live`, `no_scores_yet`, `ending`.
 Strings: `round.label`, `game.<id>.name`, `round.time_left`, `host.round.finished`, `round.board_title`, `host.corner.late`, `host.lineup.next_title`, `host.round.force_end`, `host.round.force_end_confirm`, `round.no_scores`.
 
-**H3 Intermission** (after every round; requested in chat 2026-09-24, ADR-117).
-1. Round board, 7 s: "Round n results", top 10 with a shatter-in; #1 in amber. For Stop the Clock this step is the **guess reveal** (three strips, `games/stop-the-clock.md` §6).
-2. Total so far, 5 s: running session totals (top 10), rank changes animated.
-3. "Next: <game>", 3 s: versus frame + 3-2-1.
-Control: "Next round now" skips to step 3 (from the tap). Corner code and the next-games picker stay visible.
+**H3 Intermission** (after every round; ADR-117/129; same shell as H2, the scorebug reconfigures with a `--dur-step` crossfade — no screen-level shatter between steps).
+1. Round board, 7 s: "Round n results", the final board (all rows in one frame, no cascade); #1 on the amber tint. For Stop the Clock this step is the **guess reveal** (three flat tracks, `games/stop-the-clock.md` §6).
+2. Total so far, 5 s: running session totals; rows FLIP from the round-board order to the total order, a `▲/▼` delta glyph fades after 1 s.
+3. "Next: <game>", 3 s: the game name at 10 vh framed by the chevrons, a calm 3-2-1 (20 vh, ink, no overshoot).
+Control: "Next round now" skips to step 3 (steps 1–2 only). Corner code and the next-games picker stay visible.
 After the **last** round only step 1 runs (7 s, no skip), then H4 (ADR-129). The steps are anchored on the round's `ended_at` in server time, so a reload lands on the same step; a host that reopens after the 15 s shows 3 s of step 3 before starting the round.
-Stop the Clock reveal: three strips (5 s, 10 s, 7 s targets, labelled with `game.stop_the_clock.target`), the time axis never mirrored in Arabic; one dot per player per measured guess at `50 % + 50 % × (guess − target) / 5 s`, dots beyond ±5 s pinned to the edge (outlined); the top 5 of the round board are labelled with their display names, each label placed in the first free lane (above, below, then a second row above/below) so neighbouring names don't collide. `game.stop_the_clock.reveal_title` and a single `game.stop_the_clock.reveal_axis` label over the centre line head the strips. Dots burst in strip by strip within 5 s (`DESIGN_SYSTEM.md` §6.2; 200 ms fade-ins with reduced motion).
+Stop the Clock reveal: three strips (5 s, 10 s, 7 s targets, labelled with `game.stop_the_clock.target`), the time axis never mirrored in Arabic; one dot per player per measured guess at `50 % + 50 % × (guess − target) / 5 s`, dots beyond ±5 s pinned to the edge (outlined); the top 5 of the round board are labelled with their display names, each label placed in the first free lane (above, below, then a second row above/below) so neighbouring names don't collide. `game.stop_the_clock.reveal_title` and a single `game.stop_the_clock.reveal_axis` label over the centre line head the strips. Dots burst in strip by strip within 5 s (`DESIGN_SYSTEM.md` §6.2; 200 ms fade-ins with reduced motion) — this data reveal is the one place rows still stream in deliberately.
 How Many? reveal (games-v3 §5, ADR-136; `src/host/HowManyReveal.tsx`, layout in `howManyStrips.ts`): the same step after a How Many? round, on the same flat tracks. One track per flash, labelled `game.how_many.reveal_round` ("Flash n · 27", the true count as the label's hero) with `game.how_many.reveal_mean` ("Crowd average 25") under it; the true count is the most common `true_count` across the rows (one tampered row can't move the axis) and sits on the centre line (`game.how_many.reveal_axis`, under `game.how_many.reveal_title`); one dot per guess at `50 % + 100 % × clamp((guess − count) / count, ±50 %)`, so the ends are ±50 % off and the ticks every 10 %; guesses beyond are pinned (hollow); no dot for a missed flash; the top 5 of the round board labelled in lanes as above. Dots burst in track by track within 5 s; at 5.2 s the crowd average (the rounded mean of the guesses) fades in as an amber rule across each track, with its legend line (no shards; fades only with reduced motion). The axis never mirrors in Arabic. Phones never show the true counts. Test ids `hm-reveal`, `hm-strip` (`data-count`), `hm-dot`, `hm-dot-label`, `hm-mean`.
 States: `round_board`, `stc_reveal`, `hm_reveal`, `session_total`, `next_intro`.
-Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `intermission.skip`, `round.label`, `game.stc.reveal_title`, `game.stc.reveal_axis`, `game.stop_the_clock.target`, `game.how_many.reveal_title`, `game.how_many.reveal_axis`, `game.how_many.reveal_round`, `game.how_many.reveal_mean`, `game.<id>.name`, `round.no_scores`, `results.no_scores`, `host.corner.late`, `host.lineup.next_title`.
+Strings: `intermission.round_board`, `intermission.session_total`, `intermission.next`, `intermission.skip`, `round.label`, `game.stc.reveal_title`, `game.stc.reveal_axis`, `game.stop_the_clock.target`, `game.how_many.reveal_title`, `game.how_many.reveal_axis`, `game.how_many.reveal_round`, `game.how_many.reveal_mean`, `game.<id>.name`, `round.no_scores`, `results.no_scores`, `host.corner.late`, `host.lineup.next_title`, `host.board.delta`.
 
-**H4 Session results.** Winner (`host.results.winner` eyebrow, name + total framed by the chevrons) in the side panel; Show day board is the primary action, New session a text button, then the full session board (top 10 by total, SCORING §5 order) as a table: rank, name (with suffix), one column per round in round order (game name as header; "–" for a missing round), total. Late scores (E22) and hidden names re-query it. Stays until the host acts. Corner code + next-games picker stay (ADR-129).
+**H4 Session results (the podium moment).** Winner (`host.results.winner` eyebrow, name at 10 vh + the total as the screen's one hero number at 20 vh, framed by the chevrons, an amber rule under the digits — never amber text) in the side panel, then #2/#3 as two plain lines; the session table (top 10 by total, SCORING §5 order, all rows in one frame — no cascade) as a table: rank, name (with suffix), one visible column per round (game name as a `<th>`; "–" for a missing round), total. When H4 first appears every row's score counts up together (`--stagger-row` is 0, so there is no per-row delay), then the winner's total counts up once, then the celebrate shatter plays on the winner (the session's one celebration; a 3 s poll refresh or a reload onto H4, remembered per tab, never replays it). Late scores (E22) and hidden names re-query it. Stays until the host taps Show day board. Corner code + next-session picker stay (ADR-129).
 Controls: `Show day board`, `New session`.
 States: `results`, `no_scores`.
-Strings: `results.title`, `host.results.winner`, `results.no_scores`, `results.breakdown_missing`, `host.results.total`, `host.results.show_day_board`, `host.new_session`, `game.*.name`.
+Strings: `results.title`, `results.eyebrow`, `host.results.winner`, `results.no_scores`, `results.breakdown_missing`, `host.results.total`, `host.results.show_day_board`, `host.new_session`, `game.*.name`.
 
-**H5 Day boards.** After the ~15 s merge (`DESIGN_SYSTEM.md` §6.2, `src/host/Results.tsx`; H4 and H5 are one screen): 0–1.5 s the session board fragments; then each game's tab in turn for 4 s while shards stream into its highlighted rows; 13.5 s back to the first tab; from 15 s the normal rotation. Reduced motion: a crossfade straight to the first tab. A reload onto H5 skips the merge; New session mid-merge is allowed (E21). Then: one tab per game in the session's lineup, auto-rotating every 8 s (tabs also tappable); each shows the top 10 best-per-name for today (names without suffix). Layout: the tabs as a vertical list of text tabs in the 4-column side (the selected one in ink with a blue underline), the table in the other 8. Rows whose best came from this session are highlighted (blue tint + blue inline-start rule) for the first rotation. Re-queried on every score of the day (`day:<event_day_id>` channel) and on hidden-name changes. The next code sits in the corner (it is now the lobby-to-be).
+**H5 Day boards.** Show day board crossfades the whole stage once (`--dur-step`, ~300 ms; instant under reduced motion) straight to "Today's best" and the game tabs — **no merge, no shatter tiles, no per-game stepping** (superseded 2026-09-25; see `DECISIONS.md` for the ADR-010 update). One horizontal tab per game in the session's lineup (the active one in ink with a blue underline that fills over the 8 s until the next tab), auto-rotating every 8 s (tabs also tappable); each tab shows the top 10 best-per-name for today (names without suffix, all rows in one frame) under it. Rows whose best came from this session get the blue inline-start rule only (no tint) for the first rotation; #1 keeps the amber tint regardless. A tab change crossfades the whole board at once (a copy of the outgoing board fades out over the incoming one — never row by row). Re-queried on every score of the day (`day:<event_day_id>` channel) and on hidden-name changes. The next code sits in the corner (it is now the lobby-to-be).
 Controls: `New session`.
-Strings: `dayboard.title`, `host.dayboard.empty`, `game.*.name`, `host.new_session`, `host.corner.late`, `host.lineup.next_title`, `common.done`.
+Strings: `dayboard.title`, `host.dayboard.empty`, `host.dayboard.next_in`, `game.*.name`, `host.new_session`, `host.corner.late`, `host.lineup.next_title`, `common.done`.
 
-**H6 Host overlays.** Settings (gear): screen language, dark screen, reduce motion, sign out. Built so far as the operator bar's Settings menu (quiet text buttons): language, **Reduce motion** (`aria-pressed`; remembered on the laptop; every shatter falls back to crossfades/static and `data-motion="reduced"` zeroes the CSS durations) and Sign out. Banners: reconnecting, database unreachable.
+**H6 Host overlays.** Settings (gear icon, opens a one-row popover above it, aligned to its inline-end edge): screen language, **Dark screen** (`host.settings.theme`, `data-theme="dark"` on `<html>`, remembered under `gdg.v1.host-theme`), **Reduce motion** (`aria-pressed`, remembered under `gdg.v1.host-reduced-motion`; every shatter falls back to crossfades/static and `data-motion="reduced"` zeroes the CSS durations), and Sign out. Banners: reconnecting, database unreachable.
 Strings: `host.settings.title`, `host.settings.language`, `host.settings.theme`, `host.settings.reduced_motion`, `host.signout`, `host.banner.reconnecting`, `host.banner.db_down`.
 
 ## 3. Admin dashboard (`/dashboard`, never projected)

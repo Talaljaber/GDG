@@ -2,7 +2,7 @@
 
 Purpose: exactly how a session, its three rounds and each player move through their states. Covers who triggers each transition, what the phone and the big screen show, timings, and the expected behaviour in every edge case we could think of. Implementation of the host loop, the phone state machine and the database functions follows this file; `DATA_MODEL.md` §6 has the function signatures.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 Related: ADR-003, ADR-010, ADR-012, ADR-014–ADR-020, ADR-104, ADR-108, ADR-117, ADR-129.
 
@@ -131,6 +131,8 @@ The phone keeps one object in localStorage under `gdg.v1.current`, rewritten on 
 | `submittedRounds[]` | round ids with an acknowledged score |
 
 Elapsed times after a reload are computed as `Date.now() − *StartEpoch`, so a reload never resets a clock. Precise in-attempt timing uses `performance.now()` while the page stays alive (it resets on reload, so it is never persisted).
+
+**Other `gdg.v1.*` storage keys** (not part of the object above): `gdg.v1.lastName` (the last name typed, offered back on the next join); `gdg.v1.admin-auth` (the host/dashboard's own Supabase Auth session, separate from the guest's, `src/lib/supabase.ts`); on the host only, all in `localStorage` unless noted: `gdg.v1.host-theme` (the Settings "Dark screen" toggle, `src/host/common.tsx`), `gdg.v1.host-reduced-motion` (the Settings "Reduce motion" toggle, `src/host/motion.tsx`), and `gdg.v1.host-podium-played` in **`sessionStorage`** (per tab, not per device: which session's H4 podium this tab has already played, so a reload or a 3 s poll refresh never replays the count-up/celebrate, `src/host/Results.tsx`).
 
 ## 5. Phone flow per round
 
