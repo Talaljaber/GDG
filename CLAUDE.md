@@ -10,7 +10,7 @@ Last updated: 2026-09-25
 - Static frontend on **Netlify** (free). Vite + React + TypeScript, plain CSS tokens, tiny in-house i18n (ADR-107).
 - **Supabase** (free, eu-central-1): Postgres + RLS + SQL functions/triggers, Auth (anonymous guests + one admin), Realtime (Postgres Changes + Presence).
 - **No backend server.** No Netlify Functions, no Render, no WebSocket server.
-- GitHub Actions keepalive every 6 h. Vitest, pgTAP (`supabase test db`), Playwright.
+- No GitHub Actions (team decision 2026-09-25): keepalive via an external scheduler every 6 h (ADR-031, `docs/DEPLOYMENT.md` §4); run the checks by hand before each deploy. Vitest, pgTAP (`supabase test db`), Playwright.
 
 ## Directory map
 ```
@@ -33,7 +33,6 @@ supabase/migrations/      schema, RLS, trigger, functions, views, realtime, seed
 supabase/tests/           pgTAP
 scripts/                  check-trivia, check-i18n, contrast, loadtest/
 e2e/                      Playwright
-.github/workflows/        keepalive.yml, ci.yml
 ```
 (The tree is planned; it appears as Phase 0 builds it. Full version: `docs/ARCHITECTURE.md` §8.)
 
