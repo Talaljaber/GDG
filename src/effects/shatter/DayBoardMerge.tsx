@@ -1,16 +1,19 @@
 import { useRef, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { playDayBoardMerge, type DayBoardMergeGame, type MergeTarget } from './merge';
 import type { Density } from './geometry';
 import { useLatest, useReplay } from './hooks';
 import { useDensity, useReducedMotion } from './settings';
 
 export interface DayBoardMergeProps {
-  /** Plays whenever this changes (e.g. bump a counter on "Show day board"). */
+  /** Plays whenever this changes (e.g. bump a counter on "Show day board"). Nothing else restarts it. */
   trigger: unknown;
   /** Also play on mount (default false). */
   playOnMount?: boolean;
   /** One entry per game in the lineup, in tab order. */
   games: readonly DayBoardMergeGame[];
+  /** The session rows the tiles crack out of at the start (read once, when the merge starts). */
+  sources?: () => readonly MergeTarget[];
   density?: Density;
   reducedMotion?: boolean;
   seed?: string | number;
@@ -29,12 +32,17 @@ export interface DayBoardMergeProps {
 /**
  * The ~15 s session-results → day-board choreography (§6.2). The component
  * is the stage container; the host swaps what it renders inside from the
- * callbacks. See dayBoardMerge.ts for the exact timeline.
+ * callbacks. See merge.ts for the exact timeline.
+ *
+ * onFragmented, onGameStart and onSettle run inside flushSync, so the tab
+ * they switch to is in the DOM when the merge reads its targets right after
+ * (the new rows are hidden before a frame shows them).
  */
 export function DayBoardMerge({
   trigger,
   playOnMount = false,
   games,
+  sources,
   density,
   reducedMotion,
   seed,
@@ -46,7 +54,7 @@ export function DayBoardMerge({
   const stage = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion(reducedMotion);
   const effectiveDensity = useDensity(density ?? 'projector');
-  const latest = useLatest({ ...callbacks, games });
+  const latest = useLatest({ ...callbacks, games, sources });
   useReplay(trigger, playOnMount, () => {
     if (!stage.current) return null;
     return playDayBoardMerge({
@@ -56,14 +64,15 @@ export function DayBoardMerge({
         ...g,
         targets: () => latest.current.games[idx]?.targets?.() ?? g.targets?.() ?? [],
       })),
+      sources: () => latest.current.sources?.() ?? [],
       density: effectiveDensity,
       seed,
       reducedMotion: reduced,
-      onFragmented: () => latest.current.onFragmented?.(),
-      onGameStart: (g, i) => latest.current.onGameStart?.(g, i),
+      onFragmented: () => flushSync(() => latest.current.onFragmented?.()),
+      onGameStart: (g, i) => flushSync(() => latest.current.onGameStart?.(g, i)),
       onRowsReassemble: (g, i, t) => latest.current.onRowsReassemble?.(g, i, t),
       onGameEnd: (g, i) => latest.current.onGameEnd?.(g, i),
-      onSettle: () => latest.current.onSettle?.(),
+      onSettle: () => flushSync(() => latest.current.onSettle?.()),
       onDone: () => latest.current.onDone?.(),
     });
   });

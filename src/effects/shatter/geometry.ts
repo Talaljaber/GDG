@@ -41,6 +41,20 @@ export const SHARD_FILLS = [
 
 export type ShardFill = (typeof SHARD_FILLS)[number]['token'];
 
+/** A weighted fill palette (weights are relative). */
+export type FillPalette = readonly { readonly token: ShardFill; readonly weight: number }[];
+
+/**
+ * The day-board merge's palette (§6.2): mostly blue with a little amber, no
+ * tint or paper (pale tiles read as grey slabs on the paper background).
+ */
+export const MERGE_FILLS: FillPalette = [
+  { token: '--gdg-blue', weight: 45 },
+  { token: '--gdg-blue-deep', weight: 40 },
+  { token: '--gdg-amber', weight: 10 },
+  { token: '--gdg-amber-deep', weight: 5 },
+];
+
 /** The 1 px shard edge colour (§6.2). */
 export const SHARD_EDGE_TOKEN = '--gdg-paper';
 
@@ -86,6 +100,8 @@ export interface ShardOptions {
   flight: FlightProfile;
   /** Ask for fewer shards than the density cap (clamped to [2, cap]). */
   maxShards?: number;
+  /** Fill palette (default SHARD_FILLS, the §6.2 weights). */
+  fills?: FillPalette;
 }
 
 /** Transition flight: 30–60 % of the viewport's longer side, ±40° (§6.2). */
@@ -267,15 +283,15 @@ export function gridSplit(cols: number, rows: number): TriangleIndices[] {
   return out;
 }
 
-/** Weighted fill pick (§6.2 weights). */
-export function pickFill(rng: Rng): ShardFill {
-  const total = SHARD_FILLS.reduce((s, f) => s + f.weight, 0);
+/** Weighted fill pick (§6.2 weights unless another palette is given). */
+export function pickFill(rng: Rng, fills: FillPalette = SHARD_FILLS): ShardFill {
+  const total = fills.reduce((s, f) => s + f.weight, 0);
   let roll = rng.float() * total;
-  for (const fill of SHARD_FILLS) {
+  for (const fill of fills) {
     roll -= fill.weight;
     if (roll < 0) return fill.token;
   }
-  return SHARD_FILLS[0].token;
+  return fills[0].token;
 }
 
 function flightFor(centroid: Vec, centre: Vec, profile: FlightProfile, rng: Rng): ShardFlight {
@@ -339,7 +355,7 @@ export function createShards(rect: Rect, options: ShardOptions): Shard[] {
       centroid,
       bounds: { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY },
       area: triangleArea(points[0], points[1], points[2]),
-      fill: pickFill(rng),
+      fill: pickFill(rng, options.fills),
       flight: flightFor(centroid, centre, options.flight, rng),
     };
   });

@@ -1,55 +1,55 @@
 /**
  * The ~15 s day-board merge (docs/DESIGN_SYSTEM.md §6.2, SCREENS.md H4 → H5).
  *
- * Data-agnostic: it knows a stage element (the host container that shows
- * the session results at t = 0 and the day board afterwards), one entry per
- * game, and — per game, resolved lazily — the target rows (elements or
- * rects) that are new or improved. The host switches tabs, highlights rows
- * and slides them to their rank from the callbacks.
+ * One continuous swarm of small mosaic tiles carries this session's scores
+ * from the session board into each game's day board, then settles. It plays
+ * over the stage only: the tile layer is clipped to the stage's box, so the
+ * header (with the logo, §5) and the operator bar are never covered.
+ *
+ * Data-agnostic: it knows a stage element (the host container that shows the
+ * session results at t = 0 and the day board afterwards), the session rows
+ * the tiles crack out of (`sources`), one entry per game and, per game,
+ * resolved lazily, the target rows (elements or rects) that are new or
+ * improved. The host switches tabs from the callbacks.
  *
  * Timeline for n games (n = 3 → 15 000 ms), all times from the call:
- *   0                   session results fragment (stage hidden, shards drift)
- *   1500                onFragmented()
- *   g = 1500 + 4000·i   onGameStart(game, i)          host shows tab i
- *   g + 200             targets() read, rows hidden, stage fades in, shards stream to rows
- *   g + 2600            onRowsReassemble(game, i, targets)   rows visible; host highlights/slides
- *   g + 4000            onGameEnd(game, i)
- *   1500 + 4000·n       onSettle()                    host shows the first tab
- *   + 1500              onDone()
- * Reduced motion: stage fades out 0–100 ms; at 100 onFragmented +
+ *   0          the source rows crack into tiles (≤ 4 per row, row-sized) that loosen
+ *              and drift a little; the session results fade out (250–1150 ms)
+ *   1500       onFragmented()
+ *   g = 1500 + 4000·i
+ *              onGameStart(game, i): the host renders tab i *synchronously*
+ *              (<DayBoardMerge> wraps it in flushSync); targets() is read at once
+ *              and the target rows are hidden before a frame is painted; the
+ *              stage fades in (360 ms)
+ *   g + 200    the tiles glide from where they float into the target rows (row by
+ *              row, each glide 1.6 s, the last landing at g + 2600)
+ *   g + 2600   onRowsReassemble(game, i, targets): the rows fade in as the tiles fade out
+ *   g + 3500   (not after the last game) the rows' tiles break off again and loosen:
+ *              they are what glides into the next tab
+ *   g + 4000   onGameEnd(game, i)
+ *   1500 + 4000·n   onSettle(): the host shows the first tab (stage fades in)
+ *   + 1500     onDone()
+ * A game with no targets lets the floating tiles fade; the next game's tiles
+ * then assemble from close by. At most SHARD_CAPS[density] tiles are alive.
+ *
+ * Reduced motion: no tiles. The stage fades out 0–100 ms; at 100 onFragmented +
  * onGameStart(games[0], 0) and the stage fades back in; at 200
  * onRowsReassemble(games[0], 0, …), onSettle, onDone.
  */
 import { Rng } from '../../lib/rng';
-import { createShards, type Density, type Rect, type Shard } from './geometry';
-import {
-  DAY_BOARD_MERGE_TIMELINE as T,
-  REDUCED_CROSSFADE_MS,
-  SHARD_FADE_MS,
-  Timeline,
-  mergeTotalMs,
-  readEasing,
-} from './motion';
+import { MERGE_FILLS, SHARD_CAPS, createShards, type Density, type Rect, type Shard } from './geometry';
+import { DAY_BOARD_MERGE_TIMELINE as T, REDUCED_CROSSFADE_MS, Timeline, mergeTotalMs, readEasing } from './motion';
 import type { ShatterHandle } from './plays';
-import {
-  boxOf,
-  hideElement,
-  mountShardLayer,
-  safeAnimate,
-  viewportRect,
-  type MountedShard,
-  type ShardLayer,
-} from './renderer';
+import { boxOf, hideElement, mountShardLayer, safeAnimate, type MountedShard } from './renderer';
 
 export type MergeTarget = Element | DOMRectReadOnly | Rect;
 
 export interface DayBoardMergeGame {
   id: string;
   /**
-   * Rows that entered or rose in this game's day board, read
-   * DAY_BOARD_MERGE_TIMELINE.targetResolveMs (200 ms) after onGameStart so
-   * the host has rendered the tab. Elements are hidden until they
-   * reassemble; plain rects only receive shards.
+   * Rows that entered or rose in this game's day board, read right after
+   * onGameStart (which must have rendered the tab). Elements are hidden until
+   * they reassemble; plain rects only receive tiles.
    */
   targets?: () => readonly MergeTarget[];
 }
@@ -57,6 +57,8 @@ export interface DayBoardMergeGame {
 export interface DayBoardMergeOptions {
   stage: HTMLElement;
   games: readonly DayBoardMergeGame[];
+  /** The session rows the tiles crack out of at t = 0 (default: bands of the stage). */
+  sources?: () => readonly MergeTarget[];
   density?: Density;
   seed?: string | number;
   reducedMotion?: boolean;
@@ -74,7 +76,9 @@ export function mergeSchedule(games: number) {
   return {
     fragmentedAt: T.fragmentMs,
     gameStarts,
-    reassembleAt: gameStarts.map((g) => g + T.targetResolveMs + T.streamMs),
+    glideAt: gameStarts.map((g) => g + T.streamDelayMs),
+    reassembleAt: gameStarts.map((g) => g + T.streamDelayMs + T.streamMs),
+    crackAt: gameStarts.slice(0, -1).map((g) => g + T.perGameMs - T.crackMs),
     gameEnds: gameStarts.map((g) => g + T.perGameMs),
     settleAt: T.fragmentMs + games * T.perGameMs,
     doneAt: mergeTotalMs(games),
@@ -85,24 +89,73 @@ function isElement(t: MergeTarget): t is Element {
   return typeof (t as Element).getBoundingClientRect === 'function';
 }
 
+/** Tiles per row so that `rows` rows fit the cap: even, 2…maxTilesPerRow. */
+export function tilesPerRow(rows: number, cap: number): number {
+  if (rows <= 0) return 0;
+  const k = Math.min(T.maxTilesPerRow, Math.floor(cap / rows));
+  return Math.max(2, k - (k % 2));
+}
+
+/**
+ * `count` row-sized tiles on one row: a short segment of the row (cells of
+ * tileScale × the row height) at a seeded position, triangulated like every
+ * shard (§6.2), in the merge palette. Flights are the loosening drift.
+ */
+export function rowTiles(row: Rect, count: number, seed: string, density: Density): Shard[] {
+  const h = row.height;
+  if (!(row.width > 0 && h > 0) || count < 2) return [];
+  const cell = h * T.tileScale;
+  const width = Math.min(row.width, (count / 2) * cell);
+  const x = row.x + new Rng(`${seed}:at`).float() * (row.width - width);
+  return createShards(
+    { x, y: row.y, width, height: h },
+    {
+      seed,
+      density,
+      maxShards: count,
+      fills: MERGE_FILLS,
+      flight: { minDistance: T.driftMin * h, maxDistance: T.driftMax * h, maxRotateDeg: T.maxRotateDeg, spreadDeg: 70 },
+    },
+  );
+}
+
+/** Tiles are drawn slightly inset so the grout between them shows (a mosaic, not a slab). */
+const S = T.tileInset;
+
+/** A tile of the swarm and the offset it currently rests at (where its last animation ended). */
+interface Tile {
+  m: MountedShard;
+  row: number;
+  dx: number;
+  dy: number;
+  rot: number;
+}
+
 export function playDayBoardMerge(options: DayBoardMergeOptions): ShatterHandle {
   const tl = new Timeline();
   const { stage, games } = options;
   const originalOpacity = stage.style.opacity;
+  const standard = readEasing('--ease-standard');
   const stageAnims: Animation[] = [];
-  const hideStage = () => {
+  const rowAnims: Animation[] = [];
+  const restores: Array<() => void> = [];
+
+  const cancelStage = () => stageAnims.splice(0).forEach((a) => a.cancel());
+  const fadeStageOut = (ms: number, delay = 0) => {
+    cancelStage();
     stage.style.opacity = '0';
-  };
-  const showStage = (ms: number, easing: string) => {
-    stageAnims.splice(0).forEach((a) => a.cancel());
-    stage.style.opacity = originalOpacity;
-    const a = safeAnimate(stage, [{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing });
+    const a = safeAnimate(stage, [{ opacity: 1 }, { opacity: 0 }], { duration: ms, delay, easing: standard, fill: 'backwards' });
     if (a) stageAnims.push(a);
   };
-  const standard = readEasing('--ease-standard');
-  const readTargets = (game: DayBoardMergeGame) => {
+  const fadeStageIn = (ms: number) => {
+    cancelStage();
+    stage.style.opacity = originalOpacity;
+    const a = safeAnimate(stage, [{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: standard });
+    if (a) stageAnims.push(a);
+  };
+  const read = (get: (() => readonly MergeTarget[]) | undefined): readonly MergeTarget[] => {
     try {
-      return game.targets?.() ?? [];
+      return get?.() ?? [];
     } catch {
       return [];
     }
@@ -110,134 +163,172 @@ export function playDayBoardMerge(options: DayBoardMergeOptions): ShatterHandle 
 
   if (options.reducedMotion) {
     const half = REDUCED_CROSSFADE_MS / 2;
-    const out = safeAnimate(stage, [{ opacity: 1 }, { opacity: 0 }], { duration: half, easing: standard, fill: 'forwards' });
-    if (out) stageAnims.push(out);
+    fadeStageOut(half);
     tl.at(half, () => {
       options.onFragmented?.();
       if (games[0]) options.onGameStart?.(games[0], 0);
-      showStage(half, standard);
+      fadeStageIn(half);
     });
     tl.at(REDUCED_CROSSFADE_MS, () => {
-      if (games[0]) options.onRowsReassemble?.(games[0], 0, readTargets(games[0]));
+      if (games[0]) options.onRowsReassemble?.(games[0], 0, read(games[0].targets));
       options.onSettle?.();
       options.onDone?.();
     });
     return {
       cancel() {
         tl.clear();
-        stageAnims.splice(0).forEach((a) => a.cancel());
+        cancelStage();
         stage.style.opacity = originalOpacity;
       },
     };
   }
 
   const density = options.density ?? 'projector';
+  const cap = SHARD_CAPS[density];
   const seed = String(options.seed ?? 'merge');
-  const vp = viewportRect();
-  const side = Math.max(vp.width, vp.height);
-  const source = boxOf(stage);
-  // Shards live in viewport coordinates on one full-viewport layer.
-  const pool = createShards(source, {
-    seed,
-    density,
-    flight: { minDistance: T.fragmentMinDistance * side, maxDistance: T.fragmentMaxDistance * side, maxRotateDeg: T.maxRotateDeg },
-  });
-  const layer: ShardLayer = mountShardLayer(pool, { rect: vp, variant: 'merge' });
-  hideStage();
+  // The tiles live on one layer clipped to the stage's box (viewport coordinates → layer-local).
+  const area = boxOf(stage);
+  const layer = mountShardLayer([], { rect: area, variant: 'merge', clip: true });
+  const local = (t: MergeTarget): Rect => {
+    const r = boxOf(t);
+    return { x: r.x - area.x, y: r.y - area.y, width: r.width, height: r.height };
+  };
 
-  // Split the pool into one random group per game.
-  const order = new Rng(`${seed}:groups`).shuffle(layer.shards.slice());
-  const groups: MountedShard[][] = games.map(() => []);
-  if (groups.length > 0) order.forEach((m, i) => groups[i % groups.length].push(m));
+  /** Tiles over the given rows (at rest), within the cap; `row` is the row's index. */
+  const tilesOn = (rows: readonly MergeTarget[], key: string): Tile[] => {
+    const rects = rows.map(local).filter((r) => r.width > 0 && r.height > 0);
+    const per = tilesPerRow(rects.length, cap);
+    const used = per > 0 ? Math.min(rects.length, Math.floor(cap / per)) : 0;
+    const out: Tile[] = [];
+    for (let r = 0; r < used; r++) {
+      const mounted = layer.add(rowTiles(rects[r], per, `${seed}:${key}:${r}`, density));
+      for (const m of mounted) out.push({ m, row: r, dx: 0, dy: 0, rot: 0 });
+    }
+    return out;
+  };
+  /** Tiles appear at rest on their rows (the rows crack), then loosen over `ms`. */
+  const crack = (tiles: Tile[], ms: number) => {
+    for (const t of tiles) {
+      const f = t.m.shard.flight;
+      layer.animate(
+        t.m.el,
+        [
+          { transform: t.m.at(0, 0, 0, S), opacity: 0 },
+          { transform: t.m.at(0, 0, 0, S), opacity: 1, offset: 0.15 },
+          { transform: t.m.at(f.dx, f.dy, f.rotateDeg, S), opacity: 1 },
+        ],
+        { duration: ms, easing: standard, fill: 'forwards' },
+      );
+      t.dx = f.dx;
+      t.dy = f.dy;
+      t.rot = f.rotateDeg;
+    }
+  };
+  const fadeAway = (tiles: Tile[]) => {
+    if (tiles.length === 0) return;
+    for (const t of tiles) layer.animate(t.m.el, [{ opacity: 1 }, { opacity: 0 }], { duration: T.fadeMs, fill: 'forwards' });
+    tl.at(T.fadeMs, () => layer.remove(tiles.map((t) => t.m)));
+  };
 
-  for (const m of layer.shards) {
-    const f = m.shard.flight;
-    layer.animate(m.el, [{ transform: m.at(0, 0) }, { transform: m.at(f.dx, f.dy, f.rotateDeg) }], {
-      duration: T.fragmentMs,
-      easing: standard,
-      fill: 'forwards',
-    });
+  // 0–1500: the session rows crack into tiles; the results fade out under them.
+  let sources = read(options.sources);
+  if (sources.length === 0) {
+    const bands = 8;
+    sources = Array.from({ length: bands }, (_, b) => ({
+      x: area.x,
+      y: area.y + (b * area.height) / bands,
+      width: area.width,
+      height: area.height / bands,
+    }));
   }
+  let swarm: Tile[] = tilesOn(sources, 'from');
+  crack(swarm, T.fragmentMs);
+  fadeStageOut(T.fragmentFadeMs, T.fragmentFadeDelayMs);
   tl.at(T.fragmentMs, () => options.onFragmented?.());
 
-  const restores: Array<() => void> = [];
   const schedule = mergeSchedule(games.length);
-
   games.forEach((game, i) => {
     const g = schedule.gameStarts[i];
     let targets: readonly MergeTarget[] = [];
-    const rowShards: MountedShard[] = [];
     let restoreRows: Array<() => void> = [];
+
     tl.at(g, () => {
-      if (i > 0) hideStage();
       options.onGameStart?.(game, i);
-    });
-    tl.at(g + T.targetResolveMs, () => {
-      targets = readTargets(game);
+      // The tab is rendered (synchronously): hide its new rows before anything is painted.
+      targets = read(game.targets);
       restoreRows = targets.filter(isElement).map((el) => hideElement(el));
       restores.push(...restoreRows);
-      showStage(REDUCED_CROSSFADE_MS, standard);
-      const group = groups[i];
-      const budget = group.length;
-      const rows = targets.length;
-      const perRow = rows > 0 ? Math.max(2, Math.floor(budget / rows / 2) * 2) : 0;
-      const streamed = perRow > 0 ? Math.min(rows, Math.floor(budget / perRow)) : 0;
-      if (streamed === 0) {
-        // Nothing new for this game: its group fades where it floats.
-        for (const m of group) {
-          layer.animate(m.el, [{ opacity: 1 }, { opacity: 0 }], { duration: T.streamMs / 4, fill: 'forwards' });
-        }
+      fadeStageIn(T.fadeMs);
+    });
+
+    tl.at(g + T.streamDelayMs, () => {
+      const dest = tilesOn(targets, String(i));
+      if (dest.length === 0) {
+        fadeAway(swarm);
+        swarm = [];
         return;
       }
-      // The group turns into the row shards below (so the total stays within the cap).
-      layer.remove(group);
-      const flow = T.streamMs * 0.75;
-      const spread = streamed > 1 ? (T.streamMs - flow) / (streamed - 1) : 0;
-      let from = 0;
-      for (let r = 0; r < streamed; r++) {
-        const rect = boxOf(targets[r]);
-        const shards: Shard[] = createShards(rect, {
-          seed: `${seed}:${i}:${r}`,
-          density,
-          flight: { minDistance: 0, maxDistance: 0, maxRotateDeg: 0 },
-          maxShards: perRow,
+      const rows = dest[dest.length - 1].row + 1;
+      const spread = rows > 1 ? (T.streamMs - T.glideMs) / (rows - 1) : T.streamMs - T.glideMs;
+      dest.forEach((d, j) => {
+        const src = swarm.length > 0 ? swarm[j % swarm.length] : null;
+        const from: Keyframe = src
+          ? {
+              transform: d.m.at(
+                src.m.shard.centroid.x + src.dx - d.m.shard.centroid.x,
+                src.m.shard.centroid.y + src.dy - d.m.shard.centroid.y,
+                src.rot,
+                S,
+              ),
+              opacity: 1,
+            }
+          : // Nothing floating (the last game had no new rows): assemble from close by.
+            { transform: d.m.at(2 * d.m.shard.flight.dx, 2 * d.m.shard.flight.dy, d.m.shard.flight.rotateDeg, S), opacity: 0 };
+        layer.animate(d.m.el, [from, { transform: d.m.at(0, 0, 0, S), opacity: 1 }], {
+          duration: T.glideMs,
+          delay: d.row * spread,
+          easing: standard,
+          fill: 'both',
         });
-        const mounted = layer.add(shards);
-        for (const m of mounted) {
-          // Each row shard leaves from where one pool shard of this game floats.
-          const src = group[from++ % group.length].shard;
-          const sx = src.centroid.x + src.flight.dx - m.shard.centroid.x;
-          const sy = src.centroid.y + src.flight.dy - m.shard.centroid.y;
-          layer.animate(
-            m.el,
-            [
-              { transform: m.at(sx, sy, src.flight.rotateDeg), opacity: 1 },
-              { transform: m.at(0, 0), opacity: 1 },
-            ],
-            { duration: flow, delay: r * spread, easing: standard, fill: 'both' },
-          );
-        }
-        rowShards.push(...mounted);
-      }
+      });
+      // Each floating tile turns into the destination tile(s) that leave from its spot.
+      const sourcesUsed = swarm.slice(0, dest.length);
+      layer.remove(sourcesUsed.map((t) => t.m));
+      fadeAway(swarm.slice(dest.length));
+      swarm = dest;
     });
+
     tl.at(schedule.reassembleAt[i], () => {
       restoreRows.forEach((r) => r());
-      const fading = rowShards;
-      for (const m of fading) {
-        layer.animate(m.el, [{ opacity: 1 }, { opacity: 0 }], { duration: SHARD_FADE_MS, fill: 'forwards' });
+      for (const el of targets.filter(isElement)) {
+        const a = safeAnimate(el, [{ opacity: 0 }, { opacity: 1 }], { duration: T.fadeMs, easing: standard });
+        if (a) rowAnims.push(a);
       }
-      tl.at(SHARD_FADE_MS, () => layer.remove(fading));
+      fadeAway(swarm);
+      swarm = [];
       options.onRowsReassemble?.(game, i, targets);
     });
+
+    if (i < games.length - 1) {
+      tl.at(schedule.crackAt[i], () => {
+        // The reassembled rows crack again; these tiles glide into the next tab.
+        swarm = tilesOn(targets, `${i}:out`);
+        crack(swarm, T.crackMs + T.streamDelayMs);
+      });
+    }
     tl.at(schedule.gameEnds[i], () => options.onGameEnd?.(game, i));
   });
 
   tl.at(schedule.settleAt, () => {
-    if (games.length === 0) showStage(REDUCED_CROSSFADE_MS, standard);
+    fadeAway(swarm);
+    swarm = [];
     options.onSettle?.();
+    fadeStageIn(T.fadeMs);
   });
   tl.at(schedule.doneAt, () => {
     layer.destroy();
+    restores.forEach((r) => r());
+    stage.style.opacity = originalOpacity;
     options.onDone?.();
   });
 
@@ -246,7 +337,8 @@ export function playDayBoardMerge(options: DayBoardMergeOptions): ShatterHandle 
       tl.clear();
       layer.destroy();
       restores.forEach((r) => r());
-      stageAnims.splice(0).forEach((a) => a.cancel());
+      rowAnims.splice(0).forEach((a) => a.cancel());
+      cancelStage();
       stage.style.opacity = originalOpacity;
     },
   };

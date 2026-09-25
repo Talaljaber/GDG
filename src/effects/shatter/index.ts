@@ -41,7 +41,7 @@ export {
   SHARD_FADE_MS,
   mergeTotalMs,
 } from './motion';
-export { SHARD_CAPS, SHARD_FILLS, createShards, type Density, type Shard, type Rect } from './geometry';
+export { SHARD_CAPS, SHARD_FILLS, MERGE_FILLS, createShards, type Density, type Shard, type Rect } from './geometry';
 
 /** Put on the logo (or its wrapper) so it stays above every shard layer (§5). */
 export const SHATTER_LOGO_CLASS = 'gdg-shatter-logo-safe';

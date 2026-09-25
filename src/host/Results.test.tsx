@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { StrictMode, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SHATTER_LOGO_CLASS } from '../effects/shatter';
 import { clearMatchMedia, layers, mockBoxes, mockReducedMotion, shardCount, stubAnimate } from '../effects/shatter/test-utils';
@@ -22,6 +22,19 @@ vi.mock('../lib/api', async () => {
   };
 });
 
+// Counts merge plays (the real merge still runs).
+const mergePlays = vi.fn();
+vi.mock('../effects/shatter/merge', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../effects/shatter/merge')>();
+  return {
+    ...actual,
+    playDayBoardMerge: (...a: Parameters<typeof actual.playDayBoardMerge>) => {
+      mergePlays();
+      return actual.playDayBoardMerge(...a);
+    },
+  };
+});
+
 import { HostSessionEnd } from './Results';
 import { HostMotionProvider } from './motion';
 
@@ -35,8 +48,14 @@ const data = {
   pendingPlayers: 0,
 } as unknown as HostData;
 
-function hostOn(screenName: 'results' | 'dayboard'): HostController {
-  return { screen: screenName, act: vi.fn(), scoresVersion: 0, dayVersion: 0 } as unknown as HostController;
+function hostOn(screenName: 'results' | 'dayboard', versions = { scoresVersion: 0, dayVersion: 0 }): HostController {
+  return { screen: screenName, act: vi.fn(), ...versions } as unknown as HostController;
+}
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
 }
 
 function Wrap({ children }: { children: ReactNode }) {
@@ -70,6 +89,7 @@ beforeEach(() => {
   anim = stubAnimate();
   boxes = mockBoxes();
   localStorage.clear();
+  mergePlays.mockClear();
   fetchSessionBoard.mockResolvedValue({
     top: [
       { playerRowId: 'p1', name: 'Omar', displaySuffix: null, value: 2400 },
@@ -161,6 +181,72 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     await flush();
     expect(shownGame()).toBe(GAMES[0]);
     expect(layers('merge')).toHaveLength(0);
+  });
+
+  it('one tap plays the merge exactly once: it waits for the day boards (arriving in steps), and refetches, re-renders or a stale "results" never restart it', async () => {
+    const StrictWrap = ({ children }: { children: ReactNode }) => (
+      <StrictMode>
+        <Wrap>{children}</Wrap>
+      </StrictMode>
+    );
+    const pages = GAMES.map(() => deferred<unknown>());
+    const scores = deferred<unknown>();
+    fetchDayBoard.mockImplementation((_day: string, game: string) => pages[GAMES.indexOf(game as never)].promise);
+    fetchSessionScores.mockImplementation(() => scores.promise);
+    const page = {
+      top: [
+        { nameKey: 'omar', name: 'Omar', score: 900, achievedAt: AT },
+        { nameKey: 'rami', name: 'Rami', score: 850, achievedAt: '2026-09-24T10:00:00.000Z' },
+      ],
+      own: null,
+      total: 2,
+    };
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: StrictWrap });
+    await flush();
+    rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
+    await flush();
+    // The day boards arrive one by one; the merge waits over the session results.
+    for (const p of pages) {
+      expect(mergePlays).not.toHaveBeenCalled();
+      expect(screen.getByTestId('host-results')).toBeInTheDocument();
+      advance(300);
+      p.resolve(page);
+      await flush();
+    }
+    expect(mergePlays).not.toHaveBeenCalled();
+    scores.resolve(GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })));
+    await flush();
+    expect(mergePlays).toHaveBeenCalledTimes(1);
+    expect(layers('merge')).toHaveLength(1);
+
+    // Mid-merge: new scores of the day, hidden names, fresh host data objects, a stale "results".
+    fetchDayBoard.mockImplementation(async () => ({ ...page, top: page.top.map((r) => ({ ...r })) }));
+    fetchSessionScores.mockResolvedValue(GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })));
+    for (let t = 0, v = 1; t < 16_000; t += 1000, v++) {
+      const stale = t === 6000;
+      rerender(<HostSessionEnd host={hostOn(stale ? 'results' : 'dayboard', { scoresVersion: v, dayVersion: v })} data={{ ...data }} />);
+      await flush();
+      advance(1000);
+    }
+    expect(mergePlays).toHaveBeenCalledTimes(1);
+    expect(layers()).toHaveLength(0);
+    expect(shownGame()).not.toBeNull();
+    expect(screen.getAllByTestId('board-row').every((r) => r.style.opacity !== '0')).toBe(true);
+  });
+
+  it('plays anyway (once) when the day boards are slow to load', async () => {
+    fetchDayBoard.mockImplementation(() => new Promise(() => {}));
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    await flush();
+    rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
+    await flush();
+    advance(2499);
+    expect(mergePlays).not.toHaveBeenCalled();
+    advance(1);
+    expect(mergePlays).toHaveBeenCalledTimes(1);
+    advance(20_000);
+    expect(mergePlays).toHaveBeenCalledTimes(1);
+    expect(layers()).toHaveLength(0);
   });
 
   it('the logo is shatter-safe and outside the merge stage (never hidden or covered)', async () => {

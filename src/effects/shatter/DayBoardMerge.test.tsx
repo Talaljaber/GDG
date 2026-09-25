@@ -99,7 +99,7 @@ describe('DayBoardMerge', () => {
     const expected: Array<[string, number]> = [['fragmented', 1500]];
     GAME_IDS.forEach((id, i) => {
       expected.push([`start:${id}`, s.gameStarts[i]]);
-      expected.push([`targets:${id}`, s.gameStarts[i] + 200]);
+      expected.push([`targets:${id}`, s.gameStarts[i]]); // right after the tab rendered (flushSync)
       expected.push([`reassemble:${id}:2`, s.reassembleAt[i]]);
       expected.push([`end:${id}`, s.gameEnds[i]]);
     });
@@ -114,20 +114,41 @@ describe('DayBoardMerge', () => {
     expect(screen.getByText(/new row of stop-the-clock/)).toBeInTheDocument();
   });
 
-  it('hides target rows from +200 ms until they reassemble', () => {
+  it('hides the new rows in the same tick the tab renders, until they reassemble', () => {
     const { rerender } = render(<Host trigger={0} />);
     rerender(<Host trigger={1} />);
-    advance(1500); // (separate acts so React renders the tab, as a browser would)
-    advance(200);
+    advance(1500); // one act: the tab renders synchronously inside it (flushSync)
     const newRow = screen.getByText(/new row of stop-the-clock/);
     const oldRow = screen.getByText('old row');
     expect(newRow.style.opacity).toBe('0');
     expect(oldRow.style.opacity).toBe('');
     expect(screen.getByTestId('stage').style.opacity).toBe('');
-    advance(2399);
+    advance(2599);
     expect(newRow.style.opacity).toBe('0');
     advance(1);
     expect(newRow.style.opacity).toBe('');
+  });
+
+  it('never blanks the stage between games (one continuous merge)', () => {
+    const { rerender } = render(<Host trigger={0} />);
+    rerender(<Host trigger={1} />);
+    const stage = screen.getByTestId('stage');
+    advance(1500);
+    for (let t = 1500; t < 15_000; t += 50) {
+      expect(stage.style.opacity).toBe('');
+      advance(50);
+    }
+  });
+
+  it('plays once per trigger: re-renders, new callbacks and new game arrays never restart it', () => {
+    const { rerender } = render(<Host trigger={0} />);
+    rerender(<Host trigger={1} />);
+    for (let t = 0; t < 15_000; t += 500) {
+      rerender(<Host trigger={1} />);
+      advance(500);
+    }
+    expect(events.filter((e) => e[0] === 'fragmented')).toHaveLength(1);
+    expect(events.filter((e) => e[0] === 'done')).toHaveLength(1);
   });
 
   it('crossfades with reduced motion: everything within 200 ms, no shards', () => {
@@ -186,6 +207,59 @@ describe('playDayBoardMerge', () => {
     expect(layers()).toHaveLength(0);
     advance(20000);
     expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it('draws small blue/amber mosaic tiles, clipped to the stage, never more than 48', () => {
+    vi.restoreAllMocks();
+    // Boxes from data-box="x,y,w,h" (jsdom has no layout).
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const [x, y, width, height] = ((this as HTMLElement).dataset?.box ?? '0,0,0,0').split(',').map(Number);
+      return { x, y, width, height, top: y, left: x, right: x + width, bottom: y + height, toJSON: () => ({}) } as DOMRect;
+    });
+    const stage = document.createElement('div');
+    stage.dataset.box = '600,150,1200,780';
+    document.body.appendChild(stage);
+    const row = (i: number) => {
+      const el = document.createElement('div');
+      el.dataset.box = `600,${220 + i * 69},1200,69`;
+      stage.appendChild(el);
+      return el;
+    };
+    const sessionRows = Array.from({ length: 10 }, (_, i) => row(i));
+    const newRows = [row(0), row(3), row(7)];
+    const fills = new Set<string>();
+    let peak = 0;
+    const check = () => {
+      const all = Array.from(document.querySelectorAll<SVGSVGElement>('[data-shatter-layer] [data-shard]'));
+      peak = Math.max(peak, all.length);
+      for (const svg of all) {
+        fills.add((svg.querySelector('polygon') as SVGPolygonElement).style.fill);
+        // Row-sized tiles: at most a row tall, at most two cells (0.8 × row height) wide (69 px rows).
+        expect(Number(svg.getAttribute('width'))).toBeLessThanOrEqual(69 * 0.8 * 2);
+        expect(Number(svg.getAttribute('height'))).toBeLessThanOrEqual(69 + 3);
+      }
+    };
+    const h = playDayBoardMerge({
+      stage,
+      sources: () => sessionRows,
+      games: [{ id: 'a', targets: () => newRows }, { id: 'b', targets: () => [] }, { id: 'c', targets: () => newRows }],
+    });
+    const layer = layers('merge')[0];
+    expect(layer).toHaveClass('gdg-shatter-clip');
+    expect(layer.style.width).toBe('1200px');
+    expect(layer.style.height).toBe('780px');
+    expect(layer.style.transform).toBe('translate(600px, 150px)');
+    expect(shardCount('merge')).toBe(40); // 10 rows × 4 tiles
+    for (let t = 0; t < 15_000; t += 50) {
+      check();
+      advance(50);
+    }
+    expect(peak).toBeLessThanOrEqual(48);
+    expect([...fills].every((f) => /--gdg-(blue|blue-deep|amber|amber-deep)\)/.test(f))).toBe(true);
+    expect([...fills].some((f) => f.includes('amber'))).toBe(true);
+    expect(newRows.every((r) => r.style.opacity === '')).toBe(true);
+    expect(layers()).toHaveLength(0);
+    h.cancel();
   });
 
   it('adapts the timeline to the lineup length and tolerates no targets', () => {

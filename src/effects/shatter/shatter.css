@@ -17,6 +17,11 @@
   overflow: visible;
 }
 
+/* A layer that clips its shards to its own box (the day-board merge: board area only). */
+.gdg-shatter-layer.gdg-shatter-clip {
+  overflow: hidden;
+}
+
 .gdg-shatter-shard {
   position: absolute;
   inset-block-start: 0;

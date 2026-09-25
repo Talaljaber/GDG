@@ -25,6 +25,7 @@ const PAD = 1;
 export const LAYER_CLASS = 'gdg-shatter-layer';
 export const SHARD_CLASS = 'gdg-shatter-shard';
 export const RING_CLASS = 'gdg-shatter-ring';
+export const CLIP_CLASS = 'gdg-shatter-clip';
 
 export interface MountedShard {
   readonly shard: Shard;
@@ -88,10 +89,11 @@ function makeShard(shard: Shard): MountedShard {
  */
 export function mountShardLayer(
   shards: readonly Shard[],
-  options: { rect: Rect; variant: string; parent?: HTMLElement },
+  options: { rect: Rect; variant: string; parent?: HTMLElement; clip?: boolean },
 ): ShardLayer {
   const root = document.createElement('div');
-  root.className = LAYER_CLASS;
+  // `clip`: nothing is drawn outside `rect` (the merge keeps its tiles inside the board area).
+  root.className = options.clip ? `${LAYER_CLASS} ${CLIP_CLASS}` : LAYER_CLASS;
   root.setAttribute('aria-hidden', 'true');
   // Geometry is physical, like the game canvases: never mirrored in RTL.
   root.setAttribute('dir', 'ltr');

@@ -4,7 +4,7 @@
  * Screens get a fake HostController / HostData and their `preview` data, so nothing
  * here calls Supabase (admin calls go through the fake `act`, which never runs them).
  */
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Fixture } from '../Preview';
 import type { DayBoardRow, PlayerRow, RevealRow, RoundRow, RoundScoreRow, SessionRow, SessionScoreRow } from '../../lib/api';
 import type { RankedRow } from '../../lib/boards';
@@ -306,6 +306,52 @@ function SessionEnd({ day }: { day: boolean }) {
   );
 }
 
+/**
+ * H4 → H5 with the day-board merge: "Show day board" really switches the screen (the fake
+ * `act`), and `?auto=1` taps it 500 ms after load. `staged`: the day boards arrive the way
+ * the live host gets them, in several steps after the tap (one game at a time, then this
+ * session's scores), plus a refetch mid-merge, as `useDayBoardData` does on a score or hide.
+ */
+function SessionEndMerge({ staged = false }: { staged?: boolean }) {
+  const [screen, setScreen] = useState<'results' | 'dayboard'>('results');
+  const all = useMemo(dayRows, []);
+  const [rows, setRows] = useState<Record<string, DayBoardRow[]>>(staged ? {} : all);
+  const [scores, setScores] = useState<SessionScoreRow[]>(staged ? [] : sessionScores(all));
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('auto')) return;
+    const id = window.setTimeout(() => (document.querySelector('[data-testid="host-show-day-board"]') as HTMLElement | null)?.click(), 500);
+    return () => window.clearTimeout(id);
+  }, []);
+  useEffect(() => {
+    if (!staged || screen !== 'dayboard') return;
+    const steps: Array<[number, () => void]> = LINEUP.map((game, i) => [
+      300 + i * 600,
+      () => setRows((r) => ({ ...r, [game]: all[game] })),
+    ]);
+    steps.push([2200, () => setScores(sessionScores(all))], [6000, () => setRows({ ...all })]);
+    const ids = steps.map(([ms, fn]) => window.setTimeout(fn, ms));
+    return () => ids.forEach((id) => window.clearTimeout(id));
+  }, [staged, screen, all]);
+  const d = data({
+    session: session({ status: 'results', day_board_shown_at: screen === 'dayboard' ? AT : null }),
+    running: true,
+    rounds: rounds(null, 3),
+    players: players(20),
+    pending,
+    pendingPlayers: 4,
+  });
+  const top = useMemo(() => board(10, 2890, true), []);
+  return (
+    <Frame screen={screen}>
+      <HostSessionEnd
+        host={host({ data: d, screen, act: async () => setScreen('dayboard') })}
+        data={d}
+        preview={{ board: top, breakdown: breakdown(top), dayRows: rows, sessionScores: scores }}
+      />
+    </Frame>
+  );
+}
+
 // ------------------------------------------------------------------ fixtures
 
 export const fixtures: Fixture[] = [
@@ -344,4 +390,6 @@ export const fixtures: Fixture[] = [
   { name: 'host.intermission-next', frame: 'projector', render: () => <Intermission step="next_intro" roundNo={1} /> },
   { name: 'host.results', frame: 'projector', render: () => <SessionEnd day={false} /> },
   { name: 'host.dayboard', frame: 'projector', render: () => <SessionEnd day /> },
+  { name: 'host.merge', frame: 'projector', render: () => <SessionEndMerge /> },
+  { name: 'host.merge-staged', frame: 'projector', render: () => <SessionEndMerge staged /> },
 ];

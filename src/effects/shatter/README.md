@@ -1,6 +1,6 @@
 # Mosaic shatter layer (`src/effects/shatter`)
 
-The signature effect from `docs/DESIGN_SYSTEM.md` §6.2: seeded crystalline shards in blue, blue-deep, amber, amber-deep, blue-tint and paper, each with a 1 px paper edge. It evokes the shattered outer points of the logo **without ever touching the logo** (§5). No dependencies beyond React.
+The signature effect from `docs/DESIGN_SYSTEM.md` §6.2: seeded crystalline shards in blue, blue-deep, amber, amber-deep, blue-tint and paper (the day-board merge: mostly blue with a little amber), each with a 1 px paper edge. It evokes the shattered outer points of the logo **without ever touching the logo** (§5). No dependencies beyond React.
 
 ```ts
 import { ShatterProvider, ShatterTransition, Celebrate, useCelebrate, ShatterIn,
@@ -115,36 +115,41 @@ The primitive is data-agnostic. The component is the **stage**: it shows session
 interface DayBoardMergeGame { id: string; targets?: () => readonly (Element | DOMRectReadOnly | Rect)[] }
 
 <DayBoardMerge trigger={showDayBoardCount} games={lineup.map(id => ({ id, targets: () => newOrImprovedRowEls(id) }))}
+  sources?={() => sessionBoardRowEls()}   // the rows the tiles crack out of (default: bands of the stage)
   density?={'projector'} reducedMotion? seed? className?
   onFragmented={() => setView('dayboard')}
   onGameStart={(g, i) => setTab(i)}
-  onRowsReassemble={(g, i, targets) => highlightAndSlide(g.id)}
+  onRowsReassemble={(g, i, targets) => …}
   onGameEnd={(g, i) => …}
   onSettle={() => setTab(0)}          // tabs then auto-rotate every 8 s (host's job)
   onDone={() => …}>
   {view === 'results' ? <SessionResults/> : <DayBoard tab={tab}/>}
 </DayBoardMerge>
 
-playDayBoardMerge({ stage: HTMLElement, games, …same callbacks }): { cancel(): void }
+playDayBoardMerge({ stage: HTMLElement, games, sources?, …same callbacks }): { cancel(): void }
 mergeSchedule(n)  // the callback offsets below, as numbers
 ```
 
+It reads as **one continuous merge**: a single swarm of small mosaic tiles carries the session's scores from the session board through each game's day board. Tiles are row-sized (cells of `tileScale` 0.8 × the row height, drawn at `tileInset` 0.88 so the grout shows), in the merge palette `MERGE_FILLS` (blue 45 %, blue-deep 40 %, amber 10 %, amber-deep 5 %; no tint or paper), and live on one layer **clipped to the stage's box** (`clip: true`, class `gdg-shatter-clip`), so they never cover the header, the logo or the operator bar.
+
 | Time (3 games) | What happens |
 |---|---|
-| 0 | stage hidden; its box shatters into ≤ 48 shards that drift 3–10 % of the viewport |
+| 0 | the source rows crack into tiles (≤ 4 per row, ≤ 48 in all) that loosen by 15–50 % of a row height, ±12°; the stage fades out over 250–1150 ms |
 | 1500 | `onFragmented()` |
-| 1500 / 5500 / 9500 (`g`) | `onGameStart(game, i)`: show tab *i*. The stage is hidden again for games 2 and 3 |
-| g + 200 | `targets()` is read; target elements are hidden; the stage fades in over 200 ms; that game's third of the pool turns into row shards that stream to the targets for 2.4 s |
-| g + 2600 (4100 / 8100 / 12100) | `onRowsReassemble(game, i, targets)`: rows are visible again; highlight them and slide them to rank |
+| 1500 / 5500 / 9500 (`g`) | `onGameStart(game, i)`: show tab *i*. `targets()` is read **right after** it and the target elements are hidden before a frame is painted; the stage fades in over 360 ms (it is never blanked between games) |
+| g + 200 | the floating tiles glide into the target rows (≤ 8 per row, rows staggered, each glide 1.6 s); extra tiles fade |
+| g + 2600 (4100 / 8100 / 12100) | `onRowsReassemble(game, i, targets)`: the rows fade in (360 ms) as their tiles fade out |
+| g + 3500 (not after the last game) | the reassembled rows crack again; those tiles glide into the next tab |
 | g + 4000 | `onGameEnd(game, i)` |
-| 13 500 | `onSettle()`: show the first tab |
-| 15 000 | `onDone()` |
+| 13 500 | `onSettle()`: show the first tab (the stage fades in) |
+| 15 000 | `onDone()`: every hidden row is visible, the layer is gone |
 
-- The timeline scales with the lineup: `mergeTotalMs(n) = 1500 + 4000·n + 1500`.
-- With reduced motion, the stage fades out over 0–100 ms. At 100 ms come `onFragmented` and `onGameStart(games[0], 0)`, and the stage fades back in. At 200 ms come `onRowsReassemble(games[0], 0, targets)`, `onSettle` and `onDone`. The other games get no callbacks.
-- `targets()` is called 200 ms after `onGameStart`, so React has time to render the tab. Read from refs or the DOM, not from stale closure state. The component always calls the latest render's getter.
-- Games with no targets let their shards fade where they float.
-- The total number of shards alive never exceeds 48.
+- The timeline scales with the lineup: `mergeTotalMs(n) = 1500 + 4000·n + 1500`. The constants are `DAY_BOARD_MERGE_TIMELINE`.
+- **`onGameStart` must render the tab synchronously.** `<DayBoardMerge>` runs `onFragmented`, `onGameStart` and `onSettle` inside `flushSync`, so a plain `setState` is enough. Imperative callers must commit the DOM themselves.
+- **It plays once per `trigger` change.** Re-renders, new callbacks, new `games` arrays and new target rows never restart it (the latest getters are always used). Start it when the data behind the targets is loaded; the host waits for the day boards (at most 2.5 s, `src/host/Results.tsx`).
+- With reduced motion there are no tiles. The stage fades out over 0–100 ms. At 100 ms come `onFragmented` and `onGameStart(games[0], 0)`, and the stage fades back in. At 200 ms come `onRowsReassemble(games[0], 0, targets)`, `onSettle` and `onDone`. The other games get no callbacks.
+- A game with no targets lets the floating tiles fade; the next game's tiles then assemble from close by.
+- The total number of tiles alive never exceeds the density cap (48 on the projector).
 
 ### `<ShatterBurst>` and `revealSchedule()`
 
@@ -177,7 +182,7 @@ All of these return `ShatterHandle { cancel(): void }`. `cancel()` removes layer
 - `TRANSITION_TIMELINE`, `CELEBRATE_TIMELINE`, `SHATTER_IN_TIMELINE`, `DAY_BOARD_MERGE_TIMELINE`, `STC_REVEAL_TIMELINE`, `REDUCED_CROSSFADE_MS` (200) and `SHARD_FADE_MS` (120) are the §6.2 timelines as named constants.
 - Easings are the §6.1 tokens (`--ease-standard`, `--ease-emphasized`, `--ease-exit`), read from `:root` at play time. Web Animations can't take `var()`.
 - The 200 ms and 120 ms values mirror `--dur-base` and `--dur-fast`. They aren't read at runtime because `tokens.css` zeroes those tokens under OS reduced motion, and the fallback must still be 200 ms.
-- `createShards(rect, { seed, density, flight, maxShards? })` returns seeded Delaunay shards. `SHARD_CAPS` and `SHARD_FILLS` (with the §6.2 weights) are also exported.
+- `createShards(rect, { seed, density, flight, maxShards?, fills? })` returns seeded Delaunay shards. `SHARD_CAPS`, `SHARD_FILLS` (with the §6.2 weights) and `MERGE_FILLS` (the merge palette) are also exported.
 
 ## Renderer choice: DOM, not canvas
 
@@ -217,4 +222,4 @@ Then open `http://localhost:5173/shatter-demo`. The demo labels are plain Englis
 - Everything is `setTimeout`-driven, so `vi.useFakeTimers()` controls it.
 - jsdom has no Web Animations API, no `matchMedia` and zero-size boxes. The players handle all three: no shards are drawn for a zero-size box, and timing still runs.
 - `test-utils.ts` has `stubAnimate()`, `mockReducedMotion()`, `mockBoxes()`, `layers()` and `shardCount()`.
-- Advance time in separate `act()` calls around callbacks that set React state. For example, `advance(1500); advance(200)` lets the tab render before `targets()` is read, the way a browser would.
+- Advance time in separate `act()` calls around callbacks that set React state. The merge's tab callbacks flush synchronously (`flushSync`), so `advance(1500)` already shows tab 0 with its new rows hidden.

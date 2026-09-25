@@ -38,22 +38,40 @@ export const SHATTER_IN_TIMELINE = {
 } as const;
 
 /**
- * Day-board merge (§6.2, ~15 s): 0–1.5 s fragment; 3 × 4 s per game
- * (tab appears → targets resolved at +200 ms → shards stream for 2.4 s →
- * rows reassemble at +2.6 s → hold); 1.5 s settle on the first tab.
+ * Day-board merge (§6.2, ~15 s), one continuous swarm of small mosaic tiles:
+ * 0–1.5 s the session rows crack into tiles that loosen while the results
+ * fade; then 3 × 4 s per game (the tab shows → +200 ms the tiles glide into
+ * the rows that are new or improved → +2.6 s those rows reassemble → 3.5 s
+ * the tiles break off them again for the next tab); 1.5 s settle on the
+ * first tab. The callback offsets are fixed (mergeSchedule).
  */
 export const DAY_BOARD_MERGE_TIMELINE = {
   fragmentMs: 1500,
   perGameMs: 4000,
   settleMs: 1500,
-  /** After onGameStart, the host has this long to render the tab before targets are read. */
-  targetResolveMs: 200,
-  /** Stream duration; rows reassemble at targetResolveMs + streamMs into the game slot. */
+  /** After a tab shows, the tiles start gliding into its rows after this long. */
+  streamDelayMs: 200,
+  /** Rows reassemble at streamDelayMs + streamMs into the game slot. */
   streamMs: 2400,
-  /** Fragment drift, as fractions of the viewport's longer side, ±40°. */
-  fragmentMinDistance: 0.03,
-  fragmentMaxDistance: 0.1,
-  maxRotateDeg: 40,
+  /** One row's glide; the rows are staggered over the rest of streamMs. */
+  glideMs: 1600,
+  /** Before the next tab, the reassembled rows' tiles break off for this long. */
+  crackMs: 500,
+  /** Stage fade-ins (first tab, tab changes, settle) and reassembled rows' fade-in (= --dur-slow). */
+  fadeMs: 360,
+  /** The session results fade out over this long, starting at fragmentFadeDelayMs. */
+  fragmentFadeMs: 900,
+  fragmentFadeDelayMs: 250,
+  /** Tile cell size relative to its row's height (tiles are row-sized mosaic, not slabs). */
+  tileScale: 0.8,
+  /** Tiles are drawn at this scale around their centroid, so a gap (grout) shows between them. */
+  tileInset: 0.88,
+  /** Most tiles on one row. */
+  maxTilesPerRow: 8,
+  /** Loosening drift, relative to the row height, and rotation. */
+  driftMin: 0.15,
+  driftMax: 0.5,
+  maxRotateDeg: 12,
 } as const;
 
 /** Total merge length for a lineup of `games` games (15 000 ms for 3). */

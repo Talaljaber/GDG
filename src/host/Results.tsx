@@ -3,16 +3,17 @@
  * ADR-022), one screen for both so the day-board merge can play between
  * them. H4: winner card, then the session board (top 10 by total) with
  * each player's round scores ("–" for a missing round). It stays until the
- * host taps Show day board. Then the ~15 s merge (DESIGN_SYSTEM §6.2):
- * the session board fragments, each game's day-board tab appears in turn
- * and shards stream into the rows that came from this session, then the
+ * host taps Show day board. Then the ~15 s merge (DESIGN_SYSTEM §6.2),
+ * exactly once per tap, as soon as the day boards have loaded: the session
+ * rows crack into small tiles, each game's day-board tab appears in turn
+ * and the tiles glide into the rows that came from this session, then the
  * first tab settles and the tabs auto-rotate every 8 s, top 10 best per
  * name today; rows from this session stay highlighted for one rotation.
  * A reload onto H5 shows the day boards at once (no merge). New session
  * (from either, even mid-merge, E21) turns the pending session into the lobby.
  *
- * The merge stage is the board area only: the header (with the logo, §5)
- * and the host controls are never hidden or covered.
+ * The merge stage is the board area only, and its tiles are clipped to it:
+ * the header (with the logo, §5) and the host controls are never hidden or covered.
  */
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { BOARD_POLL_MS, DAYBOARD_ROTATE_MS } from '../config';
@@ -30,6 +31,7 @@ import {
   type SessionScoreRow,
 } from '../lib/api';
 import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
+import { replaceEqualDeep } from '../lib/equal';
 import { DayBoardMerge } from '../effects/shatter';
 import { useRevealRows } from '../components/useRevealRows';
 import styles from './host.module.css';
@@ -82,8 +84,10 @@ function useSessionResults(sessionId: string, scoresVersion: number, enabled: bo
           fetchSessionRoundScores(sessionId),
         ]);
         if (!alive) return;
-        setBoard(mergeBoard(page.top, null, null));
-        setBreakdown(rows);
+        // Polled every 3 s and nearly always unchanged: keep the old rows so H4 doesn't re-render.
+        const next = mergeBoard(page.top, null, null);
+        setBoard((prev) => replaceEqualDeep(prev, next));
+        setBreakdown((prev) => replaceEqualDeep(prev, rows));
       } catch {
         // keep last
       }
@@ -100,8 +104,8 @@ function useSessionResults(sessionId: string, scoresVersion: number, enabled: bo
 
 /**
  * H5 data: every game's day board, re-queried on each score of the day and
- * each hidden-name change. Loaded from the moment Show day board lands, so
- * the rows are there when the merge streams into them 1.7 s later.
+ * each hidden-name change. Loaded from the moment Show day board lands;
+ * `ready` once both queries have answered, so the merge can wait for them.
  */
 function useDayBoardData(
   host: HostController,
@@ -112,6 +116,7 @@ function useDayBoardData(
   const { session } = data;
   const [rows, setRows] = useState<Record<string, DayBoardRow[]>>({});
   const [sessionScores, setSessionScores] = useState<SessionScoreRow[]>([]);
+  const [loaded, setLoaded] = useState({ rows: false, scores: false });
   const lineupKey = lineup.join(',');
   useEffect(() => {
     if (!enabled) return;
@@ -122,20 +127,29 @@ function useDayBoardData(
         if (!alive) return;
         const next: Record<string, DayBoardRow[]> = {};
         games.forEach((g, i) => (next[g] = pages[i].top));
-        setRows(next);
+        setRows((prev) => replaceEqualDeep(prev, next));
+        setLoaded((l) => (l.rows ? l : { ...l, rows: true }));
       })
       .catch(() => {});
     void fetchSessionScores(session.id)
       .then((s) => {
-        if (alive) setSessionScores(s);
+        if (!alive) return;
+        setSessionScores((prev) => replaceEqualDeep(prev, s));
+        setLoaded((l) => (l.scores ? l : { ...l, scores: true }));
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
   }, [enabled, lineupKey, session.event_day_id, session.id, host.dayVersion, host.scoresVersion]);
-  return { rows, sessionScores };
+  return { rows, sessionScores, ready: loaded.rows && loaded.scores };
 }
+
+/**
+ * How long the merge waits for the day boards after Show day board lands
+ * before it plays anyway (a slow network then just gets fewer highlighted rows).
+ */
+const MERGE_DATA_WAIT_MS = 2500;
 
 type View = 'results' | 'dayboard';
 
@@ -162,20 +176,20 @@ export function HostSessionEnd({
   const newSession = useNewSession(host);
   const onDayBoard = host.screen === 'dayboard';
 
-  // H4 → H5 while this screen is up plays the merge; a reload onto H5 doesn't (derived state).
-  const [seenDayBoard, setSeenDayBoard] = useState(onDayBoard);
+  // H4 → H5 while this screen is up plays the merge exactly once; a reload onto H5 doesn't
+  // (derived state). Reaching the day board is sticky: a stale reload that briefly says
+  // "results" again never replays it. The merge starts once the day boards have loaded (or
+  // after MERGE_DATA_WAIT_MS), so it plays over a stable layout; refetches never restart it.
+  const [reachedDayBoard, setReachedDayBoard] = useState(onDayBoard);
+  const [awaitingData, setAwaitingData] = useState(false);
+  const [waitedOut, setWaitedOut] = useState(false);
   const [mergeRun, setMergeRun] = useState(0);
   const [merging, setMerging] = useState(false);
   const [view, setView] = useState<View>(onDayBoard ? 'dayboard' : 'results');
-  if (onDayBoard !== seenDayBoard) {
-    setSeenDayBoard(onDayBoard);
-    if (onDayBoard) {
-      setMergeRun((n) => n + 1);
-      setMerging(true);
-    } else {
-      setMerging(false);
-      setView('results');
-    }
+  if (onDayBoard && !reachedDayBoard) {
+    setReachedDayBoard(true);
+    setAwaitingData(true);
+    setMerging(true);
   }
 
   const live = !preview;
@@ -191,6 +205,17 @@ export function HostSessionEnd({
   const day = preview
     ? { rows: preview.dayRows ?? {}, sessionScores: preview.sessionScores ?? [] }
     : fetchedDay;
+
+  const dayReady = preview ? lineup.every((g) => preview.dayRows?.[g] !== undefined) : fetchedDay.ready;
+  useEffect(() => {
+    if (!awaitingData) return;
+    const timer = window.setTimeout(() => setWaitedOut(true), MERGE_DATA_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [awaitingData]);
+  if (awaitingData && (dayReady || waitedOut)) {
+    setAwaitingData(false);
+    setMergeRun((n) => n + 1);
+  }
 
   const [tab, setTab] = useState(0);
   const [rotations, setRotations] = useState(0);
@@ -217,7 +242,10 @@ export function HostSessionEnd({
     }
   };
 
-  // Merge targets: the rows of the shown tab that came from this session (highlighted).
+  // Merge sources: the session board's rows; targets: the rows of the shown tab that came
+  // from this session (highlighted).
+  const resultsArea = useRef<HTMLDivElement>(null);
+  const sources = () => Array.from(resultsArea.current?.querySelectorAll('tbody tr') ?? []);
   const dayBoardArea = useRef<HTMLDivElement>(null);
   const targets = () =>
     Array.from(dayBoardArea.current?.querySelectorAll('[data-highlight="true"]') ?? []);
@@ -266,6 +294,7 @@ export function HostSessionEnd({
         <DayBoardMerge
           trigger={mergeRun}
           games={lineup.map((id) => ({ id, targets }))}
+          sources={sources}
           className={`${styles.mergeStage} ${view === 'dayboard' ? styles.mergeStageBoard : ''}`}
           data-testid="host-merge-stage"
           onFragmented={() => setView('dayboard')}
@@ -278,6 +307,7 @@ export function HostSessionEnd({
         >
           {view === 'results' ? (
             <SessionResultsBoard
+              ref={resultsArea}
               lineup={lineup}
               board={results.board}
               breakdown={results.breakdown}
@@ -318,21 +348,20 @@ export function HostSessionEnd({
 
 // ------------------------------------------------------------------ H4 board
 
-function SessionResultsBoard({
-  lineup,
-  board,
-  breakdown,
-}: {
-  lineup: readonly GameId[];
-  board: RankedRow[] | null;
-  breakdown: readonly RoundScoreRow[];
-}) {
+const SessionResultsBoard = forwardRef<
+  HTMLDivElement,
+  {
+    lineup: readonly GameId[];
+    board: RankedRow[] | null;
+    breakdown: readonly RoundScoreRow[];
+  }
+>(function SessionResultsBoard({ lineup, board, breakdown }, ref) {
   const t = useT();
   const winner = board?.[0] ?? null;
   // Rows shatter in top to bottom as the board appears (DESIGN_SYSTEM §6.2).
   const bodyRef = useRevealRows<HTMLTableSectionElement>((board ?? []).map((r) => r.playerRowId));
   return (
-    <div className={`${styles.split} ${styles.results} ${styles.fill}`} data-testid="host-results">
+    <div ref={ref} className={`${styles.split} ${styles.results} ${styles.fill}`} data-testid="host-results">
       <aside className={styles.side}>
         {winner ? (
           <div className={styles.winner} data-testid="host-winner">
@@ -414,7 +443,7 @@ function SessionResultsBoard({
       </section>
     </div>
   );
-}
+});
 
 // ------------------------------------------------------------------ H5 board
 
