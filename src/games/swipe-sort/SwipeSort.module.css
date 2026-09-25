@@ -1,0 +1,295 @@
+/* Swipe Sort screen. Tokens only (docs/DESIGN_SYSTEM.md §2.5, §2-6);
+   logical properties for the page chrome. The swipe surface is game
+   geometry: blue LEFT, amber RIGHT on the physical screen in both languages,
+   so it is `direction: ltr` and its catch labels never mirror
+   (docs/games/swipe-sort.md §7). The two inks are Color Clash's --clash-blue
+   / --clash-amber pair (checked for colour-vision deficiencies in
+   color-clash.md §7). Reduced motion zeroes the durations (tokens.css §6.2):
+   the fly / fade / shake then end at once; the component also skips the
+   follow-the-finger drag and hides the chevron in the gap. */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-4);
+  flex: 1;
+  min-height: 100%;
+  padding-block: var(--s-5);
+  /* The surface keeps --swipe-safe-inset from both viewport edges, where iOS starts edge-swipe-back. */
+  padding-inline: var(--swipe-safe-inset);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.center {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--weight-medium);
+}
+
+.pitch {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+}
+
+.caption {
+  margin: 0;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+/* ---- countdown (as Trivia / Color Clash) ---- */
+.countdownWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.countdownBar {
+  flex: 1;
+  block-size: var(--s-2);
+  border-radius: var(--r-tag);
+  background: var(--gdg-line);
+  overflow: hidden;
+}
+
+.countdownFill {
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--primary);
+  transition: transform var(--dur-base) linear;
+}
+
+.countdownFillAmber {
+  background: var(--highlight);
+}
+
+.countdownNumber {
+  min-inline-size: 2ch;
+  text-align: end;
+  font-size: var(--type-button-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+/* Amber is a fill, never text on paper: the number sits on an amber tag. */
+.countdownNumberAmber {
+  color: var(--on-highlight);
+  background: var(--highlight);
+  border-radius: var(--r-tag);
+  padding-inline: var(--s-2);
+}
+
+.counter {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the swipe surface ---- */
+.surface {
+  direction: ltr;
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 60dvh;
+  padding: var(--s-3);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface);
+  overflow: hidden;
+  /* The page never scrolls, zooms or navigates from a touch on the surface. */
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.item {
+  inline-size: 40vw;
+  max-inline-size: calc(3 * var(--s-8));
+  aspect-ratio: 1;
+  transform: translateX(var(--ss-drag, 0px));
+  pointer-events: none;
+  will-change: transform;
+}
+
+.chevronSvg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.flyLeft {
+  animation: ss-fly-left var(--dur-fast) var(--ease-standard) forwards;
+}
+
+.flyRight {
+  animation: ss-fly-right var(--dur-fast) var(--ease-standard) forwards;
+}
+
+.fade {
+  animation: ss-fade var(--dur-fast) linear forwards;
+}
+
+@keyframes ss-fly-left {
+  from {
+    transform: translateX(var(--ss-drag, 0px));
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100vw);
+    opacity: 0;
+  }
+}
+
+@keyframes ss-fly-right {
+  from {
+    transform: translateX(var(--ss-drag, 0px));
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100vw);
+    opacity: 0;
+  }
+}
+
+@keyframes ss-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* "Wrong way" / "Missed" under the chevron's place. */
+.feedback {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: var(--s-4);
+  margin: 0;
+  text-align: center;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+/* ---- the two catch labels (fixed left / right) ---- */
+.zones {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.zone {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-block-size: var(--touch-target-min);
+  padding-inline: var(--s-3);
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.zoneName {
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+}
+
+.glyph {
+  inline-size: var(--s-5);
+  block-size: var(--s-5);
+}
+
+.swatch {
+  inline-size: var(--s-5);
+  block-size: var(--s-5);
+  border-radius: var(--r-tag);
+  border: var(--line-width) solid var(--line-strong);
+}
+
+.swatchBlue {
+  background: var(--clash-blue);
+}
+
+.swatchAmber {
+  background: var(--clash-amber);
+}
+
+.zoneCorrect {
+  outline: var(--focus-width) solid var(--highlight);
+  outline-offset: 2px;
+}
+
+/* A wrong swipe: the label it went to shakes, outlined in ink (no red). */
+.zoneWrong {
+  border-color: var(--text);
+  animation: ss-shake var(--dur-fast) var(--ease-standard);
+}
+
+@keyframes ss-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-6px);
+  }
+}
