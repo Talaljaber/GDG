@@ -1,3 +1,5 @@
+// Dev-only render counter (empty in builds); first, so it hooks React before react-dom loads.
+import './dev/renderCount';
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/tokens.css';

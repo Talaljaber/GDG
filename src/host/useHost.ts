@@ -43,6 +43,8 @@ import {
   type HostScreen,
 } from './hostLoop';
 import { intermissionState, type IntermissionState } from './schedule';
+import { replaceEqualDeep, sameSet } from '../lib/equal';
+import { useSteppedNow } from '../components/useSteppedNow';
 import { defaultLineup } from './lineup';
 
 const LOOP_TICK_MS = 500;
@@ -146,6 +148,12 @@ async function loadHostData(): Promise<HostData> {
   };
 }
 
+/** What of an intermission state can change with time alone ('done' carries `now` as its end). */
+function intermissionKey(s: IntermissionState | null): string {
+  if (!s) return 'none';
+  return s.step === 'done' ? 'done' : `${s.step}:${s.stepEndsAtMs}`;
+}
+
 export interface HostController {
   data: HostData | null;
   /** The screen to show (includes the final round board's 7 s). */
@@ -183,7 +191,6 @@ export function useHost(): HostController {
   /** Score rows counted for a specific round (never trusted for another round). */
   const [scored, setScored] = useState<{ roundId: string; count: number } | null>(null);
   const [offset, setOffset] = useState<number | null>(null);
-  const [tick, setTick] = useState(() => Date.now());
   const [skip, setSkip] = useState<{ roundId: string; at: number } | null>(null);
   const firstSeen = useRef(new Map<string, number>());
   const alive = useRef(true);
@@ -199,7 +206,9 @@ export function useHost(): HostController {
     try {
       const next = await loadHostData();
       if (!alive.current) return;
-      setData(next);
+      // Most reloads (reconnects, act(), duplicate change events) read back the same state:
+      // keep the old objects then, so the big screen doesn't re-render for nothing.
+      setData((prev) => replaceEqualDeep(prev, next));
       setDbDown(false);
     } catch (err) {
       if (!alive.current) return;
@@ -252,7 +261,12 @@ export function useHost(): HostController {
     if (!sessionId) return;
     try {
       const players = await fetchPlayers(sessionId);
-      if (alive.current) setData((d) => (d && d.session.id === sessionId ? { ...d, players } : d));
+      if (!alive.current) return;
+      setData((d) => {
+        if (!d || d.session.id !== sessionId) return d;
+        const kept = replaceEqualDeep(d.players, players);
+        return kept === d.players ? d : { ...d, players: kept };
+      });
     } catch {
       // next event retries
     }
@@ -262,7 +276,7 @@ export function useHost(): HostController {
     if (!roundId) return;
     try {
       const count = await countRoundScores(roundId);
-      if (alive.current) setScored({ roundId, count });
+      if (alive.current) setScored((prev) => (prev && prev.roundId === roundId && prev.count === count ? prev : { roundId, count }));
     } catch {
       // next tick retries
     }
@@ -295,7 +309,8 @@ export function useHost(): HostController {
       }
     });
     const releasePresence = acquireChannel(hostPresenceChannel(sessionId), (event) => {
-      if (event.type === 'presence') setPresentIds(new Set(event.keys));
+      // A presence sync fires for every join/leave in the session: keep the set when its members are the same.
+      if (event.type === 'presence') setPresentIds((prev) => (sameSet(prev, event.keys) ? prev : new Set(event.keys)));
     });
     return () => {
       reload.cancel();
@@ -393,32 +408,37 @@ export function useHost(): HostController {
   // After the last round the tick stops once the final board is over (H4 stays still).
   const [finalOverFor, setFinalOverFor] = useState<string | null>(null);
   const ticking = inBetween && !(status === 'results' && !!lastDone && finalOverFor === lastDone.id);
-  useEffect(() => {
-    if (!ticking) return;
-    setTick(Date.now());
-    const timer = window.setInterval(() => setTick(Date.now()), INTERMISSION_TICK_MS);
-    return () => window.clearInterval(timer);
-  }, [ticking]);
+
+  /** The intermission state at local time `localNow` (`remember`: pin the first-seen time). */
+  const stateAt = useCallback(
+    (localNow: number, remember: boolean): IntermissionState | null => {
+      if (!inBetween || !lastDone?.ended_at || offset === null) return null;
+      const nowMs = localNow + offset;
+      let seen = firstSeen.current.get(lastDone.id);
+      if (seen === undefined) {
+        // The real current time, not `tick`: on a slow (re)load the first render can carry a
+        // tick from mount, seconds old, which would swallow the late-resume "Next" heads-up.
+        seen = Math.max(nowMs, Date.now() + offset);
+        if (remember) firstSeen.current.set(lastDone.id, seen);
+      }
+      return intermissionState({
+        endedAtMs: Date.parse(lastDone.ended_at),
+        nowMs,
+        firstSeenMs: seen,
+        skipAtMs: skip?.roundId === lastDone.id ? skip.at : null,
+        isLast: status === 'results',
+      });
+    },
+    [inBetween, lastDone, offset, skip, status],
+  );
+  // Checked every 250 ms, but the big screen only re-renders when the step (or its end) changes;
+  // the 3-2-1 on the "Next" step is its own leaf (Intermission.tsx).
+  const tick = useSteppedNow((n) => intermissionKey(stateAt(n, false)), INTERMISSION_TICK_MS, ticking);
 
   const intermission = useMemo<IntermissionInfo | null>(() => {
-    if (!inBetween || !lastDone?.ended_at || offset === null) return null;
-    const nowMs = tick + offset;
-    let seen = firstSeen.current.get(lastDone.id);
-    if (seen === undefined) {
-      // The real current time, not `tick`: on a slow (re)load the first render can carry a
-      // tick from mount, seconds old, which would swallow the late-resume "Next" heads-up.
-      seen = Math.max(nowMs, Date.now() + offset);
-      firstSeen.current.set(lastDone.id, seen);
-    }
-    const state = intermissionState({
-      endedAtMs: Date.parse(lastDone.ended_at),
-      nowMs,
-      firstSeenMs: seen,
-      skipAtMs: skip?.roundId === lastDone.id ? skip.at : null,
-      isLast: status === 'results',
-    });
-    return { round: lastDone, next, state };
-  }, [inBetween, lastDone, next, offset, tick, skip, status]);
+    const state = stateAt(tick, true);
+    return state && lastDone ? { round: lastDone, next, state } : null;
+  }, [stateAt, tick, lastDone, next]);
 
   const finalDoneId = status === 'results' && intermission?.state.step === 'done' ? intermission.round.id : null;
   useEffect(() => {

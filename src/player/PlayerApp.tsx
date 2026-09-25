@@ -21,8 +21,9 @@ import { LOADING_KEY, ScreenTransition } from '../components/ScreenTransition';
 import styles from './player.module.css';
 import { phoneScreenKey, phoneSwapIsInstant } from './screenKey';
 import { JoinFlow } from './JoinFlow';
-import { useNow, usePresence, useSessionSync, useTabLock } from './hooks';
-import { derivePlayerView } from './playerFlow';
+import { usePresence, useSessionSync, useTabLock } from './hooks';
+import { derivePlayerView, viewKey, type FlowInput } from './playerFlow';
+import { useSteppedNow } from '../components/useSteppedNow';
 import { latestDoneRound } from '../host/hostLoop';
 import { DayBoardScreen, IntermissionScreen } from './betweenScreens';
 import { createSubmitter, type SubmitState, type Submitter } from './submitter';
@@ -206,10 +207,6 @@ function MemberFlow({
     [local, setLocal],
   );
 
-  // ---- clock for the countdown / local cap
-  const inRound = local.roundId !== null && !local.submittedRounds.includes(local.roundId);
-  const now = useNow(250, inRound || sync.session?.status === 'playing');
-
   // P8 anchor: the local time this phone first saw the latest round end (phones never use server time, ADR-104).
   const lastDoneId = latestDoneRound(sync.rounds)?.id ?? null;
   const [doneSeen, setDoneSeen] = useState<{ roundId: string; at: number } | null>(null);
@@ -217,15 +214,25 @@ function MemberFlow({
     if (lastDoneId) setDoneSeen((cur) => (cur?.roundId === lastDoneId ? cur : { roundId: lastDoneId, at: Date.now() }));
   }, [lastDoneId]);
 
-  const view = derivePlayerView({
+  const flow: Omit<FlowInput, 'now'> = {
     local,
     session: sync.session,
     rounds: sync.rounds,
     me: sync.me,
-    now,
     intermissionSeenAt: doneSeen && doneSeen.roundId === lastDoneId ? doneSeen.at : null,
     dayCurrent: sync.dayCurrent,
-  });
+  };
+
+  // ---- clock for the countdown / local cap / P8 steps: checked every 250 ms, but the flow
+  // (and the game under it) only re-renders when the screen it derives actually changes.
+  const inRound = local.roundId !== null && !local.submittedRounds.includes(local.roundId);
+  const now = useSteppedNow(
+    (n) => viewKey(derivePlayerView({ ...flow, now: n })),
+    250,
+    inRound || sync.session?.status === 'playing',
+  );
+
+  const view = derivePlayerView({ ...flow, now });
 
   // ---- presence: tracked while this phone is a joined member of a live session
   const sessionLive = !!sync.session && sync.session.status !== 'closed' && sync.me?.status === 'joined';

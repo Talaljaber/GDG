@@ -6,7 +6,7 @@
  * owns the round result screen (docs/games/simon.md §3 diagram: over/won ->
  * result); this component only calls onFinish once.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useT } from '../../i18n';
 import type { GameProps } from '../types';
@@ -370,8 +370,11 @@ export function Simon({ seed, roundStartEpoch, roundEnded, snapshot, onProgress,
   );
 }
 
-/** Rounded chevron tip pointing in the pad's direction (docs/games/simon.md §2, §7). Not the logo. */
-function Chevron({ pad }: { pad: SimonPad }) {
+/**
+ * Rounded chevron tip pointing in the pad's direction (docs/games/simon.md §2, §7). Not the logo.
+ * Memoised: the pads re-render on every flash; the glyph only depends on its pad.
+ */
+const Chevron = memo(function Chevron({ pad }: { pad: SimonPad }) {
   const rotation: Record<SimonPad, number> = { up: 0, right: 90, left: -90, down: 180 };
   return (
     <svg
@@ -384,4 +387,4 @@ function Chevron({ pad }: { pad: SimonPad }) {
       <path d="M5 15 L12 8 L19 15" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
+});

@@ -7,11 +7,13 @@
  * the screen shatter (HostApp's ScreenTransition); the boards shatter in
  * (BoardTable) and the Stop the Clock dots burst in (StcReveal).
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { formatNumber, useT } from '../i18n';
 import { fetchRoundBoard, fetchSessionBoard, type RevealRow } from '../lib/api';
 import { mergeBoard, type RankedRow } from '../lib/boards';
+import { replaceEqualDeep } from '../lib/equal';
 import { Spinner } from '../components/Spinner';
+import { useSteppedNow } from '../components/useSteppedNow';
 import styles from './host.module.css';
 import { BoardTable } from './BoardTable';
 import {
@@ -35,7 +37,7 @@ function useBoard(
     let alive = true;
     void fetcher()
       .then((r) => {
-        if (alive) setRows(r);
+        if (alive) setRows((prev) => replaceEqualDeep(prev, r));
       })
       .catch(() => {});
     return () => {
@@ -45,6 +47,22 @@ function useBoard(
   }, deps);
   return rows;
 }
+
+/**
+ * The 3-2-1 of the "Next" step. Its own leaf with its own clock, so the second ticking over
+ * re-renders this number only, not the whole intermission (`TESTING.md` §9).
+ */
+function StepCountdown({ endsAtMs, offset }: { endsAtMs: number; offset: number }) {
+  const secondsAt = (localNow: number) => Math.max(1, Math.ceil((endsAtMs - (localNow + offset)) / 1000));
+  const secondsLeft = secondsAt(useSteppedNow(secondsAt, COUNTDOWN_TICK_MS));
+  return (
+    <p key={secondsLeft} className={styles.countdown} dir="ltr" aria-live="polite">
+      {formatNumber(secondsLeft)}
+    </p>
+  );
+}
+
+const COUNTDOWN_TICK_MS = 250;
 
 /** Dev preview only: fixed boards / reveal rows instead of the database queries. */
 export interface IntermissionPreview {
@@ -86,12 +104,11 @@ export function HostIntermission({
   const roundBoard = preview ? (preview.roundBoard ?? null) : fetchedRound;
   const totalBoard = preview ? (preview.totalBoard ?? null) : fetchedTotal;
 
+  const lineup = useMemo(() => [...data.rounds].sort((a, b) => a.round_no - b.round_no).map((r) => r.game), [data.rounds]);
+
   if (!info) return <Spinner />;
   const { round, next, state } = info;
-  const serverNow = Date.now() + (host.offset ?? 0);
-  const secondsLeft = Math.max(1, Math.ceil((state.stepEndsAtMs - serverNow) / 1000));
   const total = data.rounds.length;
-  const lineup = [...data.rounds].sort((a, b) => a.round_no - b.round_no).map((r) => r.game);
 
   const header = (
     <HostHeader
@@ -133,9 +150,7 @@ export function HostIntermission({
                 {t('intermission.next', { game: t(`game.${next.game}.name`) })}
               </h1>
             </Framed>
-            <p key={secondsLeft} className={styles.countdown} dir="ltr" aria-live="polite">
-              {formatNumber(secondsLeft)}
-            </p>
+            <StepCountdown endsAtMs={state.stepEndsAtMs} offset={host.offset ?? 0} />
           </div>
         </main>
         {operator}

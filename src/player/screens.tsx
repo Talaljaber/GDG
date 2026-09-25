@@ -19,6 +19,7 @@ import {
   type SessionRow,
 } from '../lib/api';
 import { displayName, type RankedRow } from '../lib/boards';
+import { replaceEqualDeep } from '../lib/equal';
 import { games } from '../games/registry';
 import type { GameResult } from '../games/types';
 import { getCurrent, type PendingSubmit } from '../lib/storage';
@@ -27,7 +28,8 @@ import { RevealIn } from '../components/RevealIn';
 import { Trans } from '../components/Trans';
 import ui from '../components/ui.module.css';
 import styles from './player.module.css';
-import { usePolling, useNow } from './hooks';
+import { usePolling } from './hooks';
+import { useSteppedNow } from '../components/useSteppedNow';
 import { usePlayerRows, useRoundBoard, useSessionBoard } from './boardHooks';
 import type { SubmitState } from './submitter';
 import { ResultDetail } from './resultDetail';
@@ -178,9 +180,12 @@ export function IntroScreen({
   roundStartEpoch: number | null;
   totalRounds: number;
 }) {
-  const now = useNow(100);
-  const remaining = roundStartEpoch === null ? COUNTDOWN_MS : Math.max(0, roundStartEpoch - now);
-  const n = Math.max(1, Math.ceil(remaining / 1000));
+  // Checked every 100 ms; re-renders only when the 3-2-1 number changes.
+  const countAt = (now: number) => {
+    const remaining = roundStartEpoch === null ? COUNTDOWN_MS : Math.max(0, roundStartEpoch - now);
+    return Math.max(1, Math.ceil(remaining / 1000));
+  };
+  const n = countAt(useSteppedNow(countAt, 100));
   return <IntroView game={round.game} roundNo={round.round_no} totalRounds={totalRounds} count={n} />;
 }
 
@@ -464,7 +469,8 @@ export function ResultsScreen({
   usePolling(
     async () => {
       try {
-        setOwn(await fetchOwnScores(session.id, playerRowId));
+        const next = await fetchOwnScores(session.id, playerRowId);
+        setOwn((prev) => replaceEqualDeep(prev, next));
       } catch {
         // keep last
       }

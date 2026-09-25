@@ -4,7 +4,7 @@
  * (ADR-112): realtime only for own session/rounds/own player row; boards and
  * player counts are polled.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchEventDay,
   fetchPlayer,
@@ -16,6 +16,7 @@ import {
 } from '../lib/api';
 import { acquireChannel, phonePresenceChannel, phoneSessionChannel } from '../lib/realtime';
 import { acquireTabLock } from '../lib/storage';
+import { replaceEqualDeep } from '../lib/equal';
 
 /** Safety-net refetch of the state rows, in case a realtime event was missed. */
 const STATE_SAFETY_REFETCH_MS = 15_000;
@@ -59,9 +60,11 @@ export function useSessionSync(sessionId: string, playerRowId: string): SessionS
       // A closed session: was it closed by a new event day (P11) or by New session (results stay)?
       const day = s?.status === 'closed' ? await fetchEventDay(s.event_day_id) : null;
       if (!alive.current) return;
-      setSession(s);
-      setRounds(r);
-      setMe(p);
+      // Refetches (every change event, reconnect and the 15 s safety net) mostly return the same
+      // rows: keep the old objects then, so the member flow doesn't re-render for nothing.
+      setSession((prev) => replaceEqualDeep(prev, s));
+      setRounds((prev) => replaceEqualDeep(prev, r));
+      setMe((prev) => replaceEqualDeep(prev, p));
       setDayCurrent(day ? day.is_current : null);
       setNotMember(!s || !p);
     } catch {
@@ -102,7 +105,11 @@ export function useSessionSync(sessionId: string, playerRowId: string): SessionS
     };
   }, [sessionId, playerRowId, load]);
 
-  return { session, rounds, me, dayCurrent, notMember, live, refresh: () => void load() };
+  const refresh = useCallback(() => void load(), [load]);
+  return useMemo(
+    () => ({ session, rounds, me, dayCurrent, notMember, live, refresh }),
+    [session, rounds, me, dayCurrent, notMember, live, refresh],
+  );
 }
 
 /** Tracks this phone on `presence:<sid>` while `active` (ADR-103). */

@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 /**
  * The brand chevron, drawn as a plain SVG shape from the logo's proportions
  * (rounded, thick arms) but WITHOUT the mosaic — never the logo image
@@ -14,8 +16,11 @@ export interface ChevronProps {
   className?: string;
 }
 
-/** A single `<`, rounded caps/joins, thick stroke (~28% of the glyph) for glare and small sizes. */
-export function Chevron({ color = 'blue', rotationDeg = 0, mirrored = false, className }: ChevronProps) {
+/**
+ * A single `<`, rounded caps/joins, thick stroke (~28% of the glyph) for glare and small sizes.
+ * Memoised (primitive props): a grid re-renders on every tap and phase change, its tiles don't.
+ */
+export const Chevron = memo(function Chevron({ color = 'blue', rotationDeg = 0, mirrored = false, className }: ChevronProps) {
   const stroke = color === 'amber' ? 'var(--gdg-amber)' : 'var(--gdg-blue)';
   const transforms: string[] = [];
   if (mirrored) transforms.push('scaleX(-1)');
@@ -39,4 +44,4 @@ export function Chevron({ color = 'blue', rotationDeg = 0, mirrored = false, cla
       />
     </svg>
   );
-}
+});

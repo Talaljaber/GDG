@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { formatNumber } from '../i18n';
 import { displayName, type RankedRow } from '../lib/boards';
 import { useRevealRows } from './useRevealRows';
@@ -16,8 +17,12 @@ import styles from './ui.module.css';
  * appears and when a row first appears; `celebrateLeader` plays the
  * celebrate shatter on the #1 row whenever a new player takes #1 (H2).
  * Phones keep plain boards (lighter on low-end phones).
+ *
+ * Memoised: the polled boards keep their row arrays when nothing changed
+ * (`lib/equal.ts`), so a screen re-rendering for other reasons (the "x/y
+ * done" count, a state refetch) skips an unchanged board (`TESTING.md` §9).
  */
-export function Leaderboard({
+export const Leaderboard = memo(function Leaderboard({
   rows,
   projector = false,
   testId,
@@ -67,4 +72,4 @@ export function Leaderboard({
       })}
     </ol>
   );
-}
+});

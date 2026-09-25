@@ -18,6 +18,7 @@ import { formatNumber, useT } from '../i18n';
 import { fetchRoundReveal, type RevealRow } from '../lib/api';
 import { STC_TARGETS_MS } from '../games/stop-the-clock/scoring';
 import { revealStrips, type RevealDot } from './reveal';
+import { replaceEqualDeep } from '../lib/equal';
 import { RevealIn } from '../components/RevealIn';
 import { revealSchedule } from '../effects/shatter';
 import styles from './host.module.css';
@@ -80,7 +81,8 @@ export function StcReveal({
     let alive = true;
     void fetchRoundReveal(roundId)
       .then((r) => {
-        if (alive) setRows(r);
+        // Re-queried on every late score / hidden name: keep the rows (and the dots) when nothing changed.
+        if (alive) setRows((prev) => replaceEqualDeep(prev, r));
       })
       .catch(() => {});
     return () => {

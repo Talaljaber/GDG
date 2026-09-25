@@ -17,6 +17,7 @@ import {
   type PlayerRow,
 } from '../lib/api';
 import { mergeBoard, withoutHidden, type RankedRow } from '../lib/boards';
+import { replaceEqualDeep } from '../lib/equal';
 import { usePolling } from './hooks';
 
 /** Round board (top 10 + own row), polled while `active`; `refreshKey` forces a refetch (e.g. after submit). */
@@ -27,7 +28,9 @@ export function useRoundBoard(roundId: string | null, playerRowId: string, activ
       if (!roundId) return;
       try {
         const page = await fetchRoundBoard(roundId, playerRowId);
-        setRows(mergeBoard(page.top, page.own, playerRowId));
+        // Polls usually return the same board: keep the old rows so the screen doesn't re-render.
+        const next = mergeBoard(page.top, page.own, playerRowId);
+        setRows((prev) => replaceEqualDeep(prev, next));
       } catch {
         // keep last board
       }
@@ -46,7 +49,8 @@ export function useSessionBoard(sessionId: string, playerRowId: string, active: 
     async () => {
       try {
         const page = await fetchSessionBoard(sessionId, playerRowId);
-        setBoard({ rows: mergeBoard(page.top, page.own, playerRowId), total: page.total });
+        const next = { rows: mergeBoard(page.top, page.own, playerRowId), total: page.total };
+        setBoard((prev) => replaceEqualDeep(prev, next));
       } catch {
         // keep last
       }
@@ -64,7 +68,8 @@ export function usePlayerRows(sessionId: string, active: boolean) {
   usePolling(
     async () => {
       try {
-        setPlayers(await fetchPlayers(sessionId));
+        const next = await fetchPlayers(sessionId);
+        setPlayers((prev) => replaceEqualDeep(prev, next));
       } catch {
         // keep last value
       }
@@ -112,7 +117,7 @@ export function useDayBoards(eventDayId: string, games: readonly GameId[], ownNa
         const res = await Promise.all(list.map((g) => fetchDayBoard(eventDayId, g, ownNameKey)));
         const next: Partial<Record<GameId, DayBoardPage>> = {};
         list.forEach((g, i) => (next[g] = res[i]));
-        setPages(next);
+        setPages((prev) => replaceEqualDeep(prev, next));
       } catch {
         // keep last
       }
@@ -152,7 +157,7 @@ export function useDayBoards(eventDayId: string, games: readonly GameId[], ownNa
       }
       out[g] = ranked;
     }
-    setRows(out);
+    setRows((prev) => replaceEqualDeep(prev, out));
   }, [pages, hidden, gamesKey, ownNameKey]);
 
   return rows;

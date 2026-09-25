@@ -62,6 +62,27 @@ export interface FlowInput {
   dayCurrent?: boolean | null;
 }
 
+/**
+ * Everything about a view that can change with time alone (the 3-2-1 ending, the local 120 s
+ * cap, the P8 steps), as one string. MemberFlow's clock re-renders only when this changes.
+ */
+export function viewKey(view: PlayerView): string {
+  switch (view.screen) {
+    case 'intro':
+      return `intro:${view.round.id}:${view.begin}`;
+    case 'game':
+      return `game:${view.round.id}:${view.roundEnded}`;
+    case 'round_result':
+      return `round_result:${view.round?.id ?? ''}`;
+    case 'intermission':
+      return `intermission:${view.round.id}:${view.next.id}:${view.step}`;
+    case 'lobby':
+      return `lobby:${view.pending}`;
+    default:
+      return view.screen;
+  }
+}
+
 export function derivePlayerView({
   local,
   session,

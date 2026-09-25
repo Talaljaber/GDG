@@ -9,13 +9,18 @@
  * from shards when the board appears and when a row first appears
  * (`reveal`), and `celebrateLeader` plays the celebrate shatter on the #1
  * row when a new player takes #1 (H2).
+ *
+ * Memoised: the screens around it re-render on the host's state changes, and
+ * the boards keep their row arrays when a refetch returns the same rows
+ * (`lib/equal.ts`), so an unchanged board is skipped (`TESTING.md` §9).
  */
+import { memo } from 'react';
 import { formatNumber, useT } from '../i18n';
 import { displayName, type RankedRow } from '../lib/boards';
 import { useRevealRows } from '../components/useRevealRows';
 import styles from './host.module.css';
 
-export function BoardTable({
+export const BoardTable = memo(function BoardTable({
   rows,
   testId,
   highlightIds,
@@ -78,4 +83,4 @@ export function BoardTable({
       </tbody>
     </table>
   );
-}
+});
