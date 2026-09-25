@@ -160,6 +160,8 @@ Color Clash is the second place (after Simon's pads) where colour alone is the a
 
 The word is drawn at `--type-target-size` × 0.8, weight 700, in its ink with the same thin `--clash-charcoal` outline for every ink (`-webkit-text-stroke` with `paint-order: stroke fill`), so amber letters are an outlined fill, never bare amber text (§2.4), and the outline carries no information. Each answer button shows the colour **name** in `--text` under a swatch, so the answer can always be read as text. The brief's hex values (`#1c89c2`, `#eaa928`) are superseded by the sampled tokens (§2.1).
 
+Swipe Sort (ADR-136) reuses this exact pair (`--clash-blue` / `--clash-amber`) rather than introducing new colours; its second cue is chevron orientation (`<` blue, `>` amber), not a third ink.
+
 ## 3. Typography
 
 - **Latin: Roboto.** **Arabic: Cairo** (Tajawal as fallback if Cairo's Arabic looks too wide in testing). Both from Google Fonts, `display=swap`, subsets `latin` and `arabic` only, weights 400, 500, 700 for both.
@@ -325,6 +327,8 @@ During a transition's 320 ms fly-in the previous screen stays on screen under th
 - **Material Symbols Rounded** (Google Fonts), weight 500, fill 0, sized to the text they sit with. Only the icons we use are subset: `check`, `close`, `translate`, `timer`, `person`, `emoji_events`, `wifi_off`, `refresh`, `qr_code_2`, `visibility_off`, `download`, `logout`.
 - Icons never carry meaning alone: always with a label (or an `aria-label` where space is tight).
 - Directional icons mirror in RTL; `check`, `close`, `timer` don't.
+- **Pairs icon set** (ADR-136, `src/games/pairs/icons.tsx`): eight hand-drawn SVGs (24 × 24 viewBox, `stroke="currentColor"`, width 2, round caps/joins, no fills), in the brand's line style, one ink colour only (`--primary-text`), no fills and no Google product logos: bug (oval + legs), coffee (cup + handle), terminal (`>_` in a frame), git branch (two nodes + fork), cloud (lobed outline), lightbulb (bulb + base lines), rocket (fin + window), gear (toothed ring). Silhouettes must stay distinct at 40 px on a phone tile.
+- Swipe Sort's swipe surface is inset from both viewport edges by `--swipe-safe-inset` (24 px, `src/styles/tokens.css`), so a touch starting in the edge-swipe-back zone never begins a drag (`games/swipe-sort.md` §2.1).
 
 ## 8. RTL rules
 

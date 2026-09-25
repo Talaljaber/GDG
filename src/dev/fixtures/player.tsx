@@ -103,6 +103,20 @@ const RAW: Record<GameId, { score: number; raw: unknown }> = {
   },
   close_brackets: { score: 838, raw: { solved: 9, failed: 1, timeouts: 0, solve_ms: 23562 } },
   color_clash: { score: 821, raw: { correct: 32, wrong: 1, timeouts: 0, mean_rt_ms: 630 } },
+  // Placeholder raws (WP0b, keeps this Record<GameId, …> exhaustive after ADR-136); WP5 should
+  // replace these with real worked examples and per-state fixtures for the three new games.
+  how_many: {
+    score: 813,
+    raw: {
+      rounds: [
+        { true_count: 12, guess: 11, answer_ms: 2400, timed_out: false },
+        { true_count: 27, guess: 24, answer_ms: 4100, timed_out: false },
+        { true_count: 55, guess: 46, answer_ms: 6800, timed_out: false },
+      ],
+    },
+  },
+  swipe_sort: { score: 864, raw: { correct: 43, wrong: 1, missed: 5, mean_swipe_ms: 450 } },
+  pairs: { score: 825, raw: { matched: 8, misses: 5, clear_ms: 34200 } },
 };
 
 // Mid-game snapshots for the two ADR-134 games (clock frozen by the screenshot harness).

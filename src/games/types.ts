@@ -21,6 +21,9 @@ export const GAME_IDS = [
   'trivia',
   'close_brackets',
   'color_clash',
+  'how_many',
+  'swipe_sort',
+  'pairs',
 ] as const;
 
 export type GameId = (typeof GAME_IDS)[number];

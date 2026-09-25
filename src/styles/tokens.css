@@ -48,12 +48,18 @@
   --r-panel: 12px;
   --r-control: 10px;
   --r-tag: 8px;
-  --proj-eyebrow: 3.2vh; /* = --proj-min: readable across the booth */
+  --proj-min: 3.2vh; /* smallest text allowed on the big screen; = --proj-t1 */
+  --proj-eyebrow: var(--proj-min); /* readable across the booth */
   --proj-header-height: 9vh;
-  --proj-operator-height: 10vh;
+  --proj-rail-height: 7vh; /* v3 "Stage and Rail" (ADR-135); --proj-operator-height is now its alias */
+  --proj-operator-height: var(--proj-rail-height);
+  --proj-rail-height-lobby: 12vh; /* H1 only: the lineup tray needs a second line */
   --proj-rank-rule: 0.6vh;
-  --proj-control-height: 5.6vh; /* host operator-bar buttons (never below --touch-target-floor) */
-  --proj-row-leading: 1.1; /* host board rows: 10 rows fit between header and operator bar */
+  --proj-control-height: 5.6vh; /* host rail buttons (never below --touch-target-floor) */
+  --proj-row-leading: 1.1; /* host board rows: 10 fixed slots fill the stage (§3.2 plan) */
+  --proj-row-height: 6.6vh; /* v3: fixed board slot height, 10 slots = 66vh */
+  --proj-r-control: 0.8vh; /* v3: rail buttons and lineup slots on the projector */
+  --proj-bar-height: 0.8vh; /* v3: thin progress bars (H2 finished, H5 tab rotation) */
   --dash-max-width: 1200px;
   /* v2 dashboard (DESIGN_SYSTEM §0.4): side-nav width, sign-in panel width */
   --dash-nav-width: 240px;
@@ -74,6 +80,17 @@
   --proj-row-pad: 0.4vh;
   --highlight-tint: var(--gdg-amber-tint);
   --primary-tint: var(--gdg-blue-tint);
+
+  /* ---- v3 "Stage and Rail" colour roles (DESIGN_SYSTEM §0, ADR-135): one meaning each ---- */
+  --action: var(--text); /* primary rail button fill: ink, not blue */
+  --on-action: var(--bg);
+  --action-hover: color-mix(in srgb, var(--text) 85%, var(--gdg-blue-strong));
+  --live: var(--primary); /* presence dots, current-round mark, active tab underline, progress fill */
+  --live-tint: var(--primary-tint); /* join pulse, moved-row pulse */
+  --rank1-tint: var(--highlight-tint); /* alias so intent reads in CSS */
+  --rank1-rule: var(--highlight);
+  --slot-line: color-mix(in srgb, var(--gdg-ink) 8%, transparent); /* empty board/lobby slots, lighter than --line */
+  --rail-text: var(--text-muted);
 
   /* Simon only exception (§2.3) */
   --simon-blue: #4285f4;
@@ -103,18 +120,29 @@
   --type-score-size: 88px;
   --type-score-weight: 700;
 
-  /* ---- §3.2 Projector scale (vh units) ---- */
-  --proj-min: 3.2vh;
-  --proj-row: 4.6vh;
+  /* ---- v3 projector modular type scale (ratio ~= 1.35, DESIGN_SYSTEM §0/ADR-135) ----
+     --proj-t1 = --proj-min = --proj-eyebrow (unchanged, declared above). */
+  --proj-t1: var(--proj-min); /* labels, rail text, column heads (hidden), step lines */
+  --proj-t2: 4.2vh; /* secondary numbers: round scores in H4, rank numbers, "Next: Simon", deltas */
+  --proj-t3: 5vh; /* board row name + score, H1 player names, tab labels */
+  --proj-t4: 7.2vh; /* screen titles: game name on H2/H3, H1 player-count number */
+  --proj-t5: 10vh; /* sub-hero: "Next: <game>" name, H4 winner name */
+  --proj-t6: 14vh; /* stat hero: H2 time left */
+  --proj-t7: 20vh; /* hero number: H4 winner total, H3 countdown digit */
+  --proj-leading-hero: 0.95; /* hero digits' line height */
+
+  /* ---- §3.2 Projector scale (vh units): old names, now v3 aliases (ADR-135) so no
+     game/phone style changes; components may keep referencing either name. ---- */
+  --proj-row: var(--proj-t3); /* was 4.6vh */
   --proj-row-weight: 700;
-  --proj-heading: 7vh;
+  --proj-heading: var(--proj-t4); /* was 7vh */
   --proj-heading-weight: 700;
-  --proj-code: 20vh;
-  --proj-code-letter-spacing: 0.08em;
+  --proj-code: 30vh; /* v3 "Stage and Rail" (ADR-135): the code is the hero, was 20vh */
+  --proj-code-letter-spacing: 0.06em;
   --proj-code-weight: 700;
-  --proj-code-corner: 6vh;
-  --proj-qr: 40vh;
-  --proj-timer: 9vh;
+  --proj-code-corner: 5vh; /* v3: = --proj-t3, was 6vh */
+  --proj-qr: 24vh; /* v3: was 40vh, the code carries the hero weight now */
+  --proj-timer: var(--proj-t6); /* was 9vh */
 
   /* ---- §4 Spacing, shape, layout ---- */
   --s-1: 4px;
@@ -128,6 +156,9 @@
 
   --phone-gutter: 16px;
   --phone-min-width: 320px;
+  /* Swipe Sort's surface inset from both viewport edges, so an iOS
+     edge-swipe-back never starts inside the drag surface (games/swipe-sort.md §2.1). */
+  --swipe-safe-inset: 24px;
 
   --r-button: 14px;
   --r-card: 20px;
@@ -161,7 +192,7 @@
   --proj-s-2: 2vh;
   --proj-s-3: 3vh;
   --proj-s-4: 5vh;
-  --proj-radius: 1.4vh;
+  --proj-radius: 1vh; /* v3 "Stage and Rail" (ADR-135): was 1.4vh; only the QR box and dialogs use it on the stage */
 
   /* ---- §6.1 Motion ---- */
   --dur-fast: 120ms;
@@ -172,6 +203,15 @@
   --ease-exit: cubic-bezier(0.3, 0, 1, 1);
   --dur-spin: 900ms;
   --dur-countdown: 1000ms;
+
+  /* ---- v3 "Stage and Rail" motion (DESIGN_SYSTEM §0/§6, ADR-135): host board rhythm ---- */
+  --dur-enter: 240ms; /* row / name entry: opacity 0->1 + translateY(8px->0) */
+  --dur-reorder: 400ms; /* FLIP transform to rest */
+  --dur-pulse: 500ms; /* one-shot tint pulse on a moved row / newest name */
+  --dur-step: 300ms; /* crossfade between intermission panels inside the same shell */
+  --dur-countup: 1200ms; /* board totals */
+  --dur-countup-hero: 1600ms; /* H4 winner total */
+  --stagger-row: 60ms; /* cascade between rows, top to bottom */
 }
 
 /* ---- §2.3 Semantic tokens (dark, big-screen option) ---- */
@@ -193,6 +233,10 @@
   --scrim: color-mix(in srgb, black 60%, transparent);
   --highlight-tint: color-mix(in srgb, var(--gdg-amber) 22%, var(--gdg-ink));
   --primary-tint: color-mix(in srgb, var(--gdg-blue) 22%, var(--gdg-ink));
+  /* v3 "Stage and Rail" (ADR-135): --action/--on-action/--live/--rank1-* follow --text/--bg/
+     --primary/--highlight above automatically; only the hand-mixed ones need a dark value. */
+  --action-hover: color-mix(in srgb, var(--text) 85%, var(--gdg-blue));
+  --slot-line: color-mix(in srgb, var(--gdg-paper) 8%, transparent);
 }
 
 /* ---- §6.2 Reduced motion: zero every duration ----
@@ -203,6 +247,13 @@
     --dur-fast: 0ms;
     --dur-base: 0ms;
     --dur-slow: 0ms;
+    --dur-enter: 0ms;
+    --dur-reorder: 0ms;
+    --dur-pulse: 0ms;
+    --dur-step: 0ms;
+    --dur-countup: 0ms;
+    --dur-countup-hero: 0ms;
+    --stagger-row: 0ms;
   }
 }
 
@@ -210,4 +261,11 @@
   --dur-fast: 0ms;
   --dur-base: 0ms;
   --dur-slow: 0ms;
+  --dur-enter: 0ms;
+  --dur-reorder: 0ms;
+  --dur-pulse: 0ms;
+  --dur-step: 0ms;
+  --dur-countup: 0ms;
+  --dur-countup-hero: 0ms;
+  --stagger-row: 0ms;
 }

@@ -109,6 +109,9 @@ Last updated: 2026-09-25
 | `game.trivia.name` | Trivia | أسئلة سريعة |
 | `game.close_brackets.name` | Close the Brackets | أغلق الأقواس |
 | `game.color_clash.name` | Color Clash | صراع الألوان |
+| `game.how_many.name` | How Many? | كم العدد؟ |
+| `game.swipe_sort.name` | Swipe Sort | فرز بالسحب |
+| `game.pairs.name` | Pairs | الأزواج |
 | `game.odd_one_out.pitch` (`game.ooo.pitch`) | One chevron is different. Find it fast. | شكل واحد مختلف. اعثر عليه بسرعة. |
 | `game.stop_the_clock.pitch` (`game.stc.pitch`) | No clock, no hints. Stop it when you feel the time is up. | لا ساعة ولا تلميحات. اضغط «أوقف» حين تشعر أن الوقت انتهى. |
 | `game.simon.pitch` | Watch the pads light up, then repeat the pattern. | راقب الأزرار وهي تضيء، ثم كرّر التسلسل. |
@@ -116,6 +119,9 @@ Last updated: 2026-09-25
 | `game.trivia.pitch` | 5 quick questions. Faster right answers score more. | 5 أسئلة سريعة. كلما أسرعت في الإجابة الصحيحة زادت نقاطك. |
 | `game.close_brackets.pitch` | Close every bracket, last one first. Beat the clock. | أغلق كل الأقواس، من الأخير إلى الأول. سابق الوقت. |
 | `game.color_clash.pitch` | Tap the color of the ink, not the word. | اضغط لون الحبر، لا الكلمة. |
+| `game.how_many.pitch` | A flash of chevrons. How many did you see? | ومضة من الأشكال. كم شكلاً رأيت؟ |
+| `game.swipe_sort.pitch` | Blue goes left, amber goes right. Faster and faster. | الأزرق يساراً والبرتقالي يميناً. أسرع فأسرع. |
+| `game.pairs.pitch` | Flip two cards at a time. Find all 8 pairs. | اقلب بطاقتين في كل مرة. اعثر على الأزواج الثمانية. |
 
 Key aliasing: game docs use short ids (`ooo`, `stc`, `pc`) for readability; the string files use the full game id (`odd_one_out`, `stop_the_clock`, `perfect_circle`). `game.ooo.x` in a game doc = `game.odd_one_out.x` in the JSON.
 
@@ -248,6 +254,67 @@ The words (`word.*`) are the stimulus and the names (`ink.*`) label the buttons;
 | `game.color_clash.result_wrong` | Wrong or missed | خاطئة أو فائتة |
 | `game.color_clash.result_speed` | Average time | متوسط الوقت |
 | `game.color_clash.result_speed_value` | {s} s | {s} ث |
+
+### 5.8 How Many?
+
+| Key | English | العربية |
+|---|---|---|
+| `game.how_many.intro` | 3 flashes · 1 second each | 3 ومضات · ثانية واحدة لكل ومضة |
+| `game.how_many.round` | Flash {n} of 3 | الومضة {n} من 3 |
+| `game.how_many.look` | Look | انظر |
+| `game.how_many.question` | How many? | كم العدد؟ |
+| `game.how_many.ok` | OK | تم |
+| `game.how_many.backspace` | Delete | حذف |
+| `game.how_many.locked` | Locked in ✓ | تم التسجيل ✓ |
+| `game.how_many.timeout` | Time's up for this one | انتهى وقت هذه الومضة |
+| `game.how_many.done` | Done | انتهى |
+| `game.how_many.result_round` | Flash {n} | الومضة {n} |
+| `game.how_many.result_guess` | Your guess {g} | تخمينك {g} |
+| `game.how_many.result_missed` | No answer | لا إجابة |
+| `game.how_many.reveal_title` | Everyone's guesses | تخمينات الجميع |
+| `game.how_many.reveal_axis` | True count | العدد الحقيقي |
+| `game.how_many.reveal_round` | Flash {n} · {count} | الومضة {n} · {count} |
+| `game.how_many.reveal_mean` | Crowd average {n} | متوسط الجميع {n} |
+
+### 5.9 Swipe Sort
+
+| Key | English | العربية |
+|---|---|---|
+| `game.swipe_sort.intro` | 30 s · blue left · amber right | 30 ثانية · الأزرق يساراً · البرتقالي يميناً |
+| `game.swipe_sort.zone_blue` | Blue | أزرق |
+| `game.swipe_sort.zone_amber` | Amber | برتقالي |
+| `game.swipe_sort.sorted` | Sorted {n} | فُرزت {n} |
+| `game.swipe_sort.missed` | Missed | فاتك |
+| `game.swipe_sort.wrong` | Wrong way | الاتجاه الخاطئ |
+| `game.swipe_sort.times_up` | Time's up | انتهى الوقت |
+| `game.swipe_sort.result_correct` | Correct | صحيحة |
+| `game.swipe_sort.result_wrong` | Wrong way | الاتجاه الخاطئ |
+| `game.swipe_sort.result_missed` | Missed | الفائتة |
+| `game.swipe_sort.result_speed` | Average time | متوسط الوقت |
+| `game.swipe_sort.result_speed_value` | {s} s | {s} ث |
+
+### 5.10 Pairs
+
+| Key | English | العربية |
+|---|---|---|
+| `game.pairs.intro` | 60 s · 8 pairs | 60 ثانية · 8 أزواج |
+| `game.pairs.found` | Pairs {n} of 8 | الأزواج {n} من 8 |
+| `game.pairs.card_back` | Face-down card | بطاقة مقلوبة |
+| `game.pairs.icon.bug` | Bug | حشرة |
+| `game.pairs.icon.coffee` | Coffee | قهوة |
+| `game.pairs.icon.terminal` | Terminal | طرفية |
+| `game.pairs.icon.branch` | Git branch | فرع |
+| `game.pairs.icon.cloud` | Cloud | سحابة |
+| `game.pairs.icon.bulb` | Lightbulb | مصباح |
+| `game.pairs.icon.rocket` | Rocket | صاروخ |
+| `game.pairs.icon.gear` | Gear | ترس |
+| `game.pairs.cleared` | All pairs found | وجدت كل الأزواج |
+| `game.pairs.times_up` | Time's up | انتهى الوقت |
+| `game.pairs.result_pairs` | Pairs found | الأزواج المكتشفة |
+| `game.pairs.result_misses` | Misses | الأخطاء |
+| `game.pairs.result_time` | Time | الوقت |
+| `game.pairs.result_time_value` | {s} s | {s} ث |
+| `game.pairs.result_not_cleared` | Not finished | لم يكتمل |
 
 ## 6. Host view (big screen)
 
