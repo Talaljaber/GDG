@@ -15,14 +15,27 @@
   padding-inline: var(--big-screen-safe-margin);
 }
 
-/* The merge stage (DayBoardMerge): H4 whole, then the H5 board area under the tabs.
-   Positioned, so a tab change's outgoing copy (.ghost) can sit over the board. */
-.mergeStage {
+/* H4 whole, then the H5 tabs + board area. Positioned, so a tab change's outgoing copy
+   (.ghost) can sit over the board. Keyed on the screen (results/dayboard) so Show day
+   board (or a reload) plays one crossfade of the whole stage (--dur-step, ~300 ms; the
+   token is 0 under reduced motion, so this is an instant swap there) — no merge, no
+   per-row cascade (user feedback 2026-09-25; ADR-010 superseded, see DECISIONS.md). */
+.crossfade {
   position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-block-size: 0;
+  animation: stage-crossfade var(--dur-step) var(--ease-standard) both;
+}
+
+@keyframes stage-crossfade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .eyebrow {

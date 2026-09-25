@@ -394,10 +394,12 @@ function SessionEnd({ day, n = 10, empty = false }: { day: boolean; n?: number; 
 }
 
 /**
- * H4 → H5 with the day-board merge: "Show day board" really switches the screen (the fake
- * `act`), and `?auto=1` taps it 500 ms after load. `staged`: the day boards arrive the way
- * the live host gets them, in several steps after the tap (one game at a time, then this
- * session's scores), plus a refetch mid-merge, as `useDayBoardData` does on a score or hide.
+ * H4 → H5: "Show day board" really switches the screen (the fake `act`), and `?auto=1`
+ * taps it 500 ms after load. No merge any more (user feedback 2026-09-25): the whole
+ * stage crossfades once (`--dur-step`). `staged`: the day boards arrive the way the live
+ * host gets them, in several steps after the tap (one game at a time, then this session's
+ * scores), plus a later refetch, as `useDayBoardData` does on a score or hide — the fixture
+ * name (`host.merge*`) is kept so existing screenshot tooling still finds it.
  */
 function SessionEndMerge({ staged = false }: { staged?: boolean }) {
   const [screen, setScreen] = useState<'results' | 'dayboard'>('results');

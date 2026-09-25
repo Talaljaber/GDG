@@ -29,19 +29,6 @@ vi.mock('../lib/api', async () => {
   };
 });
 
-// Counts merge plays (the real merge still runs).
-const mergePlays = vi.fn();
-vi.mock('../effects/shatter/merge', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../effects/shatter/merge')>();
-  return {
-    ...actual,
-    playDayBoardMerge: (...a: Parameters<typeof actual.playDayBoardMerge>) => {
-      mergePlays();
-      return actual.playDayBoardMerge(...a);
-    },
-  };
-});
-
 // Counts celebrate plays (the real one still runs).
 const celebratePlays = vi.fn();
 vi.mock('../effects/shatter/plays', async (importOriginal) => {
@@ -113,7 +100,6 @@ beforeEach(() => {
   boxes = mockBoxes();
   localStorage.clear();
   sessionStorage.clear();
-  mergePlays.mockClear();
   celebratePlays.mockClear();
   fetchSessionBoard.mockResolvedValue({
     top: [
@@ -147,8 +133,8 @@ afterEach(() => {
   delete document.documentElement.dataset.motion;
 });
 
-describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
-  it('results stay until Show day board; then the ~15 s merge walks the tabs and settles', async () => {
+describe('H4 → H5 (ADR-010 superseded 2026-09-25: instant crossfade, no merge, no per-row cascade)', () => {
+  it('Show day board shows H5 at once: no merge layer, tabs and board render in the same frame', async () => {
     const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
       wrapper: Wrap,
     });
@@ -162,36 +148,28 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
     await flush();
     expect(screen.queryByTestId('host-show-day-board')).toBeNull();
-    expect(screen.getByTestId('host-results')).toBeInTheDocument(); // fragmenting
-    expect(layers('merge')).toHaveLength(1);
-    expect(shardCount('merge')).toBeLessThanOrEqual(48);
-
-    advance(1500);
-    expect(screen.queryByTestId('host-results')).toBeNull();
+    expect(screen.queryByTestId('host-results')).toBeNull(); // no fragmenting stage: gone at once
+    expect(layers('merge')).toHaveLength(0);
+    expect(shardCount('merge')).toBe(0);
     expect(shownGame()).toBe(GAMES[0]);
-    const omarRow = () =>
-      screen.getAllByTestId('board-row').find((r) => r.textContent?.includes('Omar'));
-    expect(omarRow()).toHaveAttribute('data-highlight', 'true');
-    advance(200); // targets read: the new rows wait for their shards
-    expect(omarRow()?.style.opacity).toBe('0');
-    advance(2400);
-    expect(omarRow()?.style.opacity).not.toBe('0');
+    expect(screen.getByTestId('host-dayboard-tabs')).toBeInTheDocument();
 
-    advance(5500 - 4100);
-    expect(shownGame()).toBe(GAMES[1]);
-    advance(4000);
-    expect(shownGame()).toBe(GAMES[2]);
-    advance(4000); // 13.5 s: settle on the first tab
-    expect(shownGame()).toBe(GAMES[0]);
-    advance(1500); // 15 s: done
-    expect(layers()).toHaveLength(0);
-    expect(screen.getAllByTestId('board-row').every((r) => r.style.opacity !== '0')).toBe(true);
-
-    advance(8000); // then the tabs auto-rotate every 8 s
+    advance(8000); // the tabs still auto-rotate every 8 s
     expect(shownGame()).toBe(GAMES[1]);
   });
 
-  it('reduced motion: a crossfade straight to the first day board, then the normal rotation', async () => {
+  it('all rows are in the DOM and visible in the first frame (no cascade, no per-row delay)', async () => {
+    render(<HostSessionEnd host={hostOn('dayboard')} data={data} />, { wrapper: Wrap });
+    await flush();
+    const rows = screen.getAllByTestId('board-row');
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) expect(r.style.opacity).not.toBe('0');
+    // Omar's row is highlighted from the first frame too (no waiting for a merge tile).
+    const omarRow = rows.find((r) => r.textContent?.includes('Omar'));
+    expect(omarRow).toHaveAttribute('data-highlight', 'true');
+  });
+
+  it('reduced motion: an instant swap, then the normal rotation', async () => {
     mockReducedMotion(true);
     const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
       wrapper: Wrap,
@@ -200,10 +178,7 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
     await flush();
     expect(shardCount()).toBe(0);
-    advance(100);
     expect(shownGame()).toBe(GAMES[0]);
-    advance(100);
-    expect(layers()).toHaveLength(0);
     advance(8000);
     expect(shownGame()).toBe(GAMES[1]);
   });
@@ -215,25 +190,20 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     expect(layers('merge')).toHaveLength(0);
   });
 
-  it('one tap plays the merge exactly once: it waits for the day boards (arriving in steps), and refetches, re-renders or a stale "results" never restart it', async () => {
+  it('the day boards populate as their queries answer; there is nothing to wait for (no merge gate)', async () => {
     const StrictWrap = ({ children }: { children: ReactNode }) => (
       <StrictMode>
         <Wrap>{children}</Wrap>
       </StrictMode>
     );
     const pages = GAMES.map(() => deferred<unknown>());
-    const scores = deferred<unknown>();
     fetchDayBoard.mockImplementation(
       (_day: string, game: string) => pages[GAMES.indexOf(game as never)].promise,
     );
-    fetchSessionScores.mockImplementation(() => scores.promise);
     const page = {
-      top: [
-        { nameKey: 'omar', name: 'Omar', score: 900, achievedAt: AT },
-        { nameKey: 'rami', name: 'Rami', score: 850, achievedAt: '2026-09-24T10:00:00.000Z' },
-      ],
+      top: [{ nameKey: 'omar', name: 'Omar', score: 900, achievedAt: AT }],
       own: null,
-      total: 2,
+      total: 1,
     };
     const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
       wrapper: StrictWrap,
@@ -241,65 +211,17 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     await flush();
     rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
     await flush();
-    // The day boards arrive one by one; the merge waits over the session results.
-    for (const p of pages) {
-      expect(mergePlays).not.toHaveBeenCalled();
-      expect(screen.getByTestId('host-results')).toBeInTheDocument();
-      advance(300);
-      p.resolve(page);
-      await flush();
-    }
-    expect(mergePlays).not.toHaveBeenCalled();
-    scores.resolve(
-      GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })),
-    );
+    // The screen is already H5 (empty slots) while the day boards are still in flight
+    // (`useDayBoardData` waits for every game's query, not just the shown tab's).
+    expect(screen.queryByTestId('host-results')).toBeNull();
+    expect(screen.queryAllByTestId('board-row')).toHaveLength(0);
+    pages.forEach((p) => p.resolve(page));
     await flush();
-    expect(mergePlays).toHaveBeenCalledTimes(1);
-    expect(layers('merge')).toHaveLength(1);
-
-    // Mid-merge: new scores of the day, hidden names, fresh host data objects, a stale "results".
-    fetchDayBoard.mockImplementation(async () => ({
-      ...page,
-      top: page.top.map((r) => ({ ...r })),
-    }));
-    fetchSessionScores.mockResolvedValue(
-      GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })),
-    );
-    for (let t = 0, v = 1; t < 16_000; t += 1000, v++) {
-      const stale = t === 6000;
-      rerender(
-        <HostSessionEnd
-          host={hostOn(stale ? 'results' : 'dayboard', { scoresVersion: v, dayVersion: v })}
-          data={{ ...data }}
-        />,
-      );
-      await flush();
-      advance(1000);
-    }
-    expect(mergePlays).toHaveBeenCalledTimes(1);
-    expect(layers()).toHaveLength(0);
-    expect(shownGame()).not.toBeNull();
-    expect(screen.getAllByTestId('board-row').every((r) => r.style.opacity !== '0')).toBe(true);
+    expect(screen.getAllByTestId('board-row')).toHaveLength(1);
+    expect(layers('merge')).toHaveLength(0);
   });
 
-  it('plays anyway (once) when the day boards are slow to load', async () => {
-    fetchDayBoard.mockImplementation(() => new Promise(() => {}));
-    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
-      wrapper: Wrap,
-    });
-    await flush();
-    rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
-    await flush();
-    advance(2499);
-    expect(mergePlays).not.toHaveBeenCalled();
-    advance(1);
-    expect(mergePlays).toHaveBeenCalledTimes(1);
-    advance(20_000);
-    expect(mergePlays).toHaveBeenCalledTimes(1);
-    expect(layers()).toHaveLength(0);
-  });
-
-  it('the logo is shatter-safe and outside the merge stage (never hidden or covered)', async () => {
+  it('the logo is shatter-safe (never hidden or covered by the crossfade)', async () => {
     const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
       wrapper: Wrap,
     });
@@ -309,11 +231,9 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     expect(logo.closest('[data-shatter]')).toBeNull();
     rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
     await flush();
-    for (let t = 0; t < 16_000; t += 500) {
-      advance(500);
-      expect(screen.getByTestId('logo').style.opacity).toBe('');
-    }
-    expect(anim.calls.some((c) => (c.el as HTMLElement).dataset?.testid === 'logo')).toBe(false);
+    expect(screen.getByTestId('logo').style.opacity).toBe('');
+    advance(8000);
+    expect(screen.getByTestId('logo').style.opacity).toBe('');
   });
 });
 

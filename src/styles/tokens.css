@@ -211,7 +211,7 @@
   --dur-step: 300ms; /* crossfade between intermission panels inside the same shell */
   --dur-countup: 1200ms; /* board totals */
   --dur-countup-hero: 1600ms; /* H4 winner total */
-  --stagger-row: 60ms; /* cascade between rows, top to bottom */
+  --stagger-row: 0ms; /* boards render all at once (user feedback 2026-09-25: no row-by-row loading); FLIP reorder movement is separate (--dur-reorder) */
 }
 
 /* ---- §2.3 Semantic tokens (dark, big-screen option) ---- */

@@ -1,33 +1,28 @@
 /**
  * H4 Session results and H5 Day boards, host v3 "Stage and Rail" (ADR-135,
- * `docs/plans/host-v3.md` §4.5–§4.6; ADR-010, ADR-022). One screen for both,
- * so the day-board merge can play between them.
+ * `docs/plans/host-v3.md` §4.5–§4.6; ADR-010, ADR-022). One screen for both.
  *
  * H4, the podium moment: the side column holds the winner (name at t5, then the
  * total as the screen's one hero number at t7, framed by the facing chevrons
  * like the lobby code, with an amber rule under the digits), then #2 and #3 as
  * two plain lines; the session table (top 10 by total, one visible
  * column per round, "–" for a missing round) fills the other columns in ten
- * fixed slots. When H4 first appears the rows cascade in and count up, then
- * the winner's total counts up, then the celebrate shatter plays on the
- * winner once: the session's one celebration. A 3 s poll refresh or a reload
- * onto H4 (remembered for this tab) never replays it. It stays until the host
- * taps Show day board.
+ * fixed slots. When H4 first appears every row appears together (no cascade,
+ * `--stagger-row` is 0) and counts up together, then the winner's total counts
+ * up, then the celebrate shatter plays on the winner once: the session's one
+ * celebration. A 3 s poll refresh or a reload onto H4 (remembered for this
+ * tab) never replays it. It stays until the host taps Show day board.
  *
- * Then the ~15 s merge (DESIGN_SYSTEM §6.2), exactly once per tap, as soon as
- * the day boards have loaded: the session rows crack into small tiles, each
- * game's day-board tab appears in turn and the tiles glide into the rows that
- * came from this session, then the first tab settles. H5: "Today's best" and
- * the game tabs across the top of the board, the active tab underlined in
- * blue ("live") with the underline filling over the 8 s until the next tab;
- * ten slots, best per name today; rows from this session keep a blue
- * inline-start rule for the first rotation. Tab changes after the merge
- * crossfade. A reload onto H5 shows the day boards at once (no merge). New
- * session (from either, even mid-merge, E21) turns the pending session into
- * the lobby.
- *
- * The merge stage is the board area only, and its tiles are clipped to it:
- * the brand strip (with the logo, §5) and the rail are never hidden or covered.
+ * Show day board switches straight to H5 (no merge, no shatter tiles, no
+ * per-game stepping — user feedback 2026-09-25 called the old merge "so bad"):
+ * the whole stage crossfades once (`--dur-step`, ~300 ms) from the results to
+ * "Today's best" and the game tabs across the top of the board; the active tab
+ * is underlined in blue ("live"), the underline filling over the 8 s until the
+ * next tab. Ten slots, best per name today, every row appears together; rows
+ * from this session keep a blue inline-start rule for the first rotation. A
+ * tab change crossfades the whole board at once (never row by row). Reduced
+ * motion: an instant swap. New session (from either) turns the pending
+ * session into the lobby.
  *
  * Render budget (`TESTING.md` §9): an idle H4 commits nothing (polls keep equal
  * rows, count-ups write the DOM from rAF, the celebrate and the tab underline
@@ -61,13 +56,7 @@ import {
 } from '../lib/api';
 import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
 import { replaceEqualDeep } from '../lib/equal';
-import {
-  DayBoardMerge,
-  playCelebrate,
-  useDensity,
-  useReducedMotion,
-  type ShatterHandle,
-} from '../effects/shatter';
+import { playCelebrate, useDensity, useReducedMotion, type ShatterHandle } from '../effects/shatter';
 import hostStyles from './host.module.css';
 import styles from './results.module.css';
 import { BoardTable } from './BoardTable';
@@ -239,14 +228,6 @@ function useDayBoardData(
   return { rows, sessionScores, ready: loaded.rows && loaded.scores };
 }
 
-/**
- * How long the merge waits for the day boards after Show day board lands
- * before it plays anyway (a slow network then just gets fewer highlighted rows).
- */
-const MERGE_DATA_WAIT_MS = 2500;
-
-type View = 'results' | 'dayboard';
-
 /** Dev preview only: fixed data instead of the database queries. */
 export interface SessionEndPreview {
   board?: RankedRow[] | null;
@@ -278,28 +259,11 @@ export function HostSessionEnd({
   const onDayBoard = host.screen === 'dayboard';
   const reduced = useReducedMotion();
 
-  // H4 → H5 while this screen is up plays the merge exactly once; a reload onto H5 doesn't
-  // (derived state). Reaching the day board is sticky: a stale reload that briefly says
-  // "results" again never replays it. The merge starts once the day boards have loaded (or
-  // after MERGE_DATA_WAIT_MS), so it plays over a stable layout; refetches never restart it.
-  const [reachedDayBoard, setReachedDayBoard] = useState(onDayBoard);
-  const [awaitingData, setAwaitingData] = useState(false);
-  const [waitedOut, setWaitedOut] = useState(false);
-  const [mergeRun, setMergeRun] = useState(0);
-  const [merging, setMerging] = useState(false);
-  const [view, setView] = useState<View>(onDayBoard ? 'dayboard' : 'results');
-  if (onDayBoard && !reachedDayBoard) {
-    setReachedDayBoard(true);
-    setAwaitingData(true);
-    setMerging(true);
-  }
-
+  // Show day board switches the screen at once (no merge, no data wait): the day boards
+  // simply pop in as their queries answer, same as any other board. `dayBoardArea` only
+  // backs the tab-change crossfade below.
   const live = !preview;
-  const fetchedResults = useSessionResults(
-    session.id,
-    host.scoresVersion,
-    live && view === 'results',
-  );
+  const fetchedResults = useSessionResults(session.id, host.scoresVersion, live && !onDayBoard);
   const fetchedDay = useDayBoardData(host, data, lineup, live && onDayBoard);
   const results = preview
     ? { board: preview.board ?? null, breakdown: preview.breakdown ?? NO_BREAKDOWN }
@@ -308,30 +272,9 @@ export function HostSessionEnd({
     ? { rows: preview.dayRows ?? {}, sessionScores: preview.sessionScores ?? [] }
     : fetchedDay;
 
-  const dayReady = preview
-    ? lineup.every((g) => preview.dayRows?.[g] !== undefined)
-    : fetchedDay.ready;
-  useEffect(() => {
-    if (!awaitingData) return;
-    const timer = window.setTimeout(() => setWaitedOut(true), MERGE_DATA_WAIT_MS);
-    return () => window.clearTimeout(timer);
-  }, [awaitingData]);
-  if (awaitingData && (dayReady || waitedOut)) {
-    setAwaitingData(false);
-    setMergeRun((n) => n + 1);
-  }
-
-  // Merge sources: the session table's filled rows (not its empty slots); targets: the rows of
-  // the shown tab that came from this session (highlighted).
-  const resultsArea = useRef<HTMLDivElement>(null);
-  const sources = () =>
-    Array.from(resultsArea.current?.querySelectorAll('tbody tr:not([data-slot])') ?? []);
+  // Tab changes crossfade the whole board at once (never row by row): the outgoing board is
+  // copied and fades out over the incoming one (DOM only, no extra commit).
   const dayBoardArea = useRef<HTMLDivElement>(null);
-  const targets = () =>
-    Array.from(dayBoardArea.current?.querySelectorAll('[data-highlight="true"]') ?? []);
-
-  // Tab changes after the merge crossfade: the outgoing board is copied and fades out over
-  // the incoming one (DOM only, no extra commit). The merge does its own fades.
   const fades = useRef(new Set<HTMLElement>());
   const fadeOutBoard = useCallback(() => {
     const el = dayBoardArea.current;
@@ -378,9 +321,9 @@ export function HostSessionEnd({
 
   const [tab, setTab] = useState(0);
   const [rotations, setRotations] = useState(0);
-  // Tabs auto-rotate every 8 s once the merge is over (the merge drives the tabs while it
-  // plays). The wait restarts on every tab change, so a tapped tab also gets its full 8 s.
-  const rotating = view === 'dayboard' && !merging;
+  // Tabs auto-rotate every 8 s. The wait restarts on every tab change, so a tapped tab also
+  // gets its full 8 s.
+  const rotating = onDayBoard;
   useEffect(() => {
     if (!rotating) return;
     const timer = window.setTimeout(() => {
@@ -392,7 +335,7 @@ export function HostSessionEnd({
   }, [rotating, tab, rotations, lineup.length, fadeOutBoard]);
   const pickTab = (i: number) => {
     if (i === tab) return;
-    if (!merging) fadeOutBoard();
+    fadeOutBoard();
     setTab(i);
   };
 
@@ -427,31 +370,19 @@ export function HostSessionEnd({
         end={<CornerCode pending={data.pending} joined={data.pendingPlayers} />}
       />
       <main className={styles.stage}>
-        {view === 'dayboard' ? (
-          <DayBoardTabs
-            lineup={lineup}
-            tab={tab}
-            onPick={pickTab}
-            progress={rotating && !reduced ? `${tab}:${rotations}` : null}
-          />
-        ) : null}
-        <DayBoardMerge
-          trigger={mergeRun}
-          games={lineup.map((id) => ({ id, targets }))}
-          sources={sources}
-          className={styles.mergeStage}
-          data-testid="host-merge-stage"
-          onFragmented={() => setView('dayboard')}
-          onGameStart={(_, i) => setTab(i)}
-          onSettle={() => setTab(0)}
-          onDone={() => {
-            setMerging(false);
-            setRotations(0);
-          }}
-        >
-          {view === 'results' ? (
+        {/* Keyed on the screen: Show day board / a reload crossfades the whole stage once
+            (`--dur-step`, ~300 ms; instant under reduced motion) — no merge, no per-row cascade. */}
+        <div key={onDayBoard ? 'dayboard' : 'results'} className={styles.crossfade}>
+          {onDayBoard ? (
+            <DayBoardTabs
+              lineup={lineup}
+              tab={tab}
+              onPick={pickTab}
+              progress={rotating && !reduced ? `${tab}:${rotations}` : null}
+            />
+          ) : null}
+          {!onDayBoard ? (
             <SessionResults
-              ref={resultsArea}
               sessionId={session.id}
               lineup={lineup}
               board={results.board}
@@ -465,10 +396,10 @@ export function HostSessionEnd({
               rows={day.rows}
               sessionScores={day.sessionScores}
               firstCycle={rotations < lineup.length}
-              reveal={!merging}
+              reveal
             />
           )}
-        </DayBoardMerge>
+        </div>
       </main>
       <OperatorBar start={<NextGamesButton host={host} pending={data.pending} />}>
         {!onDayBoard ? (
