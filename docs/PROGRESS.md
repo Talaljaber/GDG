@@ -47,6 +47,7 @@ Last updated: 2026-09-25
 
 ## Done
 
+- 2026-09-25: **Netlify live (AC0.4)** at gdg-games.netlify.app: `/`, `/host`, `/dashboard` and deep paths return 200; the bundle targets the Frankfurt project, has no secret key and ships the event trivia pool only.
 - 2026-09-25: **Phase 7 (ADR-134): Close the Brackets and Color Clash** built to their docs (`docs/games/close-brackets.md`, `color-clash.md`): modules `src/games/close-brackets/`, `src/games/color-clash/`, registered (pool = 7); `GAME_IDS` in `src/games/types.ts` (dashboard game filter reads it); migrations `20260925000500` (enum labels) + `20260925000600` (bounds) applied locally; pgTAP `09_score_bounds_new_games.sql`; `worstCase.test.tsx` and `e2e/payloads.spec.ts` extended (e2e not run); P7 breakdown rows (`src/player/resultDetail.tsx`); Color Clash colour-vision check in `npm run contrast`; strings `COPY.md` §5.6–§5.7; formulas + calibration `SCORING.md` §3.6–§3.7. Existing games unchanged. Pending: real devices, playtest calibration, Arabic review, `db push` (AC7.3–AC7.10).
 - 2026-09-25: **Render audit, host + phones**: top-level clocks (lobby presence, H2 time left, H3 step, the phone's member-flow tick) now re-render only when what they show changes (`useSteppedNow`, `usePresenceDots`); polls and reloads keep unchanged data (`lib/equal.ts`); boards and game glyphs memoised. Idle lobby, results and idle games: 0–21 renders (was 60–960); a host round −82–88 %. Dev-only counter `src/dev/renderCount.ts`. Numbers in TESTING §9 "Host and phones".
 - 2026-09-24: **Phase 5 shatter wiring**: screen transitions on phone and big screen (`src/components/ScreenTransition.tsx`, keys in `src/player/screenKey.ts` / `src/host/screenKey.ts`; never into a game), board shatter-in + H2 new-#1 celebrate (`src/components/useRevealRows.ts`), P7 new-best celebrate and Stop the Clock dot bursts (`RevealIn.tsx`), the ~15 s H4 → H5 merge (`src/host/Results.tsx`, H4/H5 now one screen), host **Reduce motion** toggle (`src/host/motion.tsx`), `SHATTER_LOGO_CLASS` on every logo, z tokens in `tokens.css`. Phone initial JS +7.1 kB gzip. Details: DESIGN_SYSTEM §6.2 "Where it's wired"; AC status in PHASES Phase 5.
@@ -66,12 +67,12 @@ Last updated: 2026-09-25
 2. Phase 3 sign-off per game (AC3.1, AC3.6, AC3.7) and E2E-2 (reload mid-round) for the four newer games in the browser (unit-tested today).
 3. Team answers the blocking open questions: OQ-01 (dates), OQ-02 (roles), OQ-03 (trivia writers), OQ-14 (Netlify account), and reviews Proposed ADRs (OQ-19).
 4. Phase 5 real-hardware checks for the shatter (AC5.3): ≥ 45 fps on the low-end Android (transitions, P7 celebrate), and on the projector the H3 shatter-in/dot bursts and the H4 → H5 merge (TESTING §6); compare with Reduce motion on.
-5. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), keepalive secrets (AC0.3), Netlify (AC0.4).
+5. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), keepalive secrets (AC0.3; GitHub Actions is billing-locked). Netlify is live (AC0.4 ✅). **Push migrations 000500/000600 (new games) with Talal's OK; until then don't pick Close the Brackets or Color Clash on the live site.**
 
 ## Blockers
 
 - **GitHub Actions is locked by a billing issue on the account** (2026-09-25): CI and the scheduled keepalive are refused ("account is locked due to a billing issue"), so the keepalive isn't touching the cloud database; the Free project pauses after ~7 days without activity. Talal fixes billing in GitHub → Settings → Billing, then re-runs Keepalive once by hand.
-- Netlify needs the team's account (OQ-14). Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia: the pool now has 30 questions marked ready (`check:trivia`); the review sign-off is OQ-03.
+Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia: the pool now has 30 questions marked ready (`check:trivia`); the review sign-off is OQ-03.
 
 ## Edge-case test coverage (E1–E29, `SESSION_LIFECYCLE.md` §6)
 
