@@ -556,6 +556,8 @@ export type Database = {
         | "simon"
         | "perfect_circle"
         | "trivia"
+        | "close_brackets"
+        | "color_clash"
       player_progress: "waiting" | "playing" | "finished"
       player_status: "joined" | "removed"
       round_end_reason: "all_finished" | "time_cap" | "force_end"
@@ -698,6 +700,8 @@ export const Constants = {
         "simon",
         "perfect_circle",
         "trivia",
+        "close_brackets",
+        "color_clash",
       ],
       player_progress: ["waiting", "playing", "finished"],
       player_status: ["joined", "removed"],
