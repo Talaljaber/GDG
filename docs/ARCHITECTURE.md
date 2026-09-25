@@ -2,7 +2,7 @@
 
 Purpose: how the GDG Booth Game is put together: the static-site + Supabase design with no backend server, the main flows as diagrams (system, join, gameplay and score submission, realtime leaderboards), the trade-offs of going serverless, capacity against the verified free-plan limits, the game module contract, and the planned source tree. Tables and policies are in `DATA_MODEL.md`; state machines in `SESSION_LIFECYCLE.md`.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ---
 
@@ -221,7 +221,9 @@ Every game is a self-contained module under `src/games/<game-id>/` and is regist
 │       ├── odd-one-out/
 │       ├── simon/
 │       ├── perfect-circle/
-│       └── trivia/                imports docs/content/trivia-questions.json
+│       ├── trivia/                imports docs/content/trivia-questions.json
+│       ├── close-brackets/        ADR-134
+│       └── color-clash/           ADR-134
 ├── supabase/
 │   ├── config.toml
 │   ├── migrations/                0001_schema.sql … (DATA_MODEL §3–§8, §10)

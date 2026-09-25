@@ -1,8 +1,8 @@
 # GDG Booth Game — project memory
 
-A multiplayer mini-game system for our GDG on Campus booth at the AI Expo in Jordan. Guests scan one permanent QR on the big screen, type the session's 4-digit code and a name (no account), and play a session of **3 different short games in a row** on their own phones: Odd One Out, Stop the Clock, Simon, Perfect Circle, Trivia. The admin laptop is the projected big screen (lobby, live leaderboards after every round, session results, per-game day boards); a separate admin dashboard handles history, combined results, hiding names and new event days. Bilingual Arabic/English with full RTL, GDG-branded. Goal: pull people to the booth, keep them a few minutes, bring them back.
+A multiplayer mini-game system for our GDG on Campus booth at the AI Expo in Jordan. Guests scan one permanent QR on the big screen, type the session's 4-digit code and a name (no account), and play a session of **3 different short games in a row** on their own phones, picked from seven: Odd One Out, Stop the Clock, Simon, Perfect Circle, Trivia, Close the Brackets, Color Clash (ADR-134). The admin laptop is the projected big screen (lobby, live leaderboards after every round, session results, per-game day boards); a separate admin dashboard handles history, combined results, hiding names and new event days. Bilingual Arabic/English with full RTL, GDG-branded. Goal: pull people to the booth, keep them a few minutes, bring them back.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 **Status:** see the imported PROGRESS below. Documentation is complete; follow `docs/PHASES.md`.
 

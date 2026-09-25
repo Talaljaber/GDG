@@ -2,7 +2,7 @@
 
 Purpose: the map of the GDG Booth Game documentation, with one line per file, so a developer or a Claude Code session can find the right document without opening all of them. Start with `PROGRESS.md` (where we are) and `DECISIONS.md` (what's settled); the rest is reference to open when working on that area.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 | File | What it's for |
 |---|---|
@@ -19,6 +19,9 @@ Last updated: 2026-09-24
 | [games/simon.md](games/simon.md) | Simon spec. |
 | [games/perfect-circle.md](games/perfect-circle.md) | Perfect Circle spec, including the roundness metric. |
 | [games/trivia.md](games/trivia.md) | Trivia spec, including the per-player draw. |
+| [games/close-brackets.md](games/close-brackets.md) | Close the Brackets spec (ADR-134). |
+| [games/color-clash.md](games/color-clash.md) | Color Clash spec, including the colour-vision check of the inks (ADR-134). |
+| [games/newgames.md](games/newgames.md) | The brief for new games; Phase A items 1–2 are built (ADR-134), the rest is not approved. |
 | [SCREENS.md](SCREENS.md) | Every phone, big-screen and dashboard screen, with states, wireframes, transitions and string keys. |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Colour tokens (placeholders), type scales, spacing, shatter motion spec, icons, RTL, accessibility. |
 | [COPY.md](COPY.md) | Every user-facing string in English and Arabic; voice; plural rules; booth script. |

@@ -2,7 +2,7 @@
 
 Purpose: everything the person running the booth needs, in the order they need it: setup checklist, how to run a session, what to say to guests, what to do when something breaks, and the end-of-day steps. Written for a chapter member who didn't build the system. Keep a printed copy at the booth.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ---
 
@@ -36,6 +36,11 @@ Last updated: 2026-09-24
 7. You can change the next session's games any time during play with **next games ▾**; it never affects the running session.
 
 Typical session: 3–6 minutes. Aim for a new session every ~8 minutes at busy times.
+
+**Picking games for the crowd (7 in the pool, ADR-134).**
+- *Crowds and busy times* (fast, readable from outside, fun to watch): **Close the Brackets** and **Color Clash** (30 s each, the room sees the scores climb), **Odd One Out**, **Trivia** (people shout answers). A quick lineup: Color Clash → Odd One Out → Close the Brackets (≈ 3 min).
+- *Solo players and quiet moments* (focus, a story to tell afterwards): **Stop the Clock** (the guess reveal is best with 3+ players, but works alone), **Perfect Circle**, **Simon** (the longest; a good player can take ~2 min).
+- Mix a fast game with a focus game so everyone has a chance. Colour-blind guests can play Color Clash (the buttons carry names, the inks differ in lightness), but a guest who can't tell colours at all should get a lineup without it.
 
 ## 3. What to say (short script)
 

@@ -148,6 +148,18 @@ v2 semantic pairs (light theme unless marked; translucent tokens composited on `
 
 `npm run contrast` re-checks all of these pairs from `tokens.css` (it resolves `var()` and `color-mix()` for both themes). Add a pair there whenever a component puts text on a new background.
 
+### 2.5 Color Clash inks (ADR-134)
+
+Color Clash is the second place (after Simon's pads) where colour alone is the answer, so its three inks are chosen to survive red–green colour-vision deficiencies. They are brand colours only, as game tokens: `--clash-blue` = `--gdg-blue`, `--clash-amber` = `--gdg-amber`, `--clash-charcoal` = `--gdg-ink`. They differ in lightness as well as hue, and blue vs amber lies on the blue–yellow axis that deuteranopia and protanopia keep. `npm run contrast` simulates each deficiency (Machado et al. 2009, full severity, linear sRGB) and fails if any pair's CIE76 ΔE drops below 40 for deuteranopia or protanopia:
+
+| Pair (contrast · ΔE) | Normal | Deuteranopia | Protanopia | Tritanopia (info) |
+|---|---|---|---|---|
+| blue / amber | 1.95 · 119 | 2.27 · 120 | 1.52 · 113 | 1.63 · 79 |
+| blue / charcoal | 4.70 · 62 | 4.34 · 63 | 5.28 · 62 | 5.22 · 59 |
+| amber / charcoal | 9.15 · 102 | 9.87 · 102 | 8.01 · 99 | 8.49 · 80 |
+
+The word is drawn at `--type-target-size` × 0.8, weight 700, in its ink with the same thin `--clash-charcoal` outline for every ink (`-webkit-text-stroke` with `paint-order: stroke fill`), so amber letters are an outlined fill, never bare amber text (§2.4), and the outline carries no information. Each answer button shows the colour **name** in `--text` under a swatch, so the answer can always be read as text. The brief's hex values (`#1c89c2`, `#eaa928`) are superseded by the sampled tokens (§2.1).
+
 ## 3. Typography
 
 - **Latin: Roboto.** **Arabic: Cairo** (Tajawal as fallback if Cairo's Arabic looks too wide in testing). Both from Google Fonts, `display=swap`, subsets `latin` and `arabic` only, weights 400, 500, 700 for both.
@@ -256,6 +268,7 @@ Global utilities (`src/styles/base.css`): `.hero` (700 + tabular, the only bold)
 - **App logo files**: `src/assets/logo.png` / `logo.webp` are a transparent cut of `assets/logo.png` (670 × 281 incl. a 5 px transparent pad): the white is removed by un-matting against white, the mark's pixels and colours are unchanged (the four flat tones are bit-identical).
 - **Chevron shape** (for game tiles, buttons, pads, versus framing): a separate simple SVG path of one chevron, drawn from the logo's proportions but without the mosaic, in `--gdg-blue` or `--gdg-amber`.
 - **Versus frame**: the blue `<` enters from the inline-start edge and the amber `>` from the inline-end, meeting around the content (round intro "Next: Simon", player cards). 400 ms, emphasized easing.
+- **Brackets (Close the Brackets, ADR-134)**: `( [ { <` and their closers are SVG strokes in the chevron style (`src/games/close-brackets/Bracket.tsx`): a 60 × 100 box, stroke 11 (≈ 18 % of the box width), round caps and joins; `<` `>` are the chevron shape itself; closers are the mirrored openers. Openers `--gdg-blue`, placed closers and the solved row `--gdg-amber` (a stroke, never text); wrong = ink shake, no red. SVG, not text, so an Arabic page never bidi-mirrors `(` into `)`; the row and the keys are `direction: ltr`.
 
 ## 6. Motion
 
@@ -276,14 +289,14 @@ Animate only `transform` and `opacity`. Target 60 fps on a low-end Android (`TES
 
 A standalone effect layer, never applied to the logo.
 
-**Shards.** A seeded Delaunay triangulation of a jittered point grid covering the target rectangle: **24 shards on phones, 48 on the big screen** (hard caps). Each shard is filled with one of `--gdg-blue`, `--gdg-blue-deep`, `--gdg-amber`, `--gdg-amber-deep`, `--gdg-blue-tint`, `--gdg-paper`, with a 1 px `--gdg-paper` edge, which gives the crystalline look of the logo's shattered outer points. Weights: blue 25 %, blue-deep 20 %, amber 15 %, amber-deep 10 %, tint 20 %, paper 10 %. Rendered as one fixed, click-through overlay per play holding one small inline `<svg>` polygon per shard, animated with the Web Animations API on `transform` and `opacity` only (compositor-driven, so it keeps 60 fps while the main thread handles Realtime; reasoning in `src/effects/shatter/README.md`). Effects never block input (`pointer-events: none`) and never touch game timing.
+**Shards.** A seeded Delaunay triangulation of a jittered point grid covering the target rectangle: **24 shards on phones, 48 on the big screen** (hard caps). Each shard is filled with one of `--gdg-blue`, `--gdg-blue-deep`, `--gdg-amber`, `--gdg-amber-deep`, `--gdg-blue-tint`, `--gdg-paper`, with a 1 px `--gdg-paper` edge, which gives the crystalline look of the logo's shattered outer points. Weights: blue 25 %, blue-deep 20 %, amber 15 %, amber-deep 10 %, tint 20 %, paper 10 %. The day-board merge uses its own restrained palette: blue 45 %, blue-deep 40 %, amber 10 %, amber-deep 5 % (no tint or paper, which read as pale grey slabs on the paper background). Rendered as one fixed, click-through overlay per play holding one small inline `<svg>` polygon per shard, animated with the Web Animations API on `transform` and `opacity` only (compositor-driven, so it keeps 60 fps while the main thread handles Realtime; reasoning in `src/effects/shatter/README.md`). Effects never block input (`pointer-events: none`) and never touch game timing.
 
 | Variant | Where | Timeline | Easing |
 |---|---|---|---|
 | **Screen transition** | between major screens (join → lobby, round → intermission, intermission → next round, results) | 0–320 ms shards fly in from random directions (distance 30–60 % of viewport, rotation ±40°) and tile the screen; content swaps underneath at 320 ms; 320–700 ms shards burst outward (1.2× distance) and fade | in: emphasized; out: exit |
 | **Celebrate (fragment & reassemble)** | new personal best on the phone; #1 of a round on the big screen | 0–450 ms the element's area splits into shards drifting 18–40 px outward with ±25° rotation; 450–1200 ms shards return and fuse; amber glow pulse at 1200 ms | emphasized |
 | **Round results shatter-in** | round board and session results appear | rows assemble from shards top to bottom, 60 ms stagger, 500 ms each | emphasized |
-| **Day-board merge** | big screen, after **Show day board** | ~15 s: 0–1.5 s session results fragment; 1.5–13.5 s for each of the 3 games in the lineup (4 s each): its day-board tab appears, shards stream to rows that are new or improved, those rows reassemble and slide to their rank; 13.5–15 s settle on the first game's tab (tabs then auto-rotate every 8 s) | standard |
+| **Day-board merge** | big screen, after **Show day board** | ~15 s, one continuous swarm of small mosaic tiles (row-sized: cells 0.8 × the row height, ≤ 4 per session row, ≤ 8 per day-board row, ≤ 48 alive), drawn slightly inset so the grout shows, and clipped to the board area (never over the header, logo or operator bar): 0–1.5 s the session rows crack into tiles that loosen a little while the results fade; 1.5–13.5 s for each of the 3 games (4 s each): its tab shows (the board fades in over 360 ms, never blanked between games), the tiles glide into the rows that are new or improved (hidden until then), those rows fade in as the tiles fade out at +2.6 s, and at +3.5 s the tiles break off them again to carry on to the next tab; 13.5–15 s settle on the first game's tab (tabs then auto-rotate every 8 s) | standard |
 | **Stop the Clock reveal** | big screen intermission | guess dots appear in shatter bursts per strip, 5 s total | emphasized |
 
 **Reduced motion** (`prefers-reduced-motion: reduce`, or the host's **Reduce motion** toggle on the big screen, SCREENS H6): every variant becomes a 200 ms crossfade (board rows and reveal dots: a 200 ms fade-in); celebrate becomes a static amber ring; the day-board merge becomes a crossfade to the day board. Host screens that show the logo (H1, H4/H5) swap instantly instead (§5). The host toggle is remembered on the laptop and also sets `data-motion="reduced"` on `<html>`, which zeroes `--dur-fast/base/slow` like the OS setting.
@@ -295,7 +308,7 @@ A standalone effect layer, never applied to the logo.
 | Screen transition | join ↔ member flow; lobby → round intro, round → intermission, intermission → next round intro, → results, → day board, removed/ended. **Never into a game**: a round's intro, game and own result share one key; reload/loading swaps are instant; intermission steps don't transition on phones | H1 → H2 (round start), H2 → H3, each H3 step, H3 "Next" → H2, H3 → H4; H4 → H5 is the merge | `src/components/ScreenTransition.tsx`, `src/player/screenKey.ts`, `src/host/screenKey.ts` |
 | Celebrate | P7 `new_best` line (after the phone's round is over) | H2: the row that takes #1 (not on first load) | `RevealIn variant="celebrate"`, `useRevealRows({ leaderKey })` |
 | Round results shatter-in | none (phones keep plain boards: lighter on low-end phones) | H1 player chips as they join; H2 rows as they appear; H3 round/total boards; H4 session table; H5 boards on each tab rotation | `src/components/useRevealRows.ts` (one budgeted batch per list) |
-| Day-board merge | none (P10 gets a screen transition) | H4 → H5 after **Show day board**; the stage is the board area only; a reload onto H5 skips it; New session mid-merge cancels it | `src/host/Results.tsx` |
+| Day-board merge | none (P10 gets a screen transition) | H4 → H5 after **Show day board**, exactly once per tap: it starts when the day boards have loaded (at most 2.5 s after the tap, then it plays anyway), and refetches, re-renders or a stale reload never restart it; the stage is the board area only; a reload onto H5 skips it; New session mid-merge cancels it | `src/host/Results.tsx` |
 | Stop the Clock reveal | none | H3 round board of a Stop the Clock round: dots burst in strip by strip within 5 s (`revealSchedule`) | `src/host/StcReveal.tsx` via `RevealIn variant="dot"` |
 
 During a transition's 320 ms fly-in the previous screen stays on screen under the shards, frozen and not clickable; the host's `data-screen` (and anything that says "the current screen") follows the screen actually shown, not the state that triggered the change. Board rows are always in the DOM with their text; the shatter-in only sets their opacity.

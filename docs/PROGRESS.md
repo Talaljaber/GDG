@@ -4,7 +4,7 @@ Phase 2 (sessions, rounds, leaderboards) and the Phase 3 integration items — i
 
 Purpose: the living project memory. It records the current phase, what's done, what's next, blockers and short notes from each working session. Every Claude Code session reads it first and updates it last (CLAUDE.md working agreement). Keep it short: move finished detail into the relevant doc and keep only pointers here.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ---
 
@@ -47,6 +47,8 @@ Last updated: 2026-09-24
 
 ## Done
 
+- 2026-09-25: **Phase 7 (ADR-134): Close the Brackets and Color Clash** built to their docs (`docs/games/close-brackets.md`, `color-clash.md`): modules `src/games/close-brackets/`, `src/games/color-clash/`, registered (pool = 7); `GAME_IDS` in `src/games/types.ts` (dashboard game filter reads it); migrations `20260925000500` (enum labels) + `20260925000600` (bounds) applied locally; pgTAP `09_score_bounds_new_games.sql`; `worstCase.test.tsx` and `e2e/payloads.spec.ts` extended (e2e not run); P7 breakdown rows (`src/player/resultDetail.tsx`); Color Clash colour-vision check in `npm run contrast`; strings `COPY.md` §5.6–§5.7; formulas + calibration `SCORING.md` §3.6–§3.7. Existing games unchanged. Pending: real devices, playtest calibration, Arabic review, `db push` (AC7.3–AC7.10).
+- 2026-09-25: **Render audit, host + phones**: top-level clocks (lobby presence, H2 time left, H3 step, the phone's member-flow tick) now re-render only when what they show changes (`useSteppedNow`, `usePresenceDots`); polls and reloads keep unchanged data (`lib/equal.ts`); boards and game glyphs memoised. Idle lobby, results and idle games: 0–21 renders (was 60–960); a host round −82–88 %. Dev-only counter `src/dev/renderCount.ts`. Numbers in TESTING §9 "Host and phones".
 - 2026-09-24: **Phase 5 shatter wiring**: screen transitions on phone and big screen (`src/components/ScreenTransition.tsx`, keys in `src/player/screenKey.ts` / `src/host/screenKey.ts`; never into a game), board shatter-in + H2 new-#1 celebrate (`src/components/useRevealRows.ts`), P7 new-best celebrate and Stop the Clock dot bursts (`RevealIn.tsx`), the ~15 s H4 → H5 merge (`src/host/Results.tsx`, H4/H5 now one screen), host **Reduce motion** toggle (`src/host/motion.tsx`), `SHATTER_LOGO_CLASS` on every logo, z tokens in `tokens.css`. Phone initial JS +7.1 kB gzip. Details: DESIGN_SYSTEM §6.2 "Where it's wired"; AC status in PHASES Phase 5.
 - 2026-09-24: **Phase 0 cloud (partial)**: one project `gdg-booth` (`ppikklvltpfdwbxtilme`, eu-central-1, ADR-127; the Seoul project is retired) with all 9 migrations via `supabase db push`; catalog checked: RLS on all 8 tables, anon executes only `keepalive()`, realtime publication correct. Supabase's automatic-RLS event trigger is on; pgTAP 01 skips event-trigger functions. Status: `DEPLOYMENT.md` §2.7.
 - 2026-09-24: **Phase 2 + Phase 3 integration** (this session): multi-round host loop with intermissions anchored on `ended_at` (`src/host/useHost.ts`, `schedule.ts`), pending session corner code + next-games picker (`common.tsx`), H3 with the Stop the Clock guess reveal (`StcReveal.tsx`, `reveal.ts`; shatter hook `src/components/RevealIn.tsx`), H4 table with round columns, H5 rotating day boards (`Results.tsx`); phones P3b, P7 `new_best`, P8, P9 from own rows, P10, P11 by event day, landscape overlay (E16) (`src/player/`); board ordering helpers (`src/lib/boards.ts`); API for rounds, day boards, hidden keys (`src/lib/api.ts`); `pending:` and `day:` channels (`realtime.ts`); `ROUNDS_PER_SESSION = 3` + migration `20260925000300`; pgTAP `07_boards.sql`; e2e `phase2.spec.ts`, `payloads.spec.ts`; Phase 1 e2e adapted to 3 rounds.
@@ -59,6 +61,7 @@ Last updated: 2026-09-24
 
 ## Next
 
+0. Phase 7 (ADR-134): playtest both new games with ≥ 5 strong players (CB-T13, CC-T12) and retune only with evidence; real-device pass (AC7.7); Arabic review of the colour names (COPY §5.7); run `npm run e2e` (payloads) and then `supabase db push` + `supabase test db --linked` for `20260925000500`/`000600` before the final deploy (never on an event day).
 1. Real-device checks: Phase 1 AC1.2 (iPhone + Android) and AC1.3 (airplane mode); Phase 2 on a projector: H3 reveal and H4/H5 readability, the P8 steps next to the big screen, the landscape overlay (E16) and screen lock (E15) on real phones.
 2. Phase 3 sign-off per game (AC3.1, AC3.6, AC3.7) and E2E-2 (reload mid-round) for the four newer games in the browser (unit-tested today).
 3. Team answers the blocking open questions: OQ-01 (dates), OQ-02 (roles), OQ-03 (trivia writers), OQ-14 (Netlify account), and reviews Proposed ADRs (OQ-19).
@@ -104,6 +107,11 @@ Last updated: 2026-09-24
 - E29 rate-limited sign-in → `JoinFlow.test.tsx` (one retry after 5 s)
 
 ## Session notes
+
+### 2026-09-25: Phase 7, two new games (ADR-134)
+- Calibration is modelled, not playtested: strong ≈ 840 (Close the Brackets) / ≈ 820 (Color Clash); assumptions in `SCORING.md` §3.6–§3.7.
+- Brief deviations: no red (ink shake); inks = brand tokens (not the brief's hex); a 10 s per-sequence timeout added to Close the Brackets; Color Clash congruent trials are exactly 3 per block of 10.
+- The host picker was not touched (another agent owns `src/host/common.tsx`): it is data-driven and shows the 4 unpicked games as "+ add" buttons that scroll sideways.
 
 ### 2026-09-24: Load test L1, L3-L5 at full scale (local stack)
 - Ran L1 (smoke), L3 (60 phones), L4 (30 phones submit within 2 s) and L5 (30 phones, 10 s socket drop) against `supabase start`; all pass. Added a realtime message-rate estimate (largest count in any 1 s window from observed timestamps) to the console summary and JSON report, since the local stack doesn't enforce the cloud's Free-plan Realtime quotas (100 msg/s, 20 presence msg/s). Full table and per-scenario numbers: `TESTING.md` §5.

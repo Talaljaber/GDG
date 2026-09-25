@@ -2,7 +2,7 @@
 
 Purpose: the build plan, phase by phase. Each phase has a goal, scope (in/out), tasks, **checkable acceptance criteria**, dependencies and a rough size (S ≈ 1–3 days, M ≈ 4–7 days, L ≈ 1–2 weeks for a small student team working part-time). A phase is done only when all its acceptance criteria pass; record that in `PROGRESS.md`. Changes to the brief's suggested order are recorded in ADR-118 and ADR-120.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ---
 
@@ -17,9 +17,11 @@ flowchart LR
     P3 --> P5["Phase 5<br/>Theming & polish<br/>M"]
     P4 --> P5
     P5 --> P6["Phase 6<br/>Hardening &<br/>event prep<br/>M"]
+    P3 --> P7["Phase 7<br/>New games A<br/>(ADR-134)<br/>M"]
+    P7 --> P6
 ```
 
-Phases 3 and 4 can run in parallel once Phase 2 is done.
+Phases 3 and 4 can run in parallel once Phase 2 is done. Phase 7 (added 2026-09-25) grows the pool after Phase 3 and must pass before Phase 6's final deploy.
 
 ### Minimum shippable version (if time runs short)
 
@@ -194,3 +196,24 @@ Acceptance criteria:
 - [ ] AC6.7 Two team members have each run a full session from the runbook alone.
 
 Depends on: Phase 5 (or the MVP subset). Must finish **before** the day before the event.
+
+## Phase 7: New games, Phase A (ADR-134) · M
+
+**Goal:** Close the Brackets and Color Clash complete, each to its doc (`games/close-brackets.md`, `games/color-clash.md`), under the same contract as the five originals, with no change to the existing games.
+
+**In:** the two game modules (seeded content, screen states, reload resume, `onFinish` once, round-ended handling); pure scoring + worked examples; enum labels and server bounds by two additive migrations (`20260925000500`, `20260925000600`); pgTAP bound tests (`09_score_bounds_new_games.sql`); payload e2e and `worstCase.test.tsx` extended; AR/EN strings; P7 breakdown rows; the Color Clash colour-vision check in `npm run contrast`; docs.
+**Out:** How Many?, Phase B (Swipe Sort, Pairs), Phase C (Steady Hand); the picker grid and scrollable leaderboard tabs from the brief (the existing picker and tabs are data-driven and list 7 games as they are).
+
+Acceptance criteria:
+- [ ] AC7.1 Every worked example and test case in both game docs passes as a unit test (CB-T1–T11, CC-T1–T10).
+- [ ] AC7.2 Both games finish inside their 32 s worst case and on "round ended" (`worstCase.test.tsx`, 7 games).
+- [ ] AC7.3 `supabase test db` passes locally, then `--linked` after `db push` (not on an event day, ADR-119): every new bound accepts its passing case and rejects its failing case with the reason code; the five existing games' bounds tests are unchanged and green.
+- [ ] AC7.4 `e2e/payloads.spec.ts` accepts both games' own `buildRaw` payloads in a real session (`close_brackets, color_clash, odd_one_out`).
+- [ ] AC7.5 Same seed → same bracket sequences (per length and index) and the same Stroop trials (exactly 3 congruent per 10); a reload mid-attempt resumes the same attempt without resetting any clock (CB-T11, CC-T10).
+- [ ] AC7.6 `npm run contrast` passes, including ΔE ≥ 40 between the three Color Clash inks under deuteranopia and protanopia (CC-T11).
+- [ ] AC7.7 On a real iPhone (Safari) and Android (Chrome): touch targets ≥ 48 px, no bidi-mirrored brackets in Arabic, rotation overlay and screen lock behave as for the other games (`TESTING.md` §6).
+- [ ] AC7.8 Playtest with ≥ 5 strong players per game: median 780–900, nobody reaches 1000 (CB-T13, CC-T12); otherwise retune the constants and record it in ADR-134.
+- [ ] AC7.9 The host picker lists 7 games and a 3-game lineup with either new game starts and completes; day boards and the dashboard (history, combined results, game filter) show the new games with no special-casing.
+- [ ] AC7.10 Native Arabic review of the new strings, especially the colour names (OQ-04, `COPY.md` §5.7).
+
+Depends on: Phase 3. Must pass before Phase 6's final production deploy (the migrations go to the event database, ADR-127).

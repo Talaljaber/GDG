@@ -2,9 +2,9 @@
 
 Purpose: the one place that defines how every game turns play into a number: the shared 0–1000 contract, each game's formula, what happens on timeouts, the impossible-value bounds the database enforces, tie-breaking, session totals, day boards, and name normalisation for "best per name". The per-game docs in `docs/games/` repeat their own formula with worked examples; if they ever disagree with this file, this file wins and the game doc is fixed.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
-Related: ADR-021, ADR-022, ADR-105, ADR-113.
+Related: ADR-021, ADR-022, ADR-105, ADR-113, ADR-134.
 
 ---
 
@@ -28,6 +28,8 @@ Every game fits inside the 120 s round cap even in the worst case.
 | Simon | sequences of length 3…15 | 5 s per tap | capped by the 120 s round cap (a perfect run to length 15 takes ~117 s) |
 | Perfect Circle | 1 scored stroke (+ ≤ 3 invalid) | 30 s for the whole attempt; 10 s per stroke | 1.5 intro + 30 ≈ **32 s** |
 | Trivia | 5 questions | 10 s per question | 1.5 intro + 5 × (10 + 1.5 feedback) ≈ **59 s** |
+| Close the Brackets | sequences of length 2…8 inside a 30 s game clock | 10 s per sequence | 1.5 intro + 30 ≈ **32 s** (transitions run inside the 30 s) |
+| Color Clash | trials inside a 30 s game clock | 3 s per trial | 1.5 intro + 30 ≈ **32 s** (the 0.3 s gaps run inside the 30 s) |
 
 ## 3. Formulas
 
@@ -70,6 +72,23 @@ Symbols: `clamp(x, lo, hi)`, all times in milliseconds.
 - Per question `q`: if correct, `points_q = 100 + 100 × remaining_ms_q / 10000`, where `remaining_ms_q = 10000 − answer_ms_q`; if wrong or timed out, `points_q = 0`.
 - **`score = round(Σ points_q)`** over the 5 questions (max 5 × 200 = 1000).
 
+### 3.6 Close the Brackets
+
+- `n` = sequences solved. Lengths go 2, 3, …, 8, 8, … (+1 per solve, cap 8; a fail or timeout keeps the length), so the sum of solved lengths is **`S(n) = n(n + 3)/2` for `n ≤ 7`, `35 + 8(n − 7)` above** (S(7) = 35, S(9) = 51, S(11) = 67).
+- `g = solve_ms / S` = mean ms per correct closer, reading included (`solve_ms` sums, over solved sequences, the time from the sequence appearing to its last correct tap).
+- Speed bonus `B = 100 × clamp((900 − g) / 600, 0, 1)` when `n ≥ 1`, else 0.
+- **`score = round(min(1000, 15 × S + B))`**; `n = 0` → 0.
+- The bonus (≤ 100) is smaller than one length-8 sequence (120), so it mostly breaks ties.
+- Calibration assumptions (ADR-134; re-check at the playtest, `TESTING.md` §4): a **strong** player reads a sequence in ≈ 350 ms + 60 ms per bracket, taps a closer every ≈ 340 ms and slips on ≈ 5 % of sequences → n ≈ 9, S = 51, g ≈ 460 → **≈ 840** (modelled p10–p90: 770–900). Typical (600 ms + 110 ms/bracket read, 520 ms/tap, 12 % slips) → S ≈ 27 → ≈ 430. **1000** needs `15 S + B ≥ 999.5`, i.e. S ≥ 60 at full bonus: 11 clean solves (S = 67) in 30 s, ≤ 380 ms per bracket including reading, which we treat as out of human reach; a scripted client is stopped by `cb.too_fast`.
+
+### 3.7 Color Clash
+
+- `c` correct, `w` wrong, `t` timed-out trials; `net = c − w − t`; `r̄ = mean_rt_ms`, the rounded mean reaction time over correct trials.
+- Speed bonus `B = 75 × clamp((1000 − r̄) / 600, 0, 1)` when `c ≥ 1`, else 0.
+- **`score = clamp(round(25 × net + B), 0, 1000)`**; `c = 0` → 0.
+- Every trial is followed by a 0.3 s gap, so the number of trials is bounded by pace: `trials ≈ 30000 / (rt + 300)`. Random tapping (⅓ right) has a negative `net` and scores 0.
+- Calibration assumptions (ADR-134): a **strong** player answers in ≈ 620 ms on average (SD 120 ms) with ≈ 3 % errors → ≈ 32 correct, 1 wrong → **≈ 820** (modelled p10–p90: 750–880). Typical (850 ms, 8 % errors) → ≈ 590; weak (1150 ms, 15 %) → ≈ 380. **1000** needs about 38 correct without a slip at ≤ ≈ 480 ms mean on a Stroop task that is 70 % incongruent, which we treat as out of human reach; faster-than-human clients are stopped by `cc.too_fast` / `cc.too_many`.
+
 ## 4. Rejection bounds (enforced by `score_bounds_violation`)
 
 Common to all games: `score` integer 0–1000 (CHECK), `duration_ms` 0–130 000 (CHECK), `raw` must be a JSON object of the game's shape. Per game, in the order the function checks them (reason codes in brackets):
@@ -81,8 +100,10 @@ Common to all games: `score` integer 0–1000 (CHECK), `duration_ms` 0–130 000
 | Simon | `{"level":int,"avg_gap_ms":int\|null,"taps":int,"ended":"mistake"\|"timeout"\|"cap"\|"won"}` | malformed object/types [`simon.shape`]; `level` is 0 or 3–15 [`simon.level`]; `level = 0` ⇒ `score = 0` [`simon.zero`]; `level ≥ 3` ⇒ `avg_gap_ms ≥ 120` [`simon.gap`] and `0 ≤ score − 64 × level ≤ 40` [`simon.formula_band`]; `ended = 'won'` ⇔ `level = 15` [`simon.won`]; `duration_ms ≥ min_playback_ms(level)` [`simon.too_fast`], where `min_playback_ms(L) = Σ_{k=3..L} k × (max(250, 450 − 20 × (k − 3)) + 150)` |
 | Perfect Circle | `{"epsilon":num\|null,"sweep_deg":num\|null,"diameter_px":num\|null,"stroke_ms":int\|null,"invalid_strokes":int,"timed_out":bool}` | malformed object/types [`pc.shape`]; `invalid_strokes` 0–4, and 0–3 unless `timed_out` [`pc.invalid`]; if `timed_out`: `score = 0` [`pc.timeout`]; else `epsilon ≥ 0.005` [`pc.too_perfect`], `sweep_deg` 300–450 [`pc.sweep`], `stroke_ms` 300–10000 [`pc.stroke_ms`], `score ≤ 975` [`pc.score_above_975`] |
 | Trivia | `{"questions":[{"id":"q07","correct":bool,"answer_ms":int\|null,"timed_out":bool}, …×5]}` | exactly 5 entries with distinct ids [`trivia.shape`]; `answer_ms` null iff timed out [`trivia.timeout`]; `answer_ms` 0–10000 [`trivia.range`]; correct ⇒ `answer_ms ≥ 250` [`trivia.too_fast`]; no correct answers ⇒ `score = 0` [`trivia.zero`]; `score ≤ 988` [`trivia.score_above_988`] |
+| Close the Brackets | `{"solved":int,"failed":int,"timeouts":int,"solve_ms":int\|null}` | malformed object/types [`cb.shape`]; `solved` 0–30, `failed` 0–50, `timeouts` 0–3, `solve_ms` 0–30000 [`cb.range`]; `solve_ms` null iff `solved = 0` [`cb.solve_ms`]; `solved = 0` ⇒ `score = 0` [`cb.zero`]; `solve_ms ≥ 150 × S(solved)` [`cb.too_fast`]; `min(1000, 15 S) ≤ score ≤ min(1000, 15 S + 100)` [`cb.formula_band`] |
+| Color Clash | `{"correct":int,"wrong":int,"timeouts":int,"mean_rt_ms":int\|null}` | malformed object/types [`cc.shape`]; `correct` 0–100, `wrong` 0–100, `timeouts` 0–10, `mean_rt_ms` 0–3000 [`cc.range`]; `mean_rt_ms` null iff `correct = 0` [`cc.rt`]; `correct = 0` ⇒ `score = 0` [`cc.zero`]; `mean_rt_ms ≥ 250` [`cc.too_fast`]; `correct × (mean_rt_ms + 300) ≤ 30300` [`cc.too_many`]; `clamp(25 net, 0, 1000) ≤ score ≤ clamp(25 net + 75, 0, 1000)` with `net = correct − wrong − timeouts` [`cc.formula_band`] |
 
-Why these numbers: 250 ms is below realistic visual-search-plus-tap and read-plus-tap times on a phone; a 60 ms total error across three hidden-timer guesses (20 ms each) is below touch-latency jitter; ε < 0.005 means the radius varied by less than 0.5 %, which fingers don't do; 120 ms mean gap is faster than sustained phone tapping. They reject scripted submissions, not lucky humans. Tune only with test evidence (`TESTING.md` §4) and record the change in `DECISIONS.md`.
+Why these numbers: 250 ms is below realistic visual-search-plus-tap and read-plus-tap times on a phone; a 60 ms total error across three hidden-timer guesses (20 ms each) is below touch-latency jitter; ε < 0.005 means the radius varied by less than 0.5 %, which fingers don't do; 120 ms mean gap is faster than sustained phone tapping; 150 ms per bracket *including reading the sequence* is faster than anyone closes brackets; a 250 ms mean on a Stroop choice is below human choice-reaction time, and the 0.3 s gap after every trial caps how many trials fit in 30 s. They reject scripted submissions, not lucky humans. Tune only with test evidence (`TESTING.md` §4) and record the change in `DECISIONS.md`.
 
 ## 5. Leaderboards and tie-breaking
 

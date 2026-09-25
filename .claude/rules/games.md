@@ -28,6 +28,8 @@ Loaded when working on a game. The spec for each game is `docs/games/<game>.md`;
 - Simon: the only place Google's four colours are allowed; pads differ by shape + position + flash outline.
 - Perfect Circle: mosaic-texture stroke; score ring blue → amber.
 - Trivia: amber = correct, ink = wrong (no red); countdown number + bar.
+- Close the Brackets: brackets in the chevron stroke style; correct taps flash amber; a wrong tap is an ink shake (no red).
+- Color Clash: colour is the game; only the three `--clash-*` inks, each button shows swatch + name; `npm run contrast` guards their colour-blind distance.
 - Never animate or distort the logo; celebrations use the shatter layer (`src/effects/shatter`).
 
 ## Strings and accessibility

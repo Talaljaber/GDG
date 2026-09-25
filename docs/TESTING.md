@@ -25,6 +25,9 @@ Last updated: 2026-09-25
 - Trivia draw: TRV-T3 to TRV-T5 (10 000 draws).
 - Simon on-time table and `min_playback_ms` (SIM-T6, SIM-T4).
 - Perfect Circle synthetic strokes PC-T1 to PC-T10.
+- Close the Brackets (ADR-134): CB-T1–T11 (`src/games/close-brackets/*.test.ts*`): worked examples, `S(n)`, the bounds mirror, seeded openers with no identical neighbours, wrong tap keeps the length, 10 s sequence timeout, reload mid-sequence, round ended.
+- Color Clash (ADR-134): CC-T1–T10 (`src/games/color-clash/*.test.ts*`): worked examples, the bounds mirror, exactly 3 congruent trials per 10, wrong tap and 3 s timeout, reload mid-trial and mid-gap, round ended.
+- `src/games/worstCase.test.tsx` runs every registered game (7): idle player inside its worst case, "round ended" finishes at once.
 
 ## 3. Database tests (pgTAP)
 
@@ -52,13 +55,13 @@ Run as three identities: `anon` (no JWT), a guest (anonymous JWT), the admin (JW
 
 **Boards (`07_boards.sql`):** round board `score desc, created_at asc`; session board totals with `total_duration_ms` then `joined_at` tie-breaks, a guest sees only sessions it joined; day board one row per name key with the best score, the earliest of equal bests, names without suffix, current day only; a hidden key leaves all three (rows kept) and comes back when unhidden.
 
-**Trigger bounds:** one passing and one failing case per bound in `SCORING.md` §4 (reason code asserted).
+**Trigger bounds:** one passing and one failing case per bound in `SCORING.md` §4 (reason code asserted): `05_score_bounds.sql` for the five original games, `09_score_bounds_new_games.sql` for Close the Brackets and Color Clash (ADR-134; also checks guests can't execute `private.score_bounds_violation`).
 
 **Names:** the §6 vectors in SQL; blocklist "must pass" list (real names that contain short English terms): `Hassan`, `Assem`, `Anass`, `Cassandra`, `Basem`, plus the Arabic names the blocklist owner adds (OQ-13). "Must block" list: maintained with the blocklist (not in this doc).
 
 ## 4. Bounds tuning
 
-The impossible-value bounds (250 ms, 60 ms total error, ε 0.005, 120 ms gap) must never reject a real player. During Phase 6, log every rejected submission (`GD008` reason) on dev devices; if a real human is rejected, widen the bound and record it in `DECISIONS.md`.
+The impossible-value bounds (250 ms, 60 ms total error, ε 0.005, 120 ms gap, 150 ms per bracket, Color Clash's 250 ms mean and 0.3 s-gap fit) must never reject a real player. During Phase 6, log every rejected submission (`GD008` reason) on dev devices; if a real human is rejected, widen the bound and record it in `DECISIONS.md`.
 
 ## 5. Load test (simulated phones)
 
@@ -110,9 +113,9 @@ All four scenarios met their `docs/TESTING.md` §5 pass criteria on the local st
 
 | Device class | Browser | Must pass |
 |---|---|---|
-| iPhone (iOS 17+) | Safari | full session, all five games, reload mid-round, screen lock, rotation overlay |
+| iPhone (iOS 17+) | Safari | full session, all seven games, reload mid-round, screen lock, rotation overlay |
 | iPhone | Camera-app QR → Safari | QR opens the site directly |
-| Mid-range Android (Android 12+) | Chrome | full session, all five games |
+| Mid-range Android (Android 12+) | Chrome | full session, all seven games |
 | **Low-end Android** (≤ 3 GB RAM, e.g. a 2020 budget phone) | Chrome | 60 fps target for games and shatter; at least 45 fps measured; no dropped taps in Simon; Odd One Out 6 × 6 usable |
 | Android | Samsung Internet | join + one full session |
 | Android QR scanner app | in-app browser | join works; note that it's a separate identity (E10) |
@@ -122,6 +125,11 @@ All four scenarios met their `docs/TESTING.md` §5 pass criteria on the local st
 Settings to cover: Arabic device language (RTL auto), English; text size 130 %; reduced motion on; dark mode on the OS (our light theme must stay light and legible); low-power mode (iOS) during a round.
 
 **Bright-light check (Odd One Out and all games):** 5 testers, phones at max brightness, under the brightest light available (outdoors in daylight or directly under hall-style lighting). Pass: OOO-T7 (grid 3 median ≤ 8 s, no timeouts); every screen's text readable at arm's length; Simon flashes distinguishable. Tune the grid 3 rotation within 10°–25° and record the value in `games/odd-one-out.md`.
+
+**New games (ADR-134, Phase 7 AC7.7–AC7.8):**
+- Close the Brackets on iPhone Safari and Android Chrome: four keys ≥ 48 px (≈ 76 px at 360 px wide); fast two-thumb tapping registers every tap (60 ms bounce window only); no double-tap zoom on the keys; in Arabic the brackets and the key order are **not** mirrored; rotation overlay and screen lock keep the 30 s clock running.
+- Color Clash: the three inks and the amber word are readable at max brightness under hall light; test with one colour-blind volunteer if possible (the simulation in `npm run contrast` is the baseline, CC-T11); the Arabic words fit on one line at 320 px and 130 % text size.
+- Calibration playtest (CB-T13, CC-T12): ≥ 5 strong players, 2 runs each after one practice run; record the scores in `PROGRESS.md`. Pass: median 780–900, nobody at 1000, nobody rejected by a bound. Otherwise retune the constants (`SCORING.md` §3.6–§3.7) and note it in ADR-134.
 
 **Projector check:** real projector (or the venue's if accessible), lights on. From 6 m: code, QR scan (from 3 m with 3 different phones), leaderboard names and scores all readable/scannable. Compare light and dark big-screen themes (ADR-122) and pick one; record in `DECISIONS.md`.
 
@@ -154,7 +162,7 @@ Since Phase 3 sessions are 3 rounds: the slice tests play round 1 (Stop the Cloc
 - E2E-7: `admin_hide_name` (the dashboard's call) during the intermission: gone from the host round board < 1 s, from a phone's P8 board < 3.5 s (3 s poll + one request), never on the totals or results; the hidden player's phone still shows its own total (AC2.9, E24). Unhidden in `finally`.
 - E2E-8: "Sara…", "Sara…", "SARA…" → suffixes 2 and 3 on the lobby, round and session boards; one day-board row for the key with its best score and no suffix, on P10 and in SQL (AC2.6).
 
-**Payloads (`e2e/payloads.spec.ts`, AC3.3).** No browser: an admin client and an anonymous guest client (publishable key) run two real sessions covering all five games; each round's score is built by that game's own `buildRaw` + scorer, passes the game's client-side bounds mirror, is accepted by the trigger and stored as sent. The reject side is pgTAP `05_score_bounds.sql`.
+**Payloads (`e2e/payloads.spec.ts`, AC3.3).** No browser: an admin client and an anonymous guest client (publishable key) run three real sessions covering all seven games (the third is `close_brackets, color_clash, odd_one_out`, ADR-134); each round's score is built by that game's own `buildRaw` + scorer, passes the game's client-side bounds mirror, is accepted by the trigger and stored as sent. The reject side is pgTAP `05_score_bounds.sql` and `09_score_bounds_new_games.sql`.
 
 The e2e web server runs with `E2E_NO_HMR=1` (no hot reload), so a file saved during a run can't reload the test pages. `e2e/env.ts` refuses any non-local Supabase URL: e2e always runs on the local stack.
 
@@ -219,3 +227,30 @@ Counter: `useRenderCount(name)` (`src/dashboard/renderCount.ts`, one count per c
 | Hide a name on Today (preview + confirm) | `TodayPanel` 1 | `TodayPanel` 0 (unchanged reload kept) |
 
 In the dev server, StrictMode runs each render function twice, but that isn't a second commit: the language toggle still commits once per component. Its mount-time effect replay does add one count per newly mounted component, so browser runs reset the counts after load.
+
+### Host and phones
+
+Counter: `src/dev/renderCount.ts`, imported first in `main.tsx`. It wraps React's DevTools hook (`onCommitFiberRoot`) and counts, per component name, every component whose render function ran in a committed update (a same-value `setState` that React bails out of isn't counted). Nothing is added to components. In the dev server: `window.__gdgRenders.reset()`, then `.snapshot()` / `.commits()`. It is guarded by `import.meta.env.DEV`, so the build drops it (`grep __gdgRenders dist/assets/*.js` finds nothing).
+
+Measured 2026-09-25 on the local stack: dev server with HMR off, 1 host (1920 × 1080) and 3 phones driven by Playwright. Sessions: Stop the Clock → Odd One Out → Simon, then Perfect Circle → Trivia → Odd One Out. P1 plays fastest; P2 and P3 play slower. Cells show commits / component renders on the host or on P1. "Game idle" = the game on screen, untouched, for 4 s.
+
+| Scenario | Length | Before | After |
+|---|---|---|---|
+| Host lobby idle, 3 phones joined | 30 s | 60 / 960 | 0 / 0 |
+| Phone lobby idle | 30 s | 12 / 78 | 0 / 0 |
+| Phone game idle: Stop the Clock · Odd One Out · Simon · Perfect Circle · Trivia | 4 s | 99 · 293 · 183 · 105 · 117 renders | 4 · 21 · 15 · 4 · 16 renders |
+| Phone plays Stop the Clock / Odd One Out / Simon / Perfect Circle / Trivia | 3–14 s | 354 / 675 / 336 / 439 / 485 | 101 / 67 / 55 / 157 / 137 |
+| Phone on its result while others play (Stop the Clock, Trivia) | 9 s, 12 s | 44 / 526, 58 / 730 | 7 / 46, 5 / 38 |
+| Host full round: Stop the Clock | 25 s | 151 / 2169 | 59 / 400 |
+| Host full round: Trivia | 34 s | 187 / 2745 | 59 / 329 |
+| Host intermission (round board → total → Next) | 15 s | 78 / 1475 (Stop the Clock reveal), 77 / 1070 | 23 / 131 |
+| Phone intermission | 15 s | 76 / 532 | 8–14 / 29–67 |
+| Host results idle / phone results idle | 15 s | 5 / 60, 11 / 102 | 0 / 0, 0 / 0 |
+| Host day board (merge + rotation) / phone day board | 25 s | 11 / 140, 15 / 58 | 11 / 85, 6 / 17 |
+
+What made the difference:
+- **Clocks at the top of a tree.** The host lobby re-rendered twice a second for its presence dots, H2 four times a second for "time left", H3 four times a second for the intermission step, and the phone's member flow four times a second for the whole session (game screen included). They now use `useSteppedNow` (`src/components/useSteppedNow.ts`): it still checks on the same interval, but sets state only when the value on screen changes. The H2 time and the H3 3-2-1 are their own leaves (`TimeLeft`, `StepCountdown`). The lobby dots use `usePresenceDots` (`src/host/presence.ts`), which keeps last-seen times in a ref and re-renders when a dot flips. Grey-out timing is unchanged. Games still measure with `performance.now()` and stored epochs; no display clock feeds a measurement.
+- **Polls storing new objects.** Phone boards and player counts (every 3 s), the phone's state refetch (15 s and on every change event), the host's reloads, H4's 3 s poll and every host board refetch now go through `replaceEqualDeep` (`src/lib/equal.ts`), which keeps the old object when the data is identical. The host's presence set and score count are also kept when unchanged.
+- **Heavy leaves.** `BoardTable`, `Leaderboard`, `LineupSummary` and the Odd One Out / Simon chevron glyphs are memoised; their callers pass stable arrays.
+
+Guards: `src/player/boardHooks.test.tsx` (identical polls don't re-render the board or the lobby count; a changed poll re-renders once), `src/host/presence.test.tsx` (an idle lobby doesn't re-render for 30 s; one re-render when a dot greys), `src/components/useSteppedNow.test.tsx`, `src/lib/equal.test.ts`. The Stop the Clock DOM-stability test (STC-T8) is unchanged.
