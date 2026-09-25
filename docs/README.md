@@ -22,6 +22,7 @@ Last updated: 2026-09-25
 | [games/close-brackets.md](games/close-brackets.md) | Close the Brackets spec (ADR-134). |
 | [games/color-clash.md](games/color-clash.md) | Color Clash spec, including the colour-vision check of the inks (ADR-134). |
 | [games/newgames.md](games/newgames.md) | The brief for new games; Phase A items 1–2 are built (ADR-134), the rest is not approved. |
+| [plans/games-v3.md](plans/games-v3.md) | Implementation plan for How Many?, Swipe Sort and Pairs: rules, scoring, bounds, reveal, migrations, work packages (ADR-136); Steady Hand risk entry. |
 | [SCREENS.md](SCREENS.md) | Every phone, big-screen and dashboard screen, with states, wireframes, transitions and string keys. |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Colour tokens (placeholders), type scales, spacing, shatter motion spec, icons, RTL, accessibility. |
 | [COPY.md](COPY.md) | Every user-facing string in English and Arabic; voice; plural rules; booth script. |
