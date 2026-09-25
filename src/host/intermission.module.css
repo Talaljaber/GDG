@@ -1,0 +1,414 @@
+/* H3 Intermission, host v3 "Stage and Rail" (docs/plans/host-v3.md §4.4, ADR-135).
+   The brand strip and the rail come from common.tsx (host.module.css); this module is the
+   stage: the side + board shell shared with H2, the guess reveals (Stop the Clock, How Many?)
+   and the "Next" step. Projector scale only; logical properties; tokens only. */
+
+/* ---- the stage and the step crossfade ---- */
+
+.stage {
+  min-block-size: 0;
+}
+
+/* The stage's one child spans the host body's 12 columns (the grid H2 uses). */
+.stageFade {
+  grid-column: 1 / -1;
+}
+
+/* StepFade: the outgoing step's snapshot is laid over the live one (absolute, same box)
+   and fades out while the live one fades in (--dur-step; 0 with reduced motion). */
+.fadeBox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.fadeBox > * {
+  flex: 1;
+  min-block-size: 0;
+}
+
+.fadeOut {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ---- side + board: the same 12-column grid as H2, so the scorebug "reconfigures" ---- */
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--proj-s-3);
+}
+
+.side {
+  grid-column: span 4;
+}
+
+.sideInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-3);
+  min-inline-size: 0;
+}
+
+.boardArea {
+  grid-column: span 8;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-1);
+  font-size: var(--proj-t1);
+}
+
+/* Kept in the text (" · ") for tests and screen readers' flow; not drawn. */
+.titleSep {
+  display: none;
+}
+
+.eyebrow {
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+
+.title {
+  display: block;
+  font-size: var(--proj-t4);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  color: var(--text);
+  text-wrap: balance;
+}
+
+.upNext {
+  font-size: var(--proj-t2);
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+}
+
+.summary {
+  font-size: var(--proj-t1);
+}
+
+/* ---- step 3: "Next: <game>" and the calm 3-2-1 ---- */
+
+.nextLayout {
+  display: flex;
+  flex-direction: column;
+}
+
+.next {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--proj-s-3);
+  text-align: center;
+}
+
+.nextLabel {
+  font-size: var(--proj-t2);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+
+/* The facing chevrons at 14 vh around the 10 vh game name (Framed's sizing properties). */
+.nextFrame {
+  --frame-chevron-block: calc(var(--proj-t5) * 1.4);
+  --frame-chevron-inline: calc(var(--proj-t5) * 0.7);
+  align-items: center;
+  min-block-size: calc(var(--proj-t5) * 1.4);
+}
+
+.nextGame {
+  align-self: center;
+  font-size: var(--proj-t5);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  text-wrap: balance;
+}
+
+.countdown {
+  font-size: var(--proj-t7);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--proj-leading-hero);
+  color: var(--text);
+  animation: count-in var(--dur-step) var(--ease-standard) both;
+}
+
+@keyframes count-in {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown {
+    animation: none;
+  }
+}
+
+:global([data-motion='reduced']) .countdown {
+  animation: none;
+}
+
+/* ---- step 1 for Stop the Clock / How Many?: the guess reveal, full stage width ---- */
+
+.reveal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-1);
+  /* lane geometry shared by every strip (host-v3 §4.4: two lanes above, two below) */
+  --lane-pitch: calc(var(--proj-t1) * var(--proj-row-leading));
+  --lane-gap: calc(var(--proj-s-1) / 2);
+  --track-block: calc(4 * var(--lane-pitch) + var(--proj-dot-size) + 2 * var(--lane-gap));
+}
+
+.revealHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--proj-s-3);
+}
+
+.revealHead .titleBlock {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--proj-s-2);
+  min-inline-size: 0;
+}
+
+.revealHead .upNext {
+  white-space: nowrap;
+}
+
+.strips {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-block-size: 0;
+}
+
+/* One row of the 12-column grid: label in 4 columns, the track in 8. */
+.strip,
+.scale {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--proj-s-3);
+  align-items: center;
+}
+
+.scale {
+  align-items: end;
+}
+
+.scaleTitle {
+  grid-column: span 4;
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+
+.scaleAxis {
+  grid-column: span 8;
+  position: relative;
+  block-size: calc(var(--proj-t1) * var(--leading-tight));
+}
+
+.axisTag {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.stripLabel {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-1);
+  min-inline-size: 0;
+  font-size: var(--proj-t3);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* How Many?: the true count is the hero of the strip label. */
+.countHero {
+  font-size: var(--proj-t4);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.meanLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--proj-s-1);
+  font-size: var(--proj-t1);
+  color: var(--text-muted);
+}
+
+/* The legend swatch ties "Crowd average" to the amber marker (amber as a rule, never text). */
+.meanKey {
+  flex: none;
+  inline-size: var(--proj-rank-rule);
+  block-size: 1em;
+  background: var(--rank1-rule);
+}
+
+/* The flat track: a baseline with ticks, taller end ticks at the window's edges, the target
+   line through the whole block, and the dots on the baseline. Never mirrored (dir="ltr"). */
+.track {
+  grid-column: span 8;
+  position: relative;
+  block-size: var(--track-block);
+}
+
+.baseline {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 50%;
+  block-size: var(--line-width);
+  background: var(--line);
+}
+
+.tick,
+.end {
+  position: absolute;
+  inset-block-start: 50%;
+  inline-size: var(--line-width);
+  transform: translate(-50%, -50%);
+}
+
+.tick {
+  block-size: var(--proj-s-1);
+  background: var(--line);
+}
+
+.end {
+  block-size: var(--proj-s-2);
+  background: var(--line-strong);
+}
+
+.centre {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  inline-size: var(--line-width-strong);
+  transform: translateX(-50%);
+  background: var(--text);
+}
+
+/* How Many?: the crowd average, amber, the full block height; fades in last. */
+.mean {
+  position: absolute;
+  inset-block: 0;
+  inline-size: var(--proj-rank-rule);
+  transform: translateX(-50%);
+  background: var(--rank1-rule);
+}
+
+.dot {
+  position: absolute;
+  inset-block-start: 50%;
+  box-sizing: border-box;
+  inline-size: var(--proj-dot-size);
+  block-size: var(--proj-dot-size);
+  margin-block-start: calc(var(--proj-dot-size) / -2);
+  margin-inline-start: calc(var(--proj-dot-size) / -2);
+  border-radius: 50%;
+  background: var(--live);
+  /* the 1 px paper edge separates overlapping dots (solid blue alone is 3.57:1 on paper) */
+  box-shadow: 0 0 0 var(--line-width) var(--bg);
+}
+
+.dotPinned {
+  background: var(--bg);
+  border: var(--line-width-strong) solid var(--live);
+}
+
+/* A name in its lane. The paper background knocks the target / average lines out behind it. */
+.name {
+  position: absolute;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  padding-inline: calc(var(--proj-s-1) / 2);
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  line-height: var(--proj-row-leading);
+  color: var(--text);
+  background: var(--bg);
+  white-space: nowrap;
+}
+
+.alignStart {
+  inset-inline-start: 0;
+  transform: none;
+}
+
+.alignEnd {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  transform: none;
+}
+
+.above {
+  inset-block-end: calc(100% + var(--lane-gap));
+}
+
+.above2 {
+  inset-block-end: calc(100% + var(--lane-gap) + var(--lane-pitch));
+}
+
+.below {
+  inset-block-start: calc(100% + var(--lane-gap));
+}
+
+.below2 {
+  inset-block-start: calc(100% + var(--lane-gap) + var(--lane-pitch));
+}
+
+/* ---- narrower screens (16:10, 4:3): side 3 columns, board 9, as H2 ---- */
+
+@media (max-aspect-ratio: 17/10) {
+  .side {
+    grid-column: span 3;
+  }
+
+  .boardArea {
+    grid-column: span 9;
+  }
+
+  .title {
+    font-size: var(--proj-t3);
+  }
+
+  .nextGame {
+    font-size: var(--proj-t4);
+  }
+}

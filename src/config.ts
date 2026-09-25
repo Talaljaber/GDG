@@ -46,6 +46,15 @@ export const STC_REVEAL_LABELLED = 5;
 /** Reveal window around each target: dots further than this are pinned to the strip's edge. */
 export const STC_REVEAL_WINDOW_MS = 5000;
 
+/** Top rows labelled with names on the How Many? count reveal (games-v3 §5, ADR-136). */
+export const HM_REVEAL_LABELLED = 5;
+
+/** How Many? reveal window: ±50 % relative error around the true count; dots beyond are pinned. */
+export const HM_REVEAL_WINDOW = 0.5;
+
+/** The crowd-average marker fades in this long into the 7 s board step (after the 5 s of dots). */
+export const HM_REVEAL_MEAN_MS = 5200;
+
 /** Presence grey-out: time without presence before a player is shown greyed out. */
 export const PRESENCE_GREY_MS = 10_000;
 

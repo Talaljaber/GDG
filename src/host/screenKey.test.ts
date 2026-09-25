@@ -17,27 +17,27 @@ function inter(step: string, next: boolean): KeyInput['intermission'] {
 }
 
 describe('host screen keys (DESIGN_SYSTEM §6.2 transitions)', () => {
-  it('one key per screen, per round and per intermission step', () => {
+  it('one key per screen and per round', () => {
     const keys = [
       hostScreenKey({ data, screen: 'lobby', intermission: null }),
       hostScreenKey({ data, screen: 'round', intermission: null }),
       hostScreenKey({ data, screen: 'intermission', intermission: inter('round_board', true) }),
-      hostScreenKey({ data, screen: 'intermission', intermission: inter('session_total', true) }),
-      hostScreenKey({ data, screen: 'intermission', intermission: inter('next_intro', true) }),
       hostScreenKey({ data, screen: 'results', intermission: null }),
     ];
     expect(keys[1]).toBe('round:r2');
+    expect(keys[2]).toBe('intermission:r1');
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('"done" with a next round stays on the Next step until the round starts', () => {
-    expect(hostScreenKey({ data, screen: 'intermission', intermission: inter('done', true) })).toBe(
-      hostScreenKey({ data, screen: 'intermission', intermission: inter('next_intro', true) }),
-    );
-    // after the last round, "done" is still the round board
-    expect(hostScreenKey({ data, screen: 'intermission', intermission: inter('done', false) })).toBe(
-      hostScreenKey({ data, screen: 'intermission', intermission: inter('round_board', false) }),
-    );
+  it('an intermission keeps one key across its steps (they crossfade inside the stage, host-v3 §4.4)', () => {
+    const steps = ['round_board', 'session_total', 'next_intro', 'done'] as const;
+    for (const next of [true, false]) {
+      const keys = new Set(steps.map((step) => hostScreenKey({ data, screen: 'intermission', intermission: inter(step, next) })));
+      expect([...keys]).toEqual(['intermission:r1']);
+    }
+    // the next round's intermission is a new screen (H3 → H2 → H3 shatters)
+    const later = { round: { id: 'r2' }, next: null, state: { step: 'round_board' } } as unknown as KeyInput['intermission'];
+    expect(hostScreenKey({ data, screen: 'intermission', intermission: later })).toBe('intermission:r2');
   });
 
   it('H4 and H5 share a key (the day-board merge plays between them); logo screens are marked', () => {

@@ -1,10 +1,14 @@
 /**
- * Pure layout of the Stop the Clock guess reveal (`games/stop-the-clock.md`
- * §6): dot positions per target strip. Rendered by StcReveal.tsx.
+ * The big-screen guess reveals (H3 step 1): the pure layout of the Stop the
+ * Clock strips (`games/stop-the-clock.md` §6, rendered by StcReveal.tsx),
+ * the label lanes shared with the How Many? reveal (howManyReveal.ts,
+ * HowManyReveal.tsx), and the one data hook both use.
  */
+import { useEffect, useState } from 'react';
 import { STC_REVEAL_LABELLED, STC_REVEAL_WINDOW_MS } from '../config';
-import type { RevealRow } from '../lib/api';
+import { fetchRoundReveal, type RevealRow } from '../lib/api';
 import { displayName } from '../lib/boards';
+import { replaceEqualDeep } from '../lib/equal';
 import { STC_TARGETS_MS } from '../games/stop-the-clock/scoring';
 
 export interface RevealDot {
@@ -54,4 +58,89 @@ export function revealStrips(
       ];
     }),
   );
+}
+
+// ------------------------------------------------------------------ label lanes
+
+/** Two lanes above the track, two below (host-v3 §4.4); the block reserves all four. */
+export type Lane = 'above' | 'below' | 'above2' | 'below2';
+const LANES: readonly Lane[] = ['above', 'below', 'above2', 'below2'];
+
+/** How a label sits on its dot: centred, or flush with the track's end so it never leaves it. */
+export type LabelAlign = 'centre' | 'start' | 'end';
+
+export interface LabelPlace {
+  lane: Lane;
+  align: LabelAlign;
+}
+
+/**
+ * Where each labelled dot's name goes: greedy in position order, each label in
+ * the first lane whose previous label ends before this one starts (or the
+ * emptiest lane when all four are taken). Near an end of the track a label is
+ * aligned to that end so it stays over the track. `labelWidthPct` estimates a
+ * label's width as a percentage of the track (the text is never measured, so
+ * placing labels costs no extra render).
+ */
+export function labelLanes(
+  dots: readonly RevealDot[],
+  labelWidthPct: (label: string) => number,
+): Map<string, LabelPlace> {
+  const end: Record<Lane, number> = { above: -Infinity, below: -Infinity, above2: -Infinity, below2: -Infinity };
+  const places = new Map<string, LabelPlace>();
+  for (const d of [...dots].filter((x) => x.label).sort((a, b) => a.pos - b.pos)) {
+    const w = labelWidthPct(d.label ?? '');
+    const align: LabelAlign = d.pos - w / 2 < 0 ? 'start' : d.pos + w / 2 > 100 ? 'end' : 'centre';
+    const start = align === 'start' ? d.pos : align === 'end' ? d.pos - w : d.pos - w / 2;
+    const lane = LANES.find((l) => end[l] <= start) ?? LANES.reduce((a, b) => (end[b] < end[a] ? b : a));
+    end[lane] = start + w;
+    places.set(d.playerRowId, { lane, align });
+  }
+  return places;
+}
+
+/**
+ * Label width estimate for the projector: t1 text (3.2 vh, ≈ 0.55 em per
+ * character) plus the knockout padding, over a track that is 8 of the
+ * stage's 12 columns. Read once per render of a reveal (a window resize
+ * re-lays the labels on the next data change, which is fine for a 7 s step).
+ */
+export function projectorLabelWidth(): (label: string) => number {
+  const vh = window.innerHeight / 100;
+  const trackPx = Math.max(1, (window.innerWidth - 10 * vh) * (8 / 12));
+  return (label) => ((label.length * 0.55 * 3.2 * vh + 2 * vh) / trackPx) * 100;
+}
+
+// ------------------------------------------------------------------ data
+
+/** Props shared by every big-screen reveal (Intermission's REVEALS map). */
+export interface RevealProps {
+  roundId: string;
+  /** Bumped on every late score / hidden name: re-query. */
+  version: number;
+  /** Dev preview / tests only: fixed rows instead of the database query. */
+  rows?: RevealRow[];
+}
+
+/**
+ * The visible round-board rows with their raw payloads (`fetchRoundReveal`),
+ * re-queried on `version` and kept by identity when nothing changed, so the
+ * dots never replay on a refetch.
+ */
+export function useRoundReveal(roundId: string, version: number, previewRows?: RevealRow[]): RevealRow[] | null {
+  const [fetched, setRows] = useState<RevealRow[] | null>(null);
+  const live = !previewRows;
+  useEffect(() => {
+    if (!live) return;
+    let alive = true;
+    void fetchRoundReveal(roundId)
+      .then((r) => {
+        if (alive) setRows((prev) => replaceEqualDeep(prev, r));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [roundId, version, live]);
+  return previewRows ?? fetched;
 }

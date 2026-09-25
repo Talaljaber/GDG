@@ -267,19 +267,38 @@ function reveal(n: number): RevealRow[] {
   }));
 }
 
+/** How Many? raws (games-v3 §1.4) around N = [12, 27, 55]: typical underestimates, a few misses. */
+function hmRaw(i: number): unknown {
+  const rel = [-0.08, 0.04, -0.17, -0.12, 0.2, -0.25, 0, -0.33, 0.1, -0.05, -0.4, 0.15, -0.2, -0.1, 0.62, -0.15, 0.3, -0.22, -0.02, -0.28];
+  return {
+    rounds: [12, 27, 55].map((true_count, k) => {
+      const r = rel[(i + k * 7) % rel.length] - k * 0.03;
+      const guess = i === 19 && k === 1 ? null : Math.max(0, Math.round(true_count * (1 + r)));
+      return { true_count, guess, answer_ms: guess === null ? null : 2400, timed_out: guess === null };
+    }),
+  };
+}
+
+function hmReveal(n: number): RevealRow[] {
+  return reveal(n).map((r, i) => ({ ...r, raw: hmRaw(i) }));
+}
+
 function Intermission({
   step,
   roundNo,
   last = false,
   moved = false,
+  howMany = false,
 }: {
   step: IntermissionStep;
   roundNo: number;
   last?: boolean;
   /** Give the total board a different row order than the round board (FLIP, WP3). */
   moved?: boolean;
+  /** Round `roundNo` is How Many? (its count reveal, games-v3 §5). */
+  howMany?: boolean;
 }) {
-  const rs = rounds(null, roundNo);
+  const rs = rounds(null, roundNo).map((r) => (howMany && r.round_no === roundNo ? { ...r, game: 'how_many' as GameId } : r));
   const d = data({
     session: session({ status: last ? 'results' : 'playing' }),
     running: true,
@@ -301,7 +320,7 @@ function Intermission({
         preview={{
           roundBoard: board(10, 960),
           totalBoard: moved ? movedBoard(10, 1890) : board(10, 1890, true),
-          reveal: reveal(20),
+          reveal: howMany ? hmReveal(20) : reveal(20),
         }}
       />
     </Frame>
@@ -460,6 +479,11 @@ export const fixtures: Fixture[] = [
   { name: 'host.intermission-stc', frame: 'projector', render: () => <Intermission step="round_board" roundNo={1} /> },
   { name: 'host.intermission-total', frame: 'projector', render: () => <Intermission step="session_total" roundNo={2} /> },
   { name: 'host.intermission-next', frame: 'projector', render: () => <Intermission step="next_intro" roundNo={1} /> },
+  {
+    name: 'host.intermission-how-many',
+    frame: 'projector',
+    render: () => <Intermission step="round_board" roundNo={2} howMany />,
+  },
   {
     name: 'host.intermission-total-moved',
     frame: 'projector',

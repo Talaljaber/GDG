@@ -1,162 +1,127 @@
 /**
  * Stop the Clock big-screen guess reveal (`games/stop-the-clock.md` §6,
- * ADR-025): the first 7 s of the intermission after a Stop the Clock round.
- * Three horizontal strips (5 s, 10 s, 7 s), a centre line at the target, one
- * dot per player at their guess inside a ±5 s window (dots outside are
- * pinned to the edge); the top 5 of the round board are labelled.
+ * ADR-025, host-v3 §4.4): the first 7 s of the intermission after a Stop the
+ * Clock round. Three flat tracks (5 s, 10 s, 7 s): a hairline baseline with
+ * 1 s ticks, the ±5 s ends marked, the target line in ink; one solid dot per
+ * player at their guess (dots outside the window are pinned to the edge,
+ * hollow); the top 5 of the round board are labelled in lanes (two above,
+ * two below), and the block reserves those lanes so no name crosses another
+ * track.
  *
  * The time axis is geometry, not text, so it is never mirrored in Arabic
- * (DESIGN_SYSTEM RTL rules): the strips are always laid out left-to-right.
+ * (DESIGN_SYSTEM RTL rules): the tracks are always laid out left-to-right.
  *
- * Dots appear in shatter bursts, strip after strip, within 5 s
- * (DESIGN_SYSTEM §6.2 "Stop the Clock reveal"): `revealSchedule` spaces
- * them and sizes each burst so no more than 48 shards are alive at once.
- * Reduced motion: each dot fades in (200 ms) at its slot.
+ * Dots appear in shatter bursts, track after track, within 5 s (a data
+ * reveal, one of the places the shatter is allowed, host-v3 §2.1 rule 6):
+ * `revealSchedule` spaces them and sizes each burst so no more than 48
+ * shards are alive at once. Reduced motion: each dot fades in (200 ms) at
+ * its slot.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { formatNumber, useT } from '../i18n';
-import { fetchRoundReveal, type RevealRow } from '../lib/api';
 import { STC_TARGETS_MS } from '../games/stop-the-clock/scoring';
-import { revealStrips, type RevealDot } from './reveal';
-import { replaceEqualDeep } from '../lib/equal';
+import {
+  labelLanes,
+  projectorLabelWidth,
+  revealStrips,
+  useRoundReveal,
+  type LabelPlace,
+  type RevealDot,
+  type RevealProps,
+} from './reveal';
 import { RevealIn } from '../components/RevealIn';
-import { revealSchedule } from '../effects/shatter';
-import styles from './host.module.css';
+import { revealSchedule, type RevealSlot } from '../effects/shatter';
+import s from './intermission.module.css';
 
-/**
- * Which labels go below the track: greedy in position order, each label on the
- * side whose previous label ends before it starts (label widths estimated from
- * the text length; the track is about three quarters of the screen wide).
- */
-type Lane = 'above' | 'below' | 'above2' | 'below2';
-const LANES: Lane[] = ['above', 'below', 'above2', 'below2'];
-
-function labelLanes(dots: readonly RevealDot[]): Map<string, Lane> {
-  const vh = window.innerHeight / 100;
-  const trackPx = window.innerWidth * 0.75;
-  const widthPct = (label: string) => ((label.length * 0.55 * 3.2 * vh + 2 * vh) / trackPx) * 100;
-  const end: Record<Lane, number> = {
-    above: -Infinity,
-    below: -Infinity,
-    above2: -Infinity,
-    below2: -Infinity,
-  };
-  const lanes = new Map<string, Lane>();
-  for (const d of [...dots].filter((x) => x.label).sort((a, b) => a.pos - b.pos)) {
-    const w = widthPct(d.label ?? '');
-    const start = d.pos - w / 2;
-    const lane =
-      LANES.find((l) => end[l] <= start) ?? LANES.reduce((a, b) => (end[b] < end[a] ? b : a));
-    end[lane] = d.pos + w / 2;
-    lanes.set(d.playerRowId, lane);
-  }
-  return lanes;
-}
-
-const LANE_CLASS: Record<Lane, string> = {
-  above: '',
-  below: styles.revealNameBelow,
-  above2: styles.revealNameAbove2,
-  below2: `${styles.revealNameBelow} ${styles.revealNameBelow2}`,
+const LANE_CLASS: Record<LabelPlace['lane'], string> = {
+  above: s.above,
+  below: s.below,
+  above2: s.above2,
+  below2: s.below2,
 };
 
-/** One tick per second across the ±5 s window (geometry, never mirrored). */
+const ALIGN_CLASS: Record<LabelPlace['align'], string> = { centre: '', start: s.alignStart, end: s.alignEnd };
+
+/** One second per tick across the ±5 s window, and the window's two ends. */
 const TICKS = [10, 20, 30, 40, 60, 70, 80, 90];
+const ENDS = [0, 100];
 
-export function StcReveal({
-  roundId,
-  version,
-  rows: previewRows,
+/**
+ * A flat track with its dots (shared with the How Many? reveal). `before`
+ * renders under the dots (e.g. the crowd-average marker), so names always
+ * stay on top.
+ */
+export function RevealTrack({
+  dots,
+  slots,
+  testIds,
+  before,
 }: {
-  roundId: string;
-  version: number;
-  /** Dev preview only: fixed rows instead of the database query. */
-  rows?: RevealRow[];
+  dots: readonly RevealDot[];
+  slots: readonly RevealSlot[];
+  testIds: { dot: string; label: string };
+  before?: ReactNode;
 }) {
-  const t = useT();
-  const [fetched, setRows] = useState<RevealRow[] | null>(null);
-  const live = !previewRows;
-  useEffect(() => {
-    if (!live) return;
-    let alive = true;
-    void fetchRoundReveal(roundId)
-      .then((r) => {
-        // Re-queried on every late score / hidden name: keep the rows (and the dots) when nothing changed.
-        if (alive) setRows((prev) => replaceEqualDeep(prev, r));
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [roundId, version, live]);
-  const rows = previewRows ?? fetched;
-
-  const strips = useMemo(() => (rows ? revealStrips(rows) : null), [rows]);
-  const plan = useMemo(
-    () => (strips ? revealSchedule(strips.map((dots) => dots.length)) : null),
-    [strips],
+  const places = labelLanes(dots, projectorLabelWidth());
+  return (
+    <div className={s.track} dir="ltr">
+      <span className={s.baseline} aria-hidden="true" />
+      {TICKS.map((p) => (
+        <span key={p} className={s.tick} style={{ insetInlineStart: `${p}%` }} aria-hidden="true" />
+      ))}
+      {ENDS.map((p) => (
+        <span key={p} className={s.end} style={{ insetInlineStart: `${p}%` }} aria-hidden="true" />
+      ))}
+      <span className={s.centre} aria-hidden="true" />
+      {before}
+      {dots.map((d, j) => {
+        const place = places.get(d.playerRowId);
+        return (
+          <RevealIn
+            key={d.playerRowId}
+            as="span"
+            variant="dot"
+            delayMs={slots[j]?.delayMs ?? 0}
+            shards={slots[j]?.shards ?? 0}
+            className={`${s.dot} ${d.pinned ? s.dotPinned : ''}`}
+            style={{ insetInlineStart: `${d.pos}%` }}
+            data-testid={testIds.dot}
+            data-player={d.playerRowId}
+          >
+            {d.label && place ? (
+              <span className={`${s.name} ${LANE_CLASS[place.lane]} ${ALIGN_CLASS[place.align]}`}>
+                {/* The positioned span keeps the track's LTR geometry; the name keeps its own direction. */}
+                <bdi data-testid={testIds.label}>{d.label}</bdi>
+              </span>
+            ) : null}
+          </RevealIn>
+        );
+      })}
+    </div>
   );
+}
+
+export function StcReveal({ roundId, version, rows: previewRows }: RevealProps) {
+  const t = useT();
+  const rows = useRoundReveal(roundId, version, previewRows);
+  const strips = useMemo(() => (rows ? revealStrips(rows) : null), [rows]);
+  const plan = useMemo(() => (strips ? revealSchedule(strips.map((dots) => dots.length)) : null), [strips]);
   if (!strips || !plan) return null;
 
   return (
-    <div className={styles.reveal} data-testid="stc-reveal">
-      <div className={styles.strip}>
-        <span />
-        <div className={styles.stripScale}>
-          <h2 className={styles.eyebrow}>{t('game.stop_the_clock.reveal_title')}</h2>
-          <span className={styles.stripScaleAxis} dir="ltr">
-            <span className={styles.stripAxis}>{t('game.stop_the_clock.reveal_axis')}</span>
-          </span>
-        </div>
+    <div className={s.strips} data-testid="stc-reveal">
+      <div className={s.scale}>
+        <h2 className={s.scaleTitle}>{t('game.stop_the_clock.reveal_title')}</h2>
+        <span className={s.scaleAxis} dir="ltr">
+          <span className={s.axisTag}>{t('game.stop_the_clock.reveal_axis')}</span>
+        </span>
       </div>
       {strips.map((dots, i) => {
-        const s = STC_TARGETS_MS[i] / 1000;
-        const lanes = labelLanes(dots);
+        const sec = STC_TARGETS_MS[i] / 1000;
         return (
-          <section
-            key={i}
-            className={styles.strip}
-            data-testid="stc-strip"
-            data-target={STC_TARGETS_MS[i]}
-          >
-            <p className={styles.stripLabel}>
-              {t('game.stop_the_clock.target', { s: formatNumber(s), count: s })}
-            </p>
-            <div className={styles.stripTrack} dir="ltr">
-              {TICKS.map((p) => (
-                <span
-                  key={p}
-                  className={styles.stripTick}
-                  style={{ insetInlineStart: `${p}%` }}
-                  aria-hidden="true"
-                />
-              ))}
-              <span className={styles.stripCentre} aria-hidden="true" />
-              {dots.map((d, j) => {
-                return (
-                  <RevealIn
-                    key={d.playerRowId}
-                    as="span"
-                    variant="dot"
-                    delayMs={plan[i][j].delayMs}
-                    shards={plan[i][j].shards}
-                    className={`${styles.revealDot} ${d.pinned ? styles.revealDotPinned : ''} ${d.label ? styles.revealDotLabelled : ''}`}
-                    style={{ insetInlineStart: `${d.pos}%` }}
-                    data-testid="stc-dot"
-                    data-player={d.playerRowId}
-                  >
-                    {d.label ? (
-                      <span
-                        className={`${styles.revealName} ${LANE_CLASS[lanes.get(d.playerRowId) ?? 'above']}`}
-                      >
-                        {/* The positioned span keeps the track's LTR geometry; the name keeps its own direction. */}
-                        <bdi data-testid="stc-dot-label">{d.label}</bdi>
-                      </span>
-                    ) : null}
-                  </RevealIn>
-                );
-              })}
-            </div>
+          <section key={i} className={s.strip} data-testid="stc-strip" data-target={STC_TARGETS_MS[i]}>
+            <p className={s.stripLabel}>{t('game.stop_the_clock.target', { s: formatNumber(sec), count: sec })}</p>
+            <RevealTrack dots={dots} slots={plan[i]} testIds={{ dot: 'stc-dot', label: 'stc-dot-label' }} />
           </section>
         );
       })}
