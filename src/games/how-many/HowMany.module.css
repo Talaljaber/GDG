@@ -1,0 +1,233 @@
+/* How Many? screen. Tokens only (docs/DESIGN_SYSTEM.md §2-6); logical
+   properties only. The field and the pad are game geometry and keep their
+   layout in RTL (`direction: ltr`); labels follow the page language. Nothing
+   here animates (the flash is one frame; the countdown bar's transition is
+   zeroed under reduced motion, tokens.css §6.2). */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-3);
+  flex: 1;
+  min-height: 100%;
+  padding-block: var(--s-5);
+  padding-inline: var(--phone-gutter);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.screenCenter {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--s-4);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--weight-medium);
+}
+
+.pitch {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+}
+
+.caption {
+  margin: 0;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+/* ---- the field (a square: the column width, at most 56 % of the viewport height) ---- */
+.field {
+  direction: ltr;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: min(100%, 56vh);
+  aspect-ratio: 1;
+  border: var(--line-width) solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.fixation {
+  inline-size: var(--s-2);
+  block-size: var(--s-2);
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.fieldLayer {
+  position: absolute;
+  inset: 0;
+}
+
+.glyph {
+  position: absolute;
+  display: block;
+}
+
+.glyphSvg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* ---- countdown (as Trivia / Color Clash) ---- */
+.countdownWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.countdownBar {
+  flex: 1;
+  block-size: var(--s-2);
+  border-radius: var(--r-tag);
+  background: var(--gdg-line);
+  overflow: hidden;
+}
+
+.countdownFill {
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--primary);
+  transition: transform var(--dur-base) linear;
+}
+
+.countdownFillAmber {
+  background: var(--highlight);
+}
+
+.countdownNumber {
+  min-inline-size: 2ch;
+  text-align: end;
+  font-size: var(--type-button-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+/* Amber is a fill, never text on paper: the number sits on an amber tag. */
+.countdownNumberAmber {
+  color: var(--on-highlight);
+  background: var(--highlight);
+  border-radius: var(--r-tag);
+  padding-inline: var(--s-2);
+}
+
+.question {
+  margin: 0;
+  text-align: center;
+  font-size: var(--type-lead-size);
+  font-weight: var(--weight-medium);
+}
+
+/* The typed number: the one hero on the screen. */
+.typed {
+  direction: ltr;
+  margin: 0;
+  text-align: center;
+  font-size: var(--type-score-size);
+  font-weight: var(--type-score-weight);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.typedEmpty {
+  color: var(--text-muted);
+}
+
+/* ---- the pad: 3 x 4, a phone dialler's order in both languages ---- */
+.pad {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-2);
+  margin-block-start: auto;
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: calc(var(--touch-target-min) + var(--s-2));
+  padding: 0;
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--type-heading-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.key:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.key:disabled {
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.keyOk {
+  border-color: var(--action);
+  background: var(--action);
+  color: var(--on-action);
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
+}
+
+.keyOk:disabled {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.keyIcon {
+  inline-size: var(--s-5);
+  block-size: var(--s-5);
+}
