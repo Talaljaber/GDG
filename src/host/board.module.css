@@ -37,6 +37,34 @@
   inline-size: calc(var(--proj-t3) * 3.8);
 }
 
+/* 4:3 projectors (also the plan's "narrower screens" break, host.module.css): the H4
+   round/total columns are sized off proj-t3 (a vh token, so they grow with a taller,
+   narrower viewport) while the table's own width shrinks with it, squeezing the name
+   column enough to clip names that fit everywhere else (WP6 fix-up, corrects WP3/
+   WP5's column widths; verified against `host.results-1` with "Maximilian R" and
+   «محمد الخطيب» at 1280×960). Fixed percentages (rather than another vh multiplier)
+   so the numeric columns take a small, constant share of the table regardless of its
+   own width, leaving the name column the rest. `!important`: this media query's
+   `.withColumns .colExtra`/`.colScore` are equal-specificity, later-in-file overrides
+   of the unconditional rules above and should win on source order alone, but measured
+   in the browser they don't (`getComputedStyle` on the `<col>` keeps the unconditional
+   value without `!important` — a `table-layout: fixed` column-sizing quirk, not a
+   selector mistake; `.colRank`, which is higher-specificity than its unconditional
+   rule, applies fine without it). */
+@media (max-aspect-ratio: 17/10) {
+  .withColumns .colRank {
+    inline-size: 6% !important;
+  }
+
+  .withColumns .colExtra {
+    inline-size: 11% !important;
+  }
+
+  .withColumns .colScore {
+    inline-size: 14% !important;
+  }
+}
+
 /* ---- heads: for screen readers; visible only for H4's round columns and total ---- */
 
 .headsHidden th {
