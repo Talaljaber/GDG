@@ -223,7 +223,10 @@ Every game is a self-contained module under `src/games/<game-id>/` and is regist
 │       ├── perfect-circle/
 │       ├── trivia/                imports docs/content/trivia-questions.json
 │       ├── close-brackets/        ADR-134
-│       └── color-clash/           ADR-134
+│       ├── color-clash/           ADR-134
+│       ├── how-many/              ADR-136
+│       ├── swipe-sort/            ADR-136
+│       └── pairs/                 ADR-136
 ├── supabase/
 │   ├── config.toml
 │   ├── migrations/                0001_schema.sql … (DATA_MODEL §3–§8, §10)
