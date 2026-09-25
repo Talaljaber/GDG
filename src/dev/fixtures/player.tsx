@@ -360,10 +360,10 @@ export const fixtures: Fixture[] = [
     }),
   ),
 
-  // WP1: How Many? states (the flash fixture reaches the flash ~5 ms after load; freeze the clock then).
+  // WP1: How Many? states (intro handled by the ALL_GAMES p6-intro loop above; the flash
+  // fixture reaches the flash ~5 ms after load; freeze the clock then).
   ...(
     [
-      ['intro', null],
       ['look', { phase: 'look', roundIndex: 0, lookAgoMs: 0 }],
       ['flash', { phase: 'look', roundIndex: 2, lookAgoMs: 995 }],
       ['answer', { phase: 'answer', roundIndex: 1, typed: '24', answerAgoMs: 3200 }],
