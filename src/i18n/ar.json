@@ -276,11 +276,20 @@
   "game.trivia.unavailable": "يحتاج 5 أسئلة جاهزة على الأقل",
   "host.banner.db_down": "تعذّر الوصول إلى قاعدة البيانات. راجع دليل التشغيل §5.1.",
   "host.banner.reconnecting": "نعيد الاتصال…",
+  "host.board.delta": {
+    "zero": "{n} مركز",
+    "one": "مركز واحد",
+    "two": "مركزان",
+    "few": "{n} مراكز",
+    "many": "{n} مركزًا",
+    "other": "{n} مركز"
+  },
   "host.board.player": "اللاعب",
   "host.board.rank": "#",
   "host.board.score": "النتيجة",
   "host.corner.late": "تأخرت؟ انضم للجلسة القادمة",
   "host.dayboard.empty": "لا نتائج اليوم بعد",
+  "host.dayboard.next_in": "اللوحة التالية خلال {s} ث",
   "host.header.tagline": "GDG on Campus · AI Expo Jordan",
   "host.lineup.need": {
     "zero": "اختر {n} ألعاب مختلفة",
@@ -325,6 +334,7 @@
   "host.settings.title": "الإعدادات",
   "host.signin.email": "البريد الإلكتروني",
   "host.signin.error": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+  "host.signin.hint": "سجّل الدخول قبل توصيل جهاز العرض.",
   "host.signin.not_admin": "هذا الحساب ليس حساب مضيف",
   "host.signin.password": "كلمة المرور",
   "host.signin.submit": "دخول",

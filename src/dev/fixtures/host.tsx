@@ -16,8 +16,10 @@ import { HostIntermission } from '../../host/Intermission';
 import { HostSessionEnd } from '../../host/Results';
 import { SignIn } from '../../host/HostApp';
 import type { HostController, HostData, IntermissionInfo } from '../../host/useHost';
+import { REGISTERED_GAMES } from '../../host/useHost';
 import type { IntermissionStep } from '../../host/schedule';
 import { STC_TARGETS_MS } from '../../games/stop-the-clock/scoring';
+import { GAME_IDS } from '../../games/types';
 
 const noop = () => {};
 const LINEUP: GameId[] = ['stop_the_clock', 'odd_one_out', 'simon'];
@@ -146,6 +148,24 @@ function board(n: number, top = 980, tie = false): RankedRow[] {
   }));
 }
 
+/**
+ * A total-so-far board whose row order differs from `board(n, ...)` (same
+ * `playerRowId`s, reshuffled), so WP3's FLIP has something to animate
+ * between the round board and the total step (host.intermission-total-moved).
+ */
+function movedBoard(n: number, top = 1890): RankedRow[] {
+  const order = [3, 0, 4, 1, 5, 2, 7, 6, 9, 8].filter((i) => i < n);
+  return order.map((srcIdx, i) => ({
+    playerRowId: `p${srcIdx}`,
+    name: NAMES[srcIdx],
+    displaySuffix: NAMES[srcIdx] === 'Sara' && srcIdx === 3 ? 2 : null,
+    value: Math.max(0, top - i * 41),
+    rank: i + 1,
+    isOwn: false,
+    detached: false,
+  }));
+}
+
 const screenCell: CSSProperties = { display: 'flex', flexDirection: 'column', flex: 1, minBlockSize: 0 };
 
 function Frame({ screen, banner, children }: { screen: string; banner?: string; children: ReactNode }) {
@@ -178,9 +198,25 @@ function Lobby({ n, lineup = LINEUP, grey = [] }: { n: number; lineup?: GameId[]
   );
 }
 
+/**
+ * All 10 `GAME_IDS` as registered, so the lineup tray's pool line wraps the way it will
+ * once how_many/swipe_sort/pairs ship (§5 of the plan). `REGISTERED_GAMES` is normally
+ * `Object.keys(games)` from the real registry (7 today); this fixture-only override
+ * patches that same array in place before rendering — every string used is already in
+ * COPY.md/i18n (ADR-134's games plus the three planned ones), so no new key is needed.
+ * Each full page load (`/__preview?f=...`) re-imports the module graph, so the patch
+ * never leaks into other fixtures.
+ */
+function Lobby10Games({ n = 3 }: { n?: number }) {
+  for (const g of GAME_IDS) {
+    if (!REGISTERED_GAMES.includes(g)) REGISTERED_GAMES.push(g);
+  }
+  return <Lobby n={n} lineup={LINEUP} />;
+}
+
 // ------------------------------------------------------------------ H2
 
-function Round({ scored = 12, n = 18 }: { scored?: number; n?: number }) {
+function Round({ scored = 12, n = 18, boardN = 10 }: { scored?: number; n?: number; boardN?: number }) {
   const d = data({
     session: session({ status: 'playing' }),
     running: true,
@@ -191,7 +227,11 @@ function Round({ scored = 12, n = 18 }: { scored?: number; n?: number }) {
   });
   return (
     <Frame screen="round">
-      <HostRound host={host({ data: d, screen: 'round', scoredCount: scored })} data={d} preview={{ board: board(10, 940) }} />
+      <HostRound
+        host={host({ data: d, screen: 'round', scoredCount: scored })}
+        data={d}
+        preview={{ board: board(boardN, 940) }}
+      />
     </Frame>
   );
 }
@@ -227,7 +267,18 @@ function reveal(n: number): RevealRow[] {
   }));
 }
 
-function Intermission({ step, roundNo, last = false }: { step: IntermissionStep; roundNo: number; last?: boolean }) {
+function Intermission({
+  step,
+  roundNo,
+  last = false,
+  moved = false,
+}: {
+  step: IntermissionStep;
+  roundNo: number;
+  last?: boolean;
+  /** Give the total board a different row order than the round board (FLIP, WP3). */
+  moved?: boolean;
+}) {
   const rs = rounds(null, roundNo);
   const d = data({
     session: session({ status: last ? 'results' : 'playing' }),
@@ -247,7 +298,11 @@ function Intermission({ step, roundNo, last = false }: { step: IntermissionStep;
       <HostIntermission
         host={host({ data: d, screen: 'intermission', intermission: info })}
         data={d}
-        preview={{ roundBoard: board(10, 960), totalBoard: board(10, 1890, true), reveal: reveal(20) }}
+        preview={{
+          roundBoard: board(10, 960),
+          totalBoard: moved ? movedBoard(10, 1890) : board(10, 1890, true),
+          reveal: reveal(20),
+        }}
       />
     </Frame>
   );
@@ -284,23 +339,36 @@ function sessionScores(rows: Record<string, DayBoardRow[]>): SessionScoreRow[] {
   );
 }
 
-function SessionEnd({ day }: { day: boolean }) {
+function emptyDayRows(): Record<string, DayBoardRow[]> {
+  const out: Record<string, DayBoardRow[]> = {};
+  LINEUP.forEach((game) => {
+    out[game] = [];
+  });
+  return out;
+}
+
+function SessionEnd({ day, n = 10, empty = false }: { day: boolean; n?: number; empty?: boolean }) {
   const d = data({
     session: session({ status: 'results', day_board_shown_at: day ? AT : null }),
     running: true,
     rounds: rounds(null, 3),
-    players: players(20),
+    players: players(Math.max(n, 1)),
     pending,
     pendingPlayers: 4,
   });
-  const top = board(10, 2890, true);
-  const rows = dayRows();
+  const top = empty ? [] : board(n, 2890, n > 2);
+  const rows = empty ? emptyDayRows() : dayRows();
   return (
     <Frame screen={day ? 'dayboard' : 'results'}>
       <HostSessionEnd
         host={host({ data: d, screen: day ? 'dayboard' : 'results' })}
         data={d}
-        preview={{ board: top, breakdown: breakdown(top), dayRows: rows, sessionScores: sessionScores(rows) }}
+        preview={{
+          board: top,
+          breakdown: empty ? [] : breakdown(top),
+          dayRows: rows,
+          sessionScores: empty ? [] : sessionScores(rows),
+        }}
       />
     </Frame>
   );
@@ -362,9 +430,11 @@ export const fixtures: Fixture[] = [
     render: () => <SignIn notice="host.signin.not_admin" onNotAdmin={noop} onSignedIn={noop} />,
   },
   { name: 'host.lobby-empty', frame: 'projector', render: () => <Lobby n={0} /> },
+  { name: 'host.lobby-1', frame: 'projector', render: () => <Lobby n={1} /> },
   { name: 'host.lobby-3', frame: 'projector', render: () => <Lobby n={3} /> },
   { name: 'host.lobby-30', frame: 'projector', render: () => <Lobby n={30} grey={[4, 11, 17, 26]} /> },
   { name: 'host.lobby-invalid', frame: 'projector', render: () => <Lobby n={3} lineup={['stop_the_clock', 'simon']} /> },
+  { name: 'host.lobby-10-games', frame: 'projector', render: () => <Lobby10Games /> },
   {
     name: 'host.lobby-settings',
     frame: 'projector',
@@ -375,6 +445,8 @@ export const fixtures: Fixture[] = [
     ),
   },
   { name: 'host.round', frame: 'projector', render: () => <Round /> },
+  { name: 'host.round-empty', frame: 'projector', render: () => <Round scored={0} boardN={0} /> },
+  { name: 'host.round-3', frame: 'projector', render: () => <Round scored={3} n={18} boardN={3} /> },
   {
     name: 'host.round-next-games',
     frame: 'projector',
@@ -388,8 +460,16 @@ export const fixtures: Fixture[] = [
   { name: 'host.intermission-stc', frame: 'projector', render: () => <Intermission step="round_board" roundNo={1} /> },
   { name: 'host.intermission-total', frame: 'projector', render: () => <Intermission step="session_total" roundNo={2} /> },
   { name: 'host.intermission-next', frame: 'projector', render: () => <Intermission step="next_intro" roundNo={1} /> },
+  {
+    name: 'host.intermission-total-moved',
+    frame: 'projector',
+    render: () => <Intermission step="session_total" roundNo={2} moved />,
+  },
   { name: 'host.results', frame: 'projector', render: () => <SessionEnd day={false} /> },
+  { name: 'host.results-1', frame: 'projector', render: () => <SessionEnd day={false} n={1} /> },
+  { name: 'host.results-empty', frame: 'projector', render: () => <SessionEnd day={false} empty /> },
   { name: 'host.dayboard', frame: 'projector', render: () => <SessionEnd day /> },
+  { name: 'host.dayboard-empty', frame: 'projector', render: () => <SessionEnd day empty /> },
   { name: 'host.merge', frame: 'projector', render: () => <SessionEndMerge /> },
   { name: 'host.merge-staged', frame: 'projector', render: () => <SessionEndMerge staged /> },
 ];

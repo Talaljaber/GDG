@@ -4,32 +4,35 @@ Purpose: the visual and motion rules that make every screen feel like our GDG ch
 
 Last updated: 2026-09-25
 
-Related: ADR-131, ADR-033, ADR-034, ADR-122, ADR-123, `SCREENS.md`, `COPY.md`.
+Related: ADR-135, ADR-131, ADR-033, ADR-034, ADR-122, ADR-123, `docs/plans/host-v3.md`, `SCREENS.md`, `COPY.md`.
 
 ---
 
-## 0. Visual direction v2: "quiet scoreboard" (ADR-131)
+## 0. Visual direction
 
-Adopted 2026-09-25 after the first real look at the big screen ("looks childish"). It replaces the loud first pass; the palette, fonts, chevrons and logo rules in §1 are unchanged. Sections 2–4 carry the exact tokens; this section is the brief every screen follows.
+The host screens (H0–H6, the projected big screen) follow **v3 "Stage and Rail"** (§0.1–0.2 below, ADR-135). Phones (§0.3) and the dashboard (§0.4) still follow **v2 "quiet scoreboard"** (ADR-131): the palette, fonts, chevrons and logo rules in §1 are unchanged for every surface; sections 2–4 carry the exact tokens for both directions (v3's additions are called out there, e.g. §2.3's `--action`/`--live`/`--rank1-*`/`--slot-line` roles and §3.2's `--proj-t1…t7` scale).
 
-### 0.1 Principles
-1. **One hero per screen.** Lobby: the code. Boards: the #1 row. Phone result: the player's score. Everything else is at body/label size.
-2. **Structure, not decoration.** Screens sit on a grid of flat panels: white `--surface` on `--bg` paper, a 1 px `--line` border, small radii (`--r-panel` 12 px phone / `--proj-radius` projector). No drop shadows, no gradients, no pills, no numbered circles, no emoji, no exclamation-mark jokes.
-3. **Few weights.** Roboto / Cairo at 400 (body), 500 (labels, UI, headings), 700 (only hero numbers and the #1 row). `font-variant-numeric: tabular-nums` on every number (codes, scores, ranks, timers).
-4. **Colour with restraint.** Ink text on paper. Blue (`--primary`, `--primary-text`) = interactive and "live" (primary buttons, active tab underline, focus, presence dot). Amber = rank 1 / new best / celebrate only. Muted ink for labels and secondary text.
-5. **Labels are eyebrows.** Section labels are small, medium weight, muted; Latin labels uppercase with `--tracking-eyebrow`; Arabic never transformed.
-6. **Audience vs operator.** On the big screen, what the room reads (code, QR, players, boards) is large; what the host operates (lineup, Start, End round, Next round now, Show day board, New session, settings) lives in one quiet **operator bar** at the bottom, at `--proj-min` size, on `--surface-2`.
-7. **Chevrons frame, sparingly.** Facing chevrons (blue `<`, amber `>`) drawn as thin line glyphs frame exactly one hero per screen (the lobby code, the H4 winner, the phone score). Never behind text, never as a pattern.
+### 0.1 Host v3 "Stage and Rail": principles (ADR-135)
 
-### 0.2 Big screen (host) layout
-- **Header strip** (≈ 9vh, bottom line): logo (transparent PNG, `--logo-proj-height`) · "GDG on Campus · AI Expo Jordan" muted · inline-end: event day label and the player count as eyebrow + tabular number (`Players 12`), not a giant number.
-- **Body** on a 12-column grid inside `--big-screen-safe-margin`:
-  - **Lobby (H1):** join panel (4 cols: QR in a white panel, the URL under it, three numbered steps "Scan · Enter the code · Type your name" as plain text), code hero (4 cols: eyebrow label, the code at `--proj-code` tabular with `--proj-code-letter-spacing`, framed by the chevrons), players panel (4 cols: eyebrow + count, a 2-column grid of name tags with presence dots; empty state = six dashed placeholder slots and "Waiting for players").
-  - **Boards (H2 live round, H3 intermission, H4 results, H5 day boards):** a table, not cards: rank column (muted, tabular; 1–3 in ink), name (`<bdi>`), per-round columns where relevant, total inline-end aligned. 1 px row separators, no zebra. Rank 1 row: `--gdg-amber-tint` background with an amber inline-start rule. Board title = eyebrow + a `--proj-heading` title ("Round 2 · Odd One Out"). Day-board tabs are text tabs with a blue underline.
-- **Operator bar** (≈ 10vh, `--surface-2`, top line): inline-start a "Lineup" eyebrow + the ordered game names separated by `→`; editing uses the existing picker as a compact segmented list with small tabular ordinals (no circles); inline-end the one primary action for the state (Start / End round / Next round now / Show day board / New session) as a solid blue button; secondary actions as text buttons. During play the next-session code sits at the inline-end of the header as eyebrow + tabular code.
-- **Bilingual labels on the big screen:** one line, the host UI language first in `--text`, the other language after a thin `·` divider in `--text-muted`. Never two stacked lines of the same label.
+Adopted 2026-09-25: v2 removed the loud first pass but the projected screen still read as a settings page ("childish") — panels and chips, a grey operator band, spreadsheet boards, small hero moments, blue used for five different things. v3 keeps v2's calm ink-on-paper, tabular numbers and restrained chevrons, and moves the register from **form-and-dashboard** to **broadcast scoreboard with a keynote's typography**. Full spec, exact layout and screen-by-screen detail: `docs/plans/host-v3.md` §2–§4 (this section is the durable summary; the plan is the working document).
 
-### 0.3 Phone (player)
+1. **Stage and rail.** Every host screen is a brand strip (9 vh) · a chrome-free **stage** (the room's content) · a thin unfilled **rail** (7 vh; 12 vh on H1 for the lineup tray) that carries every host control. The stage never contains a control; the rail never contains content for the room.
+2. **One hero, and it is huge.** Every screen has exactly one element larger than everything else, on the modular projector type scale `--proj-t1…t7` (§3.2): H1 the code at 30 vh, H2/H3 the board, H4 the winner's total at 20 vh, H5 the #1 row. Nothing else on the screen exceeds 10 vh.
+3. **Type, hairlines, tints. No boxes.** Panels, chips and bordered slots disappear from the stage. Structure comes from a 12-column grid, 1 px `--line` rules and at most one tinted row (`--slot-line` for empty slots). The only box left on the stage is the QR's white quiet zone.
+4. **Colour has one meaning each.** Ink = content and actions; primary actions are **ink-filled** buttons (`--action` / `--on-action`), so the rail adds no colour. **Blue = live** (`--live`/`--live-tint`: presence dots, the current round in the lineup, the active tab underline, the join pulse, progress bars). **Amber = rank 1** (`--rank1-tint`/`--rank1-rule`: the #1 row; the winner's total gets an amber rule, never amber text). Muted ink (`--rail-text`) is labels and secondary numbers.
+5. **Boards are broadcast tables.** Rank · name · score, column heads visually hidden (kept for screen readers), a fixed 10-slot height that fills the stage, tabular numbers at the inline end, hairline separators, #1 on the amber tint. Rows FLIP to new positions and a moved row pulses once; totals count up; no shards on rows.
+6. **Motion says "this changed", once.** Entries 240 ms, FLIP reorders 400 ms, pulses 500 ms, count-ups 1.2–1.6 s, step crossfades 300 ms (§6.1 tokens `--dur-enter/-reorder/-pulse/-step/-countup/-countup-hero`, `--stagger-row`). The mosaic shatter (§6.2) stays the signature but fires at **three** places only on the host: the transition between major screens, the H4 winner reveal, and the day-board merge — never on joining names, board rows or a new #1 during a round.
+7. **Bilingual with hierarchy.** On H1 the other language is a second, muted line under the eyebrow, once per block, never per step. Everything else follows the screen language.
+8. **Chevrons frame, sparingly.** Facing chevrons (blue `<`, amber `>`) frame exactly one hero per screen (the lobby code, the H4 winner, the phone score). Never behind text, never as a pattern.
+
+### 0.2 Host v3 big-screen layout (ADR-135)
+
+- **Brand strip** (9 vh, bottom line): logo (transparent PNG, `--logo-proj-height`), unframed, at inline-start; on H1 the tagline after a thin vertical rule; on H2–H5 the inline-end holds the **corner code** (late-joiner code) instead of a screen title.
+- **Stage**, 12-column grid inside `--big-screen-safe-margin`: H1 a join block (the code hero at `--proj-code` 30 vh framed by the chevrons, the QR at `--proj-qr` 24 vh, the three join steps) beside a two-column players list (hairline rows, presence dots, newest first, no panel); H2/H3 a side "scorebug" (round/game, time left, finished progress bar, lineup summary) beside a 10-slot `BoardTable`; H4 a podium (winner name + total at `--proj-t7` 20 vh, ranks 2–3 as plain lines) beside the session table with per-round columns; H5 horizontal day-board tabs (active tab underlined, the underline width animating over the rotation interval) over the 10-slot board.
+- **Rail** (7 vh; 12 vh on H1): inline-start holds the screen's context (H1 the lineup tray; H2–H5 the next-games summary); inline-end holds `Settings` (language, reduced motion, the **Dark screen** toggle, sign out), any secondary text buttons, then the one primary action as an **ink-filled** button (Start / End round / Next round now / Show day board / New session).
+- **Bilingual labels on H1:** the eyebrow's own-language line, then one muted second line in the other language underneath (never inline "·", never repeated per step). Every other host label follows the screen language only.
+
+### 0.3 Phone (player), v2 "quiet scoreboard" (ADR-131, unchanged by v3)
 - **Top bar** (56 px, bottom line): logo at `--logo-phone-height` inline-start, language toggle as a text button inline-end.
 - One column inside `--phone-gutter`; each screen starts with an eyebrow + title.
 - **Code entry:** four separate digit cells (tabular, 56 px tall, `--r-control`, line border, blue focus ring) over one real input (keeps the numeric keypad, paste and Arabic-Indic normalisation).
@@ -39,7 +42,7 @@ Adopted 2026-09-25 after the first real look at the big screen ("looks childish"
 - **Result (P7) and between screens:** score hero at `--type-score-size` 700 tabular framed by the chevrons; breakdown as a two-column list (label · value); the board uses the same table pattern as the projector at phone size.
 - **Games:** every game spec (sizes, timings, colours) stays as is; only the shared chrome (headers, progress labels, buttons, result blocks) follows v2.
 
-### 0.4 Dashboard (`/dashboard`)
+### 0.4 Dashboard (`/dashboard`), v2 "quiet scoreboard" (ADR-131, unchanged by v3)
 A data app, not a poster: left nav (Today, Sessions, Results, Names, Days) on desktop, top tabs on narrow screens; page header with title + actions; filter row; dense tables at `--type-small-size`, sticky header, tabular numbers, row hover `--surface-2`, small buttons; max content width `--dash-max-width`.
 - **Shell:** the side nav (`--dash-nav-width`, `--surface`, 1 px inline-end line) sits at the inline start, so it is on the right in Arabic. Top: the logo at `--logo-phone-height`, sized by height only, with no box, plus a muted "Dashboard" label. Items are 36 px text rows; the active one gets `--surface-2` and a 2 px blue inline-start rule. Bottom: a "Signed in as" eyebrow with the admin email, then the language toggle and Sign out as quiet text buttons. Under 768 px the nav becomes a top bar (logo · language · Sign out as an icon) with text tabs underlined in blue.
 - **Page header:** an optional eyebrow, the title at `--type-heading-size` 500, a muted description (at most 72ch) and actions at the inline end, over a 1 px line.

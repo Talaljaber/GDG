@@ -366,6 +366,9 @@ The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby
 | `host.signout` | Sign out | تسجيل الخروج |
 | `host.banner.reconnecting` | Reconnecting… | نعيد الاتصال… |
 | `host.banner.db_down` | Database unreachable. See runbook §5.1. | تعذّر الوصول إلى قاعدة البيانات. راجع دليل التشغيل §5.1. |
+| `host.signin.hint` | Sign in before connecting the projector. | سجّل الدخول قبل توصيل جهاز العرض. |
+| `host.board.delta` (plural) | one: 1 place · other: {n} places | zero: {n} مركز · one: مركز واحد · two: مركزان · few: {n} مراكز · many: {n} مركزًا · other: {n} مركز |
+| `host.dayboard.next_in` | Next board in {s} s | اللوحة التالية خلال {s} ث |
 
 ## 7. Dashboard
 

@@ -242,6 +242,16 @@ const pairs: Pair[] = [
   { label: 'dark: text-muted on surface-2', fg: 'text-muted', bg: 'surface-2', category: 'any', note: 'operator bar', theme: 'dark' },
   { label: 'dark: text on highlight-tint', fg: 'text', bg: 'highlight-tint', category: 'any', note: '#1 row', theme: 'dark' },
   { label: 'dark: text on primary-tint', fg: 'text', bg: 'primary-tint', category: 'any', note: 'own row', theme: 'dark' },
+  // v3 "Stage and Rail" pairs (DESIGN_SYSTEM §0, ADR-135): the rail's ink-filled button and the
+  // stage's muted rows on --slot-line.
+  { label: 'on-action on action (rail button)', fg: 'on-action', bg: 'action', category: 'any', note: 'primary rail button label' },
+  { label: 'on-action on action-hover', fg: 'on-action', bg: 'action-hover', category: 'any', note: 'hovered rail button' },
+  { label: 'text on live-tint', fg: 'text', bg: 'live-tint', category: 'any', note: 'join pulse, moved-row pulse' },
+  { label: 'text-muted on slot-line', fg: 'text-muted', bg: 'slot-line', category: 'any', note: 'empty board/lobby slot rows' },
+  { label: 'dark: on-action on action', fg: 'on-action', bg: 'action', category: 'any', note: 'primary rail button label', theme: 'dark' },
+  { label: 'dark: on-action on action-hover', fg: 'on-action', bg: 'action-hover', category: 'any', note: 'hovered rail button', theme: 'dark' },
+  { label: 'dark: text on live-tint', fg: 'text', bg: 'live-tint', category: 'any', note: 'join pulse, moved-row pulse', theme: 'dark' },
+  { label: 'dark: text-muted on slot-line', fg: 'text-muted', bg: 'slot-line', category: 'any', note: 'empty board/lobby slot rows', theme: 'dark' },
 ];
 
 const THRESHOLD: Record<Exclude<Category, 'skip'>, number> = {

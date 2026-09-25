@@ -260,11 +260,16 @@
   "game.trivia.unavailable": "Needs 5+ ready questions",
   "host.banner.db_down": "Database unreachable. See runbook §5.1.",
   "host.banner.reconnecting": "Reconnecting…",
+  "host.board.delta": {
+    "one": "1 place",
+    "other": "{n} places"
+  },
   "host.board.player": "Player",
   "host.board.rank": "#",
   "host.board.score": "Score",
   "host.corner.late": "Late? Join the next session",
   "host.dayboard.empty": "No scores yet today",
+  "host.dayboard.next_in": "Next board in {s} s",
   "host.header.tagline": "GDG on Campus · AI Expo Jordan",
   "host.lineup.need": {
     "one": "Pick 1 game",
@@ -301,6 +306,7 @@
   "host.settings.title": "Settings",
   "host.signin.email": "Email",
   "host.signin.error": "Wrong email or password",
+  "host.signin.hint": "Sign in before connecting the projector.",
   "host.signin.not_admin": "This account isn't a host account",
   "host.signin.password": "Password",
   "host.signin.submit": "Sign in",
