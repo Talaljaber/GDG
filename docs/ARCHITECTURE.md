@@ -28,7 +28,7 @@ flowchart LR
         RT["Realtime<br/>Postgres Changes + Presence"]
     end
     GF["Google Fonts"]
-    GH["GitHub Actions<br/>keepalive every 6 h"]
+    GH["External scheduler<br/>keepalive every 6 h"]
 
     P1 & P2 & P3 & BS & AP -- "load site" --> SITE
     P1 & P2 & P3 & BS -- "fonts" --> GF
@@ -154,7 +154,7 @@ Limits checked on 2026-09-24 (sources below). Estimates assume a busy booth: 30 
 | Egress | 5 GB (+5 GB cached) | board polling ≈ 2 MB/session → ≈ 0.6 GB/event | Fine |
 | Auth MAU | 50 000 | ≈ 3 000 anonymous users | Fine (anonymous users are real auth users; assumed to count) |
 | Anonymous sign-ins per IP | 30/h default, configurable | Many guests share carrier NAT | Raised to 1,000/h (ADR-102) |
-| Project pausing | after ~7 days of low DB activity | keepalive every 6 h (a DB write) | ADR-128 |
+| Project pausing | after ~7 days of low DB activity | keepalive every 6 h (a DB write) via an external scheduler | ADR-031 (changed 2026-09-25: no GitHub Actions); not yet set up, see `PROGRESS.md` |
 | Netlify credits | 300/month hard limit; deploy = 15; bandwidth 20/GB | ≈ 0.3 MB per guest first load → ≈ 1.4 GB/event ≈ 28 credits | Deploy budget ADR-126; if credits run out, **all sites on the account pause** |
 
 "No player cap" (ADR-013) stays true in the product; the free plan's realtime limits are the practical ceiling, noted in OQ-16.
@@ -237,9 +237,6 @@ Every game is a self-contained module under `src/games/<game-id>/` and is regist
 │   ├── contrast.ts                DESIGN_SYSTEM §2.4
 │   └── loadtest/                  simulated phones (TESTING §5)
 ├── e2e/                           Playwright multi-phone tests
-├── .github/workflows/
-│   ├── keepalive.yml              every 6 h (ADR-128)
-│   └── ci.yml                     typecheck, unit tests, checks
-├── netlify.toml
+├── netlify.toml                   build = `npm run build`; no CI, no GitHub Actions (keepalive is an external scheduler, ADR-031)
 ├── package.json · vite.config.ts · tsconfig.json
 ```

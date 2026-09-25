@@ -133,6 +133,7 @@ Decision: RLS on every table; guests can insert and read only what they need; gu
 ### ADR-031 Keepalive from day one
 **Accepted** · brief §2.6
 Decision: a scheduled GitHub Actions job touches the database from the day the Supabase project is created, so the free project never pauses for inactivity. Consequences: `DEPLOYMENT.md` §4.
+Changed in chat 2026-09-25: no GitHub Actions; the keepalive moves to an external free scheduler (e.g. cron-job.org) that POSTs `{SUPABASE_URL}/rest/v1/rpc/keepalive` every 6 h with the publishable key in the apikey and Authorization headers. No server, no secret key. Until it's set up nothing prevents the Free project pausing after ~7 days idle.
 
 ### ADR-032 No deploys on event day; dry run the day before
 **Accepted** · brief §2.6, confirmed in chat 2026-09-24
@@ -259,7 +260,7 @@ Context: the Netlify Free plan (credit-based, accounts since Sept 2025) has a ha
 Decision: a single cloud project (`gdg-booth`, ref `ppikklvltpfdwbxtilme`, `eu-central-1` Frankfurt) serves development, deploy previews, the dry run and the event. Everyday development and the e2e/load tests run on the local stack (`supabase start`); the load test only touches the cloud with an explicit `--target` (TESTING §5). Consequences: every migration goes straight to the event database, so it must pass `supabase test db` locally first, then `supabase test db --linked`, and never on event days (ADR-119). Deploy previews write test sessions into the event database; they stay in dashboard history, and "Start new event day" before each event day gives clean day boards (ADR-109). The keepalive has one target (the `_PROD` secrets; the dev leg skips).
 
 ### ADR-128 Keepalive cadence and repository
-**Proposed** · repository visibility changed in chat 2026-09-24 (the team keeps it public)
+**Superseded** · by the ADR-031 change (no GitHub Actions), 2026-09-25 · repository visibility changed in chat 2026-09-24 (the team keeps it public)
 Decision: the GitHub Actions job calls `keepalive()` (a real database write) every 6 hours at minute 17 (avoiding top-of-hour delays). The repository stays **public**. GitHub disables scheduled workflows in public repositories after 60 days without repository activity (it emails the repo owner first); any commit resets that clock, and re-enabling is one click in the Actions tab. The job's success is checked weekly and on the dry-run day, and the 60-day clock is checked before the event. Consequences: the docs, trivia pool and blocklist seed are public (the trivia answers already ship in the bundle, ADR-116); no secret is ever committed (AC0.7).
 
 ### ADR-129 Intermission anchoring, last round and resume

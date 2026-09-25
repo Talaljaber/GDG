@@ -40,24 +40,24 @@ Phases 3 and 4 can run in parallel once Phase 2 is done. Phase 7 (added 2026-09-
 
 **Goal:** an empty but real app deployed to Netlify, talking to Supabase with the full schema and RLS in place, keepalive running.
 
-**In:** repo, tooling, both Supabase projects, auth config, admin account, all migrations from `DATA_MODEL.md` (all tables, RLS, trigger with bounds, functions, views, realtime publication, seed), keepalive, i18n scaffold, design tokens, CI.
+**In:** repo, tooling, both Supabase projects, auth config, admin account, all migrations from `DATA_MODEL.md` (all tables, RLS, trigger with bounds, functions, views, realtime publication, seed), keepalive, i18n scaffold, design tokens.
 **Out:** any real screen beyond a placeholder per route.
 
 Tasks:
-1. GitHub repo (public, ADR-128); Vite + React + TypeScript (ADR-107); ESLint/Prettier; Vitest; `npm run build` → `dist`.
-2. One cloud Supabase project for dev and prod (ADR-127); **keepalive workflow on day zero** (ADR-128).
+1. GitHub repo (public, ADR-128 repo-visibility part); Vite + React + TypeScript (ADR-107); ESLint/Prettier; Vitest; `npm run build` → `dist`.
+2. One cloud Supabase project for dev and prod (ADR-127); **keepalive set up on day zero** via an external scheduler (ADR-031, no GitHub Actions).
 3. Auth: anonymous sign-ins on, sign-ups on, confirm email on, anonymous rate limit 1,000/h, admin user + `app_metadata.role` (`DEPLOYMENT.md` §2).
 4. Migrations `0001`–`0007` from `DATA_MODEL.md`; pgTAP suite from `TESTING.md` §3.
 5. Netlify site on a dedicated account, env vars per context, `_redirects`, deploy previews on (`DEPLOYMENT.md` §3).
 6. `src/` skeleton per `ARCHITECTURE.md` §8; three routes render placeholders.
 7. i18n: `en.json`/`ar.json` with the `COPY.md` §3 keys, `t()` with `Intl.PluralRules`, `dir`/`lang` switching, `check:i18n` script.
 8. `tokens.css` from `DESIGN_SYSTEM.md` §2–§6 (sampled logo colours), fonts loaded, `contrast` script.
-9. CI: typecheck, unit tests, `check:i18n`, `check:trivia` (schema mode).
+9. No CI (2026-09-25): typecheck, unit tests, `check:i18n`, `check:trivia` (schema mode) are run by hand before each deploy (`DEPLOYMENT.md` §6).
 
 Acceptance criteria:
 - [ ] AC0.1 `supabase test db --linked` passes on the cloud project: every RLS case in `TESTING.md` §3.
 - [ ] AC0.2 `select … rowsecurity` shows RLS on for every `public` table.
-- [ ] AC0.3 The keepalive workflow has ≥ 2 green scheduled runs, and `keepalive.pinged_at` updates on the cloud project.
+- [ ] AC0.3 The external keepalive scheduler has ≥ 2 confirmed 6-hourly runs, and `keepalive.pinged_at` updates on the cloud project.
 - [ ] AC0.4 Production URL serves `/`, `/host`, `/dashboard` (no 404 on reload).
 - [ ] AC0.5 `/host` sign-in with the admin account succeeds and a guest-style anonymous session can't call `admin_open_lobby` (`GD009`).
 - [ ] AC0.6 Toggling language switches `dir` to `rtl` and loads Cairo; `check:i18n` passes.

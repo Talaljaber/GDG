@@ -2,7 +2,7 @@
 
 Purpose: step-by-step setup of the Supabase projects, the Netlify site and the keepalive job, plus environment variables, the migration process, rollback, and the "no deploys on event day" rule. A new team member should be able to stand up a working copy from this file alone. Platform facts are cited inline; re-check them if the event is months away.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ---
 
@@ -86,12 +86,16 @@ Source: https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for
 
 ## 4. Keepalive (from day zero)
 
-- `.github/workflows/keepalive.yml`, schedule `17 */6 * * *` (every 6 hours at minute 17; GitHub runs schedules at most every 5 minutes and delays top-of-hour jobs: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
-- The job sends one `POST {SUPABASE_URL}/rest/v1/rpc/keepalive` with the publishable key in the `apikey` header. `keepalive()` updates one row, which is real database activity (a plain API ping may not count).
-- Repository secrets: `SUPABASE_URL_PROD`, `SUPABASE_PUBLISHABLE_KEY_PROD` for the one cloud project (ADR-127). The `_DEV` pair stays unset and the dev leg of the job logs "Skipping dev". Publishable keys are not secret, but keeping them in secrets avoids hard-coding.
-- The job fails loudly (non-2xx → failed run → GitHub email to the repo owner).
-- The repository is **public** (team decision, ADR-128): GitHub disables scheduled workflows in public repositories after 60 days without repository activity and emails the owner first (https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow, checked 2026-09-24). Any commit resets the clock; if it was disabled, re-enable it in Actions → Keepalive → Enable workflow. Before the event, make sure the last commit is less than 60 days before the last event day.
-- Check: the latest run is green (weekly, and on dry-run day); `select pinged_at from keepalive` is < 6 h old.
+No GitHub Actions (2026-09-25, ADR-031 changed, ADR-128 superseded): the repo has no workflows at all. The keepalive is an external free scheduler hitting the database directly — no server, no secret key.
+
+- Scheduler: an external free cron service (e.g. cron-job.org). One job, every 6 hours.
+- Request: `POST {SUPABASE_URL}/rest/v1/rpc/keepalive`
+  - Headers: `apikey: <publishable key>`, `Authorization: Bearer <publishable key>`, `Content-Type: application/json`
+  - Body: `{}`
+- `keepalive()` updates one row, which is real database activity (a plain API ping may not count).
+- Set up: create the scheduler job with the cloud project's `SUPABASE_URL` and publishable key (§2.5); only public values are involved, so this needs no secret storage.
+- Check: `select pinged_at from keepalive` is < 6 h old (SQL editor, or the scheduler's own run history if it logs response bodies).
+- Status (2026-09-25): not yet set up (`PROGRESS.md`); until it is, the Free project can pause after about a week of no activity (§2.1).
 
 ## 5. Migrations
 
@@ -110,7 +114,16 @@ Source: https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for
 
 ## 6. Release process
 
-1. PR → CI (typecheck, unit tests, `check:trivia`, `check:i18n`) → deploy preview on the cloud project.
+No CI (2026-09-25): Netlify's build runs only `npm run build`. Run these checks by hand before every deploy:
+
+- [ ] `npm run typecheck`
+- [ ] `npm run lint`
+- [ ] `npm test` (Vitest unit tests)
+- [ ] `npm run check:i18n`
+- [ ] `npm run check:trivia`
+- [ ] `npm run contrast`
+
+1. PR → run the checklist above locally → deploy preview on the cloud project.
 2. Test on the preview with real phones for anything touching gameplay.
 3. Merge to `main` → production deploy (counts against the credit budget).
 4. Tag the release (`vYYYY.MM.DD-n`) and note it in `PROGRESS.md`.

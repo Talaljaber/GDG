@@ -69,11 +69,11 @@ Last updated: 2026-09-25
 2. Phase 3 sign-off per game (AC3.1, AC3.6, AC3.7) and E2E-2 (reload mid-round) for the four newer games in the browser (unit-tested today).
 3. Team answers the blocking open questions: OQ-01 (dates), OQ-02 (roles), OQ-03 (trivia writers), OQ-14 (Netlify account), and reviews Proposed ADRs (OQ-19).
 4. Phase 5 real-hardware checks for the shatter (AC5.3): ≥ 45 fps on the low-end Android (transitions, P7 celebrate), and on the projector the H3 shatter-in/dot bursts and the H4 → H5 merge (TESTING §6); compare with Reduce motion on.
-5. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), keepalive secrets (AC0.3; GitHub Actions is billing-locked). Netlify is live (AC0.4 ✅). **Push migrations 000500/000600 (new games) with Talal's OK; until then don't pick Close the Brackets or Color Clash on the live site.**
+5. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), set up the external keepalive scheduler (AC0.3; no GitHub Actions, ADR-031). Netlify is live (AC0.4 ✅). **Push migrations 000500/000600 (new games) with Talal's OK; until then don't pick Close the Brackets or Color Clash on the live site.**
 
 ## Blockers
 
-- **GitHub Actions is locked by a billing issue on the account** (2026-09-25): CI and the scheduled keepalive are refused ("account is locked due to a billing issue"), so the keepalive isn't touching the cloud database; the Free project pauses after ~7 days without activity. Talal fixes billing in GitHub → Settings → Billing, then re-runs Keepalive once by hand.
+- **Resolved by removing GitHub Actions (2026-09-25)**: no CI, no scheduled workflow. Keepalive replacement (external scheduler, ADR-031) pending, Talal.
 Phase 5 wants a vector logo (OQ-08) and brand approval (OQ-07). Trivia: the pool now has 30 questions marked ready (`check:trivia`); the review sign-off is OQ-03.
 
 ## Edge-case test coverage (E1–E29, `SESSION_LIFECYCLE.md` §6)

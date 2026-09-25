@@ -2,7 +2,7 @@
 
 Purpose: one meaning per word. Every other doc, the code, the database and the UI strings use these terms exactly as defined here. If a term is ambiguous in a discussion, this file wins; if this file is wrong, fix it here first and then everywhere else in the same change.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 | Term | Definition |
 |---|---|
@@ -42,5 +42,5 @@ Last updated: 2026-09-24
 | **Shatter** | The GDG mosaic transition/celebration effect, built as its own layer. Never applied to the logo mark. See `DESIGN_SYSTEM.md` §6. |
 | **Hidden name** | A name key the admin has hidden. It disappears from every leaderboard view; rows stay in the database. |
 | **Rejection bounds** | Per-game limits beyond which a submitted score is physically impossible; the database refuses such inserts. See `SCORING.md` §4. |
-| **Keepalive** | Scheduled GitHub Actions job that touches the database so the free Supabase project never pauses. |
+| **Keepalive** | External scheduler (no GitHub Actions) that POSTs to the `keepalive()` RPC every 6 h so the free Supabase project never pauses. |
 | **Dry run** | Full rehearsal on the day before the event with at least five real phones. |
