@@ -1,0 +1,230 @@
+/* Color Clash screen. Tokens only (docs/DESIGN_SYSTEM.md §2.5, §2-6);
+   logical properties only. The three inks are the --clash-* tokens (brand
+   blue, amber and ink; checked for colour-vision deficiencies in
+   docs/games/color-clash.md §7). The button row is game geometry and keeps
+   its order in RTL. Reduced motion zeroes the durations (tokens.css §6.2),
+   so the shake falls back to the static cross. */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-4);
+  flex: 1;
+  min-height: 100%;
+  padding-block: var(--s-5);
+  padding-inline: var(--phone-gutter);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.screenCenter {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--weight-medium);
+}
+
+.pitch {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+}
+
+.caption {
+  margin: 0;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+/* ---- countdown (as Trivia) ---- */
+.countdownWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.countdownBar {
+  flex: 1;
+  block-size: var(--s-2);
+  border-radius: var(--r-tag);
+  background: var(--gdg-line);
+  overflow: hidden;
+}
+
+.countdownFill {
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--primary);
+  transition: transform var(--dur-base) linear;
+}
+
+.countdownFillAmber {
+  background: var(--highlight);
+}
+
+.countdownNumber {
+  min-inline-size: 2ch;
+  text-align: end;
+  font-size: var(--type-button-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+/* Amber is a fill, never text on paper: the number sits on an amber tag. */
+.countdownNumberAmber {
+  color: var(--on-highlight);
+  background: var(--highlight);
+  border-radius: var(--r-tag);
+  padding-inline: var(--s-2);
+}
+
+.counter {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the word ---- */
+.inkBlue {
+  --cc-ink: var(--clash-blue);
+}
+
+.inkAmber {
+  --cc-ink: var(--clash-amber);
+}
+
+.inkCharcoal {
+  --cc-ink: var(--clash-charcoal);
+}
+
+.stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: calc(var(--type-target-size) * 2);
+}
+
+/* Every ink gets the same thin ink outline (not a cue): amber letters stay
+   readable on paper, where bare amber text is not allowed (DESIGN_SYSTEM §2.4). */
+.word {
+  margin: 0;
+  font-size: calc(var(--type-target-size) * 0.8);
+  font-weight: var(--type-target-weight);
+  line-height: 1.1;
+  color: var(--cc-ink);
+  -webkit-text-stroke: var(--line-width-strong) var(--clash-charcoal);
+  paint-order: stroke fill;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The wrong-tap cross: a rounded-stroke glyph in ink (no red), same style as the brackets. */
+.mark {
+  inline-size: var(--type-target-size);
+  block-size: var(--type-target-size);
+  color: var(--text);
+}
+
+/* ---- the three buttons ---- */
+.buttons {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-2);
+}
+
+.button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-block-size: calc(2 * var(--touch-target-min));
+  padding: var(--s-3) var(--s-2);
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+
+.swatch {
+  inline-size: var(--s-7);
+  block-size: var(--s-7);
+  border-radius: var(--r-tag);
+  border: var(--line-width) solid var(--line-strong);
+  background: var(--cc-ink);
+}
+
+.name {
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+}
+
+.buttonCorrect {
+  outline: var(--focus-width) solid var(--highlight);
+  outline-offset: 2px;
+}
+
+.buttonShake {
+  animation: cc-shake var(--dur-slow) var(--ease-standard);
+}
+
+@keyframes cc-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-6px);
+  }
+}

@@ -6,6 +6,8 @@
  * - Simon: length reached · speed bonus
  * - Perfect Circle: roundness · closed
  * - Trivia: correct answers
+ * - Close the Brackets: sequences closed · longest · misses (ADR-134)
+ * - Color Clash: correct · wrong or missed · average time (ADR-134)
  * Read-only display of the submitted `raw`; scores are never recomputed here.
  */
 import { formatNumber, useT } from '../i18n';
@@ -16,6 +18,8 @@ import { timeBonus, type SimonRaw } from '../games/simon/scoring';
 import type { PerfectCircleRaw } from '../games/perfect-circle/scoring';
 import { closureFromSweep, roundnessFromEpsilon } from '../games/perfect-circle/metric';
 import type { TriviaRaw } from '../games/trivia/scoring';
+import { lengthAfterSolves, type CloseBracketsRaw } from '../games/close-brackets/scoring';
+import type { ColorClashRaw } from '../games/color-clash/scoring';
 import { DetailList, type DetailRow } from './chrome';
 
 function seconds(ms: number, digits: number): string {
@@ -127,6 +131,37 @@ function detailRows(game: GameId, raw: unknown, t: T): DetailRow[] | null {
           value: t('game.trivia.result_value', { n: correct }),
         },
       ];
+    }
+    case 'close_brackets': {
+      if (!isObject(raw) || typeof raw.solved !== 'number') return null;
+      const r = raw as unknown as CloseBracketsRaw;
+      return [
+        { key: 'solved', testId: 'result-row', label: t('game.close_brackets.result_solved'), value: formatNumber(r.solved) },
+        {
+          key: 'longest',
+          testId: 'result-row',
+          label: t('game.close_brackets.result_longest'),
+          value: formatNumber(r.solved > 0 ? lengthAfterSolves(r.solved - 1) : 0),
+        },
+        { key: 'misses', testId: 'result-row', label: t('game.close_brackets.result_misses'), value: formatNumber(r.failed + r.timeouts) },
+      ];
+    }
+    case 'color_clash': {
+      if (!isObject(raw) || typeof raw.correct !== 'number') return null;
+      const r = raw as unknown as ColorClashRaw;
+      const rows: DetailRow[] = [
+        { key: 'correct', testId: 'result-row', label: t('game.color_clash.result_correct'), value: formatNumber(r.correct) },
+        { key: 'wrong', testId: 'result-row', label: t('game.color_clash.result_wrong'), value: formatNumber(r.wrong + r.timeouts) },
+      ];
+      if (r.mean_rt_ms !== null) {
+        rows.push({
+          key: 'speed',
+          testId: 'result-row',
+          label: t('game.color_clash.result_speed'),
+          value: t('game.color_clash.result_speed_value', { s: seconds(r.mean_rt_ms, 2) }),
+        });
+      }
+      return rows;
     }
     default:
       return null;

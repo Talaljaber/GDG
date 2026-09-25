@@ -17,10 +17,12 @@ import * as simon from '../src/games/simon/scoring';
 import * as pc from '../src/games/perfect-circle/scoring';
 import { evaluateStroke, type Point } from '../src/games/perfect-circle/metric';
 import * as trivia from '../src/games/trivia/scoring';
+import * as cb from '../src/games/close-brackets/scoring';
+import * as cc from '../src/games/color-clash/scoring';
 
 test.describe.configure({ mode: 'serial' });
 
-type Game = 'stop_the_clock' | 'odd_one_out' | 'simon' | 'perfect_circle' | 'trivia';
+type Game = 'stop_the_clock' | 'odd_one_out' | 'simon' | 'perfect_circle' | 'trivia' | 'close_brackets' | 'color_clash';
 
 interface Built {
   raw: unknown;
@@ -87,6 +89,18 @@ function build(game: Game): Built {
       const score = trivia.scoreTrivia(raw);
       return { raw, score, durationMs: 45_000, clientReject: trivia.validateTriviaRaw(raw, score) };
     }
+    case 'close_brackets': {
+      // worked example A (docs/games/close-brackets.md §4): 9 solved, one wrong closer
+      const raw = cb.buildRaw(9, 1, 0, 23_562);
+      const score = cb.scoreCloseBrackets(raw);
+      return { raw, score, durationMs: 31_600, clientReject: cb.validateCloseBracketsRaw(raw, score) };
+    }
+    case 'color_clash': {
+      // worked example A (docs/games/color-clash.md §4): 32 correct in 20 160 ms of reaction time, one wrong
+      const raw = cc.buildRaw(32, 1, 0, 32 * 630);
+      const score = cc.scoreColorClash(raw);
+      return { raw, score, durationMs: 31_600, clientReject: cc.validateColorClashRaw(raw, score) };
+    }
   }
 }
 
@@ -106,6 +120,7 @@ test('AC3.3: every game’s own buildRaw payload is accepted by the score trigge
   const lineups: Game[][] = [
     ['stop_the_clock', 'odd_one_out', 'simon'],
     ['perfect_circle', 'trivia', 'stop_the_clock'],
+    ['close_brackets', 'color_clash', 'odd_one_out'],
   ];
   const accepted = new Set<Game>();
 
@@ -161,6 +176,14 @@ test('AC3.3: every game’s own buildRaw payload is accepted by the score trigge
     await guest.auth.signOut();
   }
 
-  expect([...accepted].sort()).toEqual(['odd_one_out', 'perfect_circle', 'simon', 'stop_the_clock', 'trivia']);
+  expect([...accepted].sort()).toEqual([
+    'close_brackets',
+    'color_clash',
+    'odd_one_out',
+    'perfect_circle',
+    'simon',
+    'stop_the_clock',
+    'trivia',
+  ]);
   await admin.auth.signOut();
 });

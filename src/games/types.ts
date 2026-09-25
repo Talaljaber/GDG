@@ -9,7 +9,21 @@
 
 import type React from 'react';
 
-export type GameId = 'odd_one_out' | 'stop_the_clock' | 'simon' | 'perfect_circle' | 'trivia';
+/**
+ * Every game id the database knows (`public.game_id`, ADR-134 added the last two).
+ * The pool order used wherever all games are listed (dashboard filters, fixtures).
+ */
+export const GAME_IDS = [
+  'odd_one_out',
+  'stop_the_clock',
+  'simon',
+  'perfect_circle',
+  'trivia',
+  'close_brackets',
+  'color_clash',
+] as const;
+
+export type GameId = (typeof GAME_IDS)[number];
 
 /** What a game module hands back to the shell exactly once per round. */
 export interface GameResult {

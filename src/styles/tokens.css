@@ -81,6 +81,12 @@
   --simon-yellow: #fbbc05;
   --simon-green: #34a853;
 
+  /* Color Clash inks (§2.5, docs/games/color-clash.md §7): brand colours only,
+     checked for deuteranopia and protanopia by npm run contrast */
+  --clash-blue: var(--gdg-blue);
+  --clash-amber: var(--gdg-amber);
+  --clash-charcoal: var(--gdg-ink);
+
   /* ---- §3.1 Phone type scale (base 17px) ---- */
   --type-caption-size: 14px;
   --type-caption-weight: 500;

@@ -1,0 +1,245 @@
+/* Close the Brackets screen. Tokens only (docs/DESIGN_SYSTEM.md §2-6, §5.1);
+   logical properties only. The bracket row and the keys are game geometry
+   and never mirror in RTL (docs/games/close-brackets.md §8). Reduced motion
+   zeroes the durations (tokens.css §6.2), so the shake and the flashes fall
+   back to static states; the caption carries the meaning. */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-4);
+  flex: 1;
+  min-height: 100%;
+  padding-block: var(--s-5);
+  padding-inline: var(--phone-gutter);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.screenCenter {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.eyebrow:lang(ar) {
+  font-size: var(--type-caption-size);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--weight-medium);
+}
+
+.pitch {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+}
+
+.caption {
+  margin: 0;
+  font-size: var(--type-body-size);
+  color: var(--text);
+}
+
+/* ---- countdown (as Trivia) ---- */
+.countdownWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.countdownBar {
+  flex: 1;
+  block-size: var(--s-2);
+  border-radius: var(--r-tag);
+  background: var(--gdg-line);
+  overflow: hidden;
+}
+
+.countdownFill {
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--primary);
+  transition: transform var(--dur-base) linear;
+}
+
+.countdownFillAmber {
+  background: var(--highlight);
+}
+
+.countdownNumber {
+  min-inline-size: 2ch;
+  text-align: end;
+  font-size: var(--type-button-size);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
+/* Amber is a fill, never text on paper: the number sits on an amber tag. */
+.countdownNumberAmber {
+  color: var(--on-highlight);
+  background: var(--highlight);
+  border-radius: var(--r-tag);
+  padding-inline: var(--s-2);
+}
+
+.labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the bracket row ---- */
+.board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+}
+
+.row {
+  /* Same cell size at every length (8 fit on a 320 px phone), so reading speed
+     doesn't depend on the glyph size. */
+  --cb-cell: calc(
+    (min(100vw, var(--phone-max-width)) - 2 * var(--phone-gutter) - 7 * var(--s-1)) / 8
+  );
+  direction: ltr;
+  display: flex;
+  justify-content: center;
+  gap: var(--s-1);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  inline-size: var(--cb-cell);
+}
+
+.opener,
+.closer {
+  inline-size: 100%;
+  aspect-ratio: 3 / 5;
+}
+
+.opener {
+  color: var(--gdg-blue);
+}
+
+.closer {
+  color: var(--gdg-amber);
+}
+
+.slot {
+  inline-size: 100%;
+  aspect-ratio: 3 / 5;
+  border-block-end: var(--line-width-strong) dashed var(--line-strong);
+}
+
+.slotNext {
+  border: var(--line-width-strong) solid var(--primary);
+  border-radius: var(--r-tag);
+}
+
+.rowSolved .opener {
+  color: var(--gdg-amber);
+}
+
+.rowShake {
+  animation: cb-shake var(--dur-slow) var(--ease-standard);
+}
+
+.feedback {
+  min-block-size: 1.5em;
+  margin: 0;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  text-align: center;
+}
+
+/* ---- the four closer keys ---- */
+.keys {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s-2);
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-block-size: var(--touch-target-min);
+  padding: 0;
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--gdg-blue);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.key:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+
+.keyFlash {
+  background: var(--highlight);
+  color: var(--on-highlight);
+}
+
+.keyGlyph {
+  block-size: 64%;
+  aspect-ratio: 3 / 5;
+}
+
+@keyframes cb-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-6px);
+  }
+}

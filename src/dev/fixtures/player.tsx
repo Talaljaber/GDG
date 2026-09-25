@@ -28,7 +28,7 @@ import { triviaPoolFile } from '../../games/trivia/pool';
 
 const noop = () => {};
 const LINEUP: GameId[] = ['stop_the_clock', 'odd_one_out', 'trivia'];
-const ALL_GAMES: GameId[] = ['stop_the_clock', 'odd_one_out', 'simon', 'perfect_circle', 'trivia'];
+const ALL_GAMES: GameId[] = ['stop_the_clock', 'odd_one_out', 'simon', 'perfect_circle', 'trivia', 'close_brackets', 'color_clash'];
 
 // ---- boards
 
@@ -101,7 +101,27 @@ const RAW: Record<GameId, { score: number; raw: unknown }> = {
       ],
     },
   },
+  close_brackets: { score: 838, raw: { solved: 9, failed: 1, timeouts: 0, solve_ms: 23562 } },
+  color_clash: { score: 821, raw: { correct: 32, wrong: 1, timeouts: 0, mean_rt_ms: 630 } },
 };
+
+// Mid-game snapshots for the two ADR-134 games (clock frozen by the screenshot harness).
+function cbSnapshot(over: Record<string, unknown>) {
+  const now = Date.now();
+  return {
+    phase: 'play', gameStartEpoch: now - 12_000, solved: 4, failed: 1, timeouts: 0, solveMs: 7400,
+    seqLength: 6, seqIndex: 0, seqStartEpoch: now - 1200, closed: 2, transition: null, transitionEndEpoch: null,
+    ...over,
+  };
+}
+function ccSnapshot(over: Record<string, unknown>) {
+  const now = Date.now();
+  return {
+    phase: 'play', gameStartEpoch: now - 9_000, trialIndex: 13, trialStartEpoch: now - 300, gapEndEpoch: null,
+    correct: 10, wrong: 1, timeouts: 0, correctRtSumMs: 6400, feedback: null, chosen: null,
+    ...over,
+  };
+}
 
 // ---- helpers
 
@@ -286,6 +306,22 @@ export const fixtures: Fixture[] = [
     game('trivia', { phase: 'feedback', answers: triviaAnswers(3), questionStartEpoch: null }),
   ),
   phone('p6-trivia-result', () => game('trivia', { phase: 'result', answers: triviaAnswers(5), questionStartEpoch: null })),
+  phone('p6-close_brackets-play', () => game('close_brackets', cbSnapshot({}))),
+  phone('p6-close_brackets-long', () => game('close_brackets', cbSnapshot({ solved: 7, seqLength: 8, closed: 3 }))),
+  phone('p6-close_brackets-solved', () =>
+    game('close_brackets', cbSnapshot({ seqLength: 5, closed: 5, seqStartEpoch: null, transition: 'solved', transitionEndEpoch: Date.now() + 400 })),
+  ),
+  phone('p6-close_brackets-failed', () =>
+    game('close_brackets', cbSnapshot({ closed: 1, seqStartEpoch: null, transition: 'failed', transitionEndEpoch: Date.now() + 700 })),
+  ),
+  phone('p6-color_clash-trial', () => game('color_clash', ccSnapshot({}))),
+  phone('p6-color_clash-trial-2', () => game('color_clash', ccSnapshot({ trialIndex: 18 }))),
+  phone('p6-color_clash-wrong', () =>
+    game('color_clash', ccSnapshot({ trialStartEpoch: null, gapEndEpoch: Date.now() + 300, feedback: 'wrong', chosen: 'amber' })),
+  ),
+  phone('p6-color_clash-correct', () =>
+    game('color_clash', ccSnapshot({ trialStartEpoch: null, gapEndEpoch: Date.now() + 300, feedback: 'correct', chosen: 'blue' })),
+  ),
 
   // P7 round result, per game; new best; saving; failed; missed; waiting
   ...ALL_GAMES.map((g, i) =>

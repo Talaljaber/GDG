@@ -286,6 +286,63 @@ for (const pair of pairs) {
   }
 }
 
+// ---- Color Clash inks under colour-vision deficiencies (DESIGN_SYSTEM §2.5, docs/games/color-clash.md §7) ----
+// Colour is the game there, so the three inks must stay apart for red-green deficiencies.
+// Machado, Oliveira & Fernandes (2009) full-severity matrices, applied in linear sRGB; distance =
+// CIE76 ΔE in CIELAB (D65). Fails if any pair drops below ΔE 40 for deuteranopia or protanopia
+// (tritanopia is printed for information).
+{
+  type Mat = [number, number, number][];
+  const CVD: Record<string, { m: Mat; gate: boolean }> = {
+    normal: { m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], gate: true },
+    deuteranopia: { m: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]], gate: true },
+    protanopia: { m: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]], gate: true },
+    tritanopia: { m: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]], gate: false },
+  };
+  const toLin = (c: number) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const simulate = (rgb: Rgb, m: Mat): Rgb => {
+    const l = rgb.map(toLin);
+    const lin = m.map((row) => Math.min(1, Math.max(0, row[0] * l[0] + row[1] * l[1] + row[2] * l[2])));
+    const toSrgb = (c: number) => 255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+    return [toSrgb(lin[0]), toSrgb(lin[1]), toSrgb(lin[2])];
+  };
+  const lab = (rgb: Rgb): Rgb => {
+    const [r, g, b] = rgb.map(toLin);
+    const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+    const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+  };
+  const deltaE = (a: Rgb, b: Rgb) => {
+    const [la, lb] = [lab(a), lab(b)];
+    return Math.hypot(la[0] - lb[0], la[1] - lb[1], la[2] - lb[2]);
+  };
+  const MIN_DELTA_E = 40;
+  const inkNames = ['clash-blue', 'clash-amber', 'clash-charcoal'];
+  const page = over(resolve('bg', 'light'), [255, 255, 255]);
+  const inks = inkNames.map((n) => over(resolve(n, 'light'), page));
+  console.log('\nColor Clash inks (docs/games/color-clash.md §7): contrast · ΔE between simulated inks\n');
+  for (const [name, { m, gate }] of Object.entries(CVD)) {
+    const sim = inks.map((c) => simulate(c, m));
+    const parts: string[] = [];
+    let worst = Infinity;
+    for (let i = 0; i < sim.length; i++) {
+      for (let j = i + 1; j < sim.length; j++) {
+        const dE = deltaE(sim[i], sim[j]);
+        worst = Math.min(worst, dE);
+        parts.push(`${inkNames[i].slice(6)}/${inkNames[j].slice(6)} ${contrastRatio(sim[i], sim[j]).toFixed(2)} · ${dE.toFixed(0)}`);
+      }
+    }
+    const ok = !gate || worst >= MIN_DELTA_E;
+    console.log(`${ok ? '✓' : '✗'} ${name}: ${parts.join(' | ')}${gate ? ` (need ΔE >= ${MIN_DELTA_E})` : ' (info)'}`);
+    if (!ok) failed = true;
+  }
+}
+
 console.log('');
 if (failed) {
   console.error('Contrast check FAILED.');

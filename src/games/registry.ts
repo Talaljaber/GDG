@@ -8,6 +8,8 @@ import { oddOneOut } from './odd-one-out';
 import { simon } from './simon';
 import { perfectCircle } from './perfect-circle';
 import { trivia } from './trivia';
+import { closeBrackets } from './close-brackets';
+import { colorClash } from './color-clash';
 import { isTriviaAvailable } from './trivia/draw';
 import { triviaPoolFile as poolFile } from './trivia/pool';
 
@@ -23,4 +25,6 @@ export const games: Partial<Record<GameId, GameModule<any>>> = {
   perfect_circle: perfectCircle,
   // Trivia needs at least 5 ready questions (docs/games/trivia.md §2 step 6).
   ...(isTriviaAvailable(poolFile.questions) ? { trivia } : {}),
+  close_brackets: closeBrackets,
+  color_clash: colorClash,
 };

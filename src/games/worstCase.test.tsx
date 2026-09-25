@@ -1,5 +1,5 @@
 /**
- * AC3.2 across all five games: a player who does nothing still gets a
+ * AC3.2 across every game (the five originals and the ADR-134 additions): a player who does nothing still gets a
  * finished round inside the game's documented worst case (SCORING.md §2),
  * the worst case never exceeds the 120 s cap, and "round ended" (E27)
  * finishes the game at once with a valid, in-range score. Per-game paths
@@ -14,6 +14,8 @@ import { oddOneOut } from './odd-one-out';
 import { simon } from './simon';
 import { perfectCircle } from './perfect-circle';
 import { trivia } from './trivia';
+import { closeBrackets } from './close-brackets';
+import { colorClash } from './color-clash';
 import type { TriviaPoolQuestion } from './trivia/draw';
 
 vi.mock('../i18n', () => ({
@@ -47,7 +49,7 @@ vi.mock('../../docs/content/trivia-questions.json', () => ({
 const ROUND_START = 1_700_000_000_000;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MODULES: Array<GameModule<any>> = [stopTheClock, oddOneOut, simon, perfectCircle, trivia];
+const MODULES: Array<GameModule<any>> = [stopTheClock, oddOneOut, simon, perfectCircle, trivia, closeBrackets, colorClash];
 
 function renderIdle(mod: GameModule<unknown>, roundEnded = false) {
   const onFinish = vi.fn<(r: GameResult) => void>();

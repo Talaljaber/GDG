@@ -15,12 +15,14 @@ import { formatDateTime } from './format';
 import { useRenderCount } from './renderCount';
 import { Alert, EmptyState, Icon, PageHeader, Panel, Select, TableSkeleton } from './parts';
 import type { CombinedScoreRow, EventDayRow, GameId } from './api';
+import { GAME_IDS as ALL_GAME_IDS } from '../games/types';
 
 const ALL_DAYS = 'all';
 const ALL_GAMES = 'all';
 /** Sentinel for "the day filter isn't decided yet" (before the current-day fetch resolves), so the results effect doesn't fetch twice (once for a placeholder, once for the real default). */
 const DAY_FILTER_UNSET = '';
-const GAME_IDS: GameId[] = ['odd_one_out', 'stop_the_clock', 'simon', 'perfect_circle', 'trivia'];
+/** Every game in the pool (`src/games/types.ts`), so new games appear with no special-casing (ADR-134). */
+const GAME_IDS: readonly GameId[] = ALL_GAME_IDS;
 /** Numeric columns are aligned to the inline end (DESIGN_SYSTEM §0.4). */
 const NUMERIC: ReadonlySet<SortKey> = new Set<SortKey>(['score']);
 
