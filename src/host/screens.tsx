@@ -1,7 +1,8 @@
 /**
- * Host screens H1 lobby and H2 round live (`SCREENS.md` §2.2). H3 is in
- * Intermission.tsx, H4/H5 in Results.tsx. Layout per DESIGN_SYSTEM §0.2:
- * header strip, a 12-column body, and the operator bar at the bottom.
+ * Host screens H1 lobby and H2 round live, v3 "Stage and Rail" (ADR-135,
+ * `docs/plans/host-v3.md` §4.2–4.3). H3 is in Intermission.tsx, H4/H5 in
+ * Results.tsx. Every screen: brand strip · stage (12 columns, no controls) ·
+ * rail (every control, nothing for the room).
  */
 import { useEffect, useMemo, useState } from 'react';
 import { ROUNDS_PER_SESSION } from '../config';
@@ -11,12 +12,11 @@ import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
 import { replaceEqualDeep } from '../lib/equal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { QrCode } from '../components/QrCode';
-import { useRevealRows } from '../components/useRevealRows';
 import { Trans } from '../components/Trans';
 import { useSteppedNow } from '../components/useSteppedNow';
 import styles from './host.module.css';
 import { BoardTable } from './BoardTable';
-import { Bilingual, CornerCode, Framed, HostHeader, LineupPicker, LineupSummary, NextGamesButton, OperatorBar } from './common';
+import { Bilingual, CornerCode, Framed, HostHeader, LineupPicker, LineupSummary, NextGamesButton, Rail, SettingsMenu } from './common';
 import { displayUrl, shortUrl } from './urls';
 import { roundTimeLeftSeconds } from './hostLoop';
 import { isLineupValid } from './lineup';
@@ -25,16 +25,35 @@ import { REGISTERED_GAMES, type HostController, type HostData } from './useHost'
 
 const JOIN_STEPS = ['host.lobby.step_scan', 'host.lobby.step_code', 'host.lobby.step_name'] as const;
 
+/** Board slots on the projector (plan §4.3): always ten rows, filled from the top. */
+const BOARD_SLOTS = 10;
+
+/** A stable empty board while the first query runs (keeps the memoised BoardTable skipped). */
+const NO_ROWS: readonly RankedRow[] = [];
+
+/** Placeholder rows under the empty lobby's message (2 columns × 3). */
+const EMPTY_ROWS = 6;
+
+/**
+ * Splits a translated sentence around its number, so the number can be set
+ * large and the words small without changing the text (e2e reads it whole):
+ * "12 players" → ["", "12", " players"]. No number in the text (Arabic
+ * "لاعبان") → [text, "", ""].
+ */
+function aroundNumber(text: string, num: string): [string, string, string] {
+  const at = text.indexOf(num);
+  if (at < 0) return [text, '', ''];
+  return [text.slice(0, at), num, text.slice(at + num.length)];
+}
+
 // ------------------------------------------------------------------ H1
 
 export function HostLobby({ host, data }: { host: HostController; data: HostData }) {
   const t = useT();
   const { session, players } = data;
   const joined = useMemo(() => players.filter((p) => p.status === 'joined'), [players]);
-  // Newest first: a guest who just joined finds their name at the top; a long list scrolls in its panel.
+  // Newest first: a guest who just joined finds their name at the top; a long list scrolls in its area.
   const shown = useMemo(() => [...joined].reverse(), [joined]);
-  // Name tags shatter in as they join (SCREENS H1, DESIGN_SYSTEM §6.2).
-  const chipsRef = useRevealRows<HTMLUListElement>(shown.map((p) => p.id));
   const [confirmRemove, setConfirmRemove] = useState<PlayerRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,129 +94,146 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   };
 
   const url = shortUrl();
+  const countNum = formatNumber(joined.length);
+  const [countBefore, countDigits, countAfter] = aroundNumber(
+    t('host.lobby.players', { count: joined.length, n: countNum }),
+    countNum,
+  );
 
   return (
     <>
       <HostHeader withLogo />
       <main className={`${styles.body} ${styles.lobby}`} data-testid="host-lobby">
-        {/* Three columns on one three-row grid (head · main · foot, CSS subgrid): the labels share a
-            baseline, the code sits centred against the QR, the players panel ends with the steps. */}
+        {/* Join block: the code is the one hero; the QR, URL and steps sit under it. */}
         <section className={styles.join} aria-label={t('host.lobby.join_title')}>
-          <Bilingual k="host.lobby.scan" className={`${styles.eyebrow} ${styles.colHead}`} />
-          <div className={styles.qrWrap}>
-            <QrCode value={url} label={t('host.lobby.scan')} />
+          <Bilingual k="host.lobby.code_label" stacked className={styles.eyebrow} />
+          <div className={styles.codeRow}>
+            <Framed className={styles.codeFrame}>
+              <p className={styles.code} dir="ltr" data-testid="host-code">
+                {session.code}
+              </p>
+            </Framed>
           </div>
-          <div className={styles.joinFoot}>
-            <p className={styles.url}>
-              <Trans
-                k="host.lobby.or_visit"
-                nodes={{
-                  url: (
-                    <span dir="ltr" className={styles.urlText}>
-                      {displayUrl(url)}
-                    </span>
-                  ),
-                }}
-              />
-            </p>
-            <ol className={styles.steps}>
-              {JOIN_STEPS.map((k, i) => (
-                <li key={k} className={styles.step}>
-                  <span className={styles.stepNo}>{formatNumber(i + 1)}</span>
-                  <Bilingual k={k} />
-                </li>
-              ))}
-            </ol>
+          <div className={styles.qrRow}>
+            <div className={styles.qrWrap}>
+              <QrCode value={url} label={t('host.lobby.scan')} />
+            </div>
+            <div className={styles.joinText}>
+              <p className={styles.url}>
+                <Trans
+                  k="host.lobby.or_visit"
+                  nodes={{
+                    url: (
+                      <span dir="ltr" className={styles.urlText}>
+                        {displayUrl(url)}
+                      </span>
+                    ),
+                  }}
+                />
+              </p>
+              <ol className={styles.steps}>
+                {JOIN_STEPS.map((k, i) => (
+                  <li key={k} className={styles.step}>
+                    <span className={styles.stepNo}>{formatNumber(i + 1)}</span>
+                    <span>{t(k)}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
-        </section>
-
-        <section className={styles.codeHero}>
-          <Bilingual k="host.lobby.code_label" className={`${styles.eyebrow} ${styles.colHead}`} />
-          <Framed className={styles.codeFrame}>
-            <p className={styles.code} dir="ltr" data-testid="host-code">
-              {session.code}
-            </p>
-          </Framed>
         </section>
 
         <section className={styles.playersCol}>
-          <p className={`${styles.count} ${styles.colHead}`} data-testid="host-player-count">
-            <Trans
-              k="host.lobby.players"
-              params={{ count: joined.length }}
-              nodes={{ n: <span className={styles.countNum}>{formatNumber(joined.length)}</span> }}
-            />
+          <p className={styles.count} data-testid="host-player-count">
+            {countBefore ? <span className={countDigits ? styles.countWord : styles.countPhrase}>{countBefore}</span> : null}
+            {countDigits ? <span className={styles.countNum}>{countDigits}</span> : null}
+            {countAfter ? <span className={styles.countWord}>{countAfter}</span> : null}
           </p>
-          <div className={`${styles.panel} ${styles.playersPanel}`}>
-            {joined.length === 0 ? (
-              <div className={styles.empty}>
+          {joined.length === 0 ? (
+            <div className={styles.emptyPlayers}>
+              <ul className={styles.players} aria-hidden="true">
+                {Array.from({ length: EMPTY_ROWS }, (_, i) => (
+                  <li key={i} className={styles.placeholder} />
+                ))}
+              </ul>
+              {/* The message sits on the first two placeholder rows, one line per row. */}
+              <div className={styles.emptyOver}>
                 <p className={styles.emptyText}>{t('host.lobby.empty')}</p>
                 <p className={styles.emptyHint}>{t('host.lobby.empty_hint')}</p>
               </div>
-            ) : (
-              <ul ref={chipsRef} className={`${styles.tags} ${styles.tagList}`} data-testid="host-players">
-                {shown.map((p) => {
-                  const dot = dotOf(p.player_id);
-                  const name = displayName(p.name, p.display_suffix);
-                  return (
-                    <li
-                      key={p.id}
-                      className={`${styles.tag} ${dot === 'off' ? styles.tagOff : ''}`}
-                      data-testid="host-player"
-                      data-presence={dot}
-                      data-online={host.presentIds.has(p.player_id) ? 'true' : 'false'}
-                      data-name={name}
-                      data-reveal-key={p.id}
+            </div>
+          ) : (
+            <ul className={`${styles.players} ${styles.playersScroll}`} data-testid="host-players">
+              {shown.map((p) => {
+                const dot = dotOf(p.player_id);
+                const name = displayName(p.name, p.display_suffix);
+                return (
+                  <li
+                    key={p.id}
+                    className={`${styles.player} ${dot === 'off' ? styles.playerAway : ''}`}
+                    data-testid="host-player"
+                    data-presence={dot}
+                    data-online={host.presentIds.has(p.player_id) ? 'true' : 'false'}
+                    data-name={name}
+                  >
+                    <span className={`${styles.dot} ${dot === 'on' ? styles.dotOn : styles.dotOff}`} aria-hidden="true" />
+                    <span className={styles.playerName}>
+                      <bdi>{name}</bdi>
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.remove}
+                      onClick={() => setConfirmRemove(p)}
+                      aria-label={`${t('host.lobby.remove')} ${name}`}
+                      data-testid="host-remove"
                     >
-                      <span className={`${styles.dot} ${dot === 'on' ? styles.dotOn : styles.dotOff}`} aria-hidden="true" />
-                      <span className={styles.tagName}>
-                        <bdi>{name}</bdi>
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.remove}
-                        onClick={() => setConfirmRemove(p)}
-                        aria-label={`${t('host.lobby.remove')} ${name}`}
-                        data-testid="host-remove"
-                      >
-                        <svg className={styles.removeIcon} viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M7 7 L17 17 M17 7 L7 17" />
-                        </svg>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+                      <svg className={styles.removeIcon} viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 7 L17 17 M17 7 L7 17" />
+                      </svg>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
       </main>
-      <OperatorBar
+      <Rail
+        tray
         start={
-          <div data-testid="host-lineup">
-            <LineupPicker host={host} session={session} titleKey="host.lineup.title" onSyncedChange={setPickerSynced} />
+          <div className={styles.trayWrap} data-testid="host-lineup">
+            <LineupPicker
+              host={host}
+              session={session}
+              titleKey="host.lineup.title"
+              onSyncedChange={setPickerSynced}
+              actions={
+                <>
+                  <SettingsMenu />
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    disabled={!canStart}
+                    onClick={() => void start()}
+                    data-testid="host-start"
+                  >
+                    {t('host.start')}
+                  </button>
+                </>
+              }
+              note={
+                error ? (
+                  <span className={styles.hint} role="alert">
+                    {t(error)}
+                  </span>
+                ) : joined.length === 0 ? (
+                  <span className={styles.hint}>{t('host.start_disabled_hint')}</span>
+                ) : null
+              }
+            />
           </div>
         }
-      >
-        <div className={styles.actionWithHint}>
-          {error ? (
-            <span className={styles.hint} role="alert">
-              {t(error)}
-            </span>
-          ) : joined.length === 0 ? (
-            <span className={styles.hint}>{t('host.start_disabled_hint')}</span>
-          ) : null}
-          <button
-            type="button"
-            className={styles.primary}
-            disabled={!canStart}
-            onClick={() => void start()}
-            data-testid="host-start"
-          >
-            {t('host.start')}
-          </button>
-        </div>
-      </OperatorBar>
+      />
       {confirmRemove ? (
         <ConfirmDialog busy={busy} onCancel={() => setConfirmRemove(null)} onConfirm={() => void remove(confirmRemove)}>
           <Trans
@@ -218,13 +254,49 @@ export interface RoundPreview {
 }
 
 /**
- * "Time left" on H2, a leaf with its own clock: checked every 250 ms, re-rendered once a
- * second, so the rest of the round screen (board included) doesn't re-render with it.
+ * "Time left" on H2, a leaf with its own clock: checked every 250 ms,
+ * re-rendered once a second, so the rest of the round screen (board
+ * included) doesn't re-render with it. The number is the stat hero; the
+ * words of `round.time_left` go on one muted line under it.
  */
 function TimeLeft({ startedAt, offset }: { startedAt: string | null; offset: number }) {
+  const t = useT();
   const leftAt = (localNow: number) => roundTimeLeftSeconds(startedAt, localNow + offset);
   const left = leftAt(useSteppedNow(leftAt, 250));
-  return <Trans k="round.time_left" nodes={{ s: <span className={styles.statNum}>{formatNumber(left)}</span> }} />;
+  const [before, after] = t('round.time_left').split('{s}');
+  const unit = [before, after].map((s) => s?.trim() ?? '').filter(Boolean).join(' ');
+  return (
+    <p className={styles.timeLeft} data-testid="host-time-left" aria-label={t('round.time_left', { s: formatNumber(left) })}>
+      <span className={styles.timeNum} dir="ltr">
+        {formatNumber(left)}
+      </span>
+      <span className={styles.timeUnit}>{unit}</span>
+    </p>
+  );
+}
+
+/** "12/18 finished": a thin live bar, then the numbers at t2 and the word at t1 (text unchanged). */
+function Finished({ done, total }: { done: number; total: number }) {
+  const t = useT();
+  const text = t('host.round.finished');
+  const from = text.indexOf('{done}');
+  const to = text.indexOf('{total}') + '{total}'.length;
+  const nums = text.slice(from, to).replace('{done}', formatNumber(done)).replace('{total}', formatNumber(total));
+  const ratio = total > 0 ? Math.min(1, done / total) : 0;
+  return (
+    <div className={styles.finished}>
+      <span className={styles.bar} aria-hidden="true">
+        <span className={styles.barFill} style={{ transform: `scaleX(${ratio})` }} />
+      </span>
+      <p className={styles.finishedText} data-testid="host-finished">
+        {from > 0 ? <span className={styles.finishedWord}>{text.slice(0, from)}</span> : null}
+        <span className={styles.finishedNums} dir="ltr">
+          {nums}
+        </span>
+        <span className={styles.finishedWord}>{text.slice(to)}</span>
+      </p>
+    </div>
+  );
 }
 
 export function HostRound({ host, data, preview }: { host: HostController; data: HostData; preview?: RoundPreview }) {
@@ -279,7 +351,8 @@ export function HostRound({ host, data, preview }: { host: HostController; data:
         data-round={round?.round_no}
         data-game={round?.game}
       >
-        <aside className={styles.side}>
+        {/* The scorebug: small, fixed; the board is the main event. */}
+        <aside className={`${styles.side} ${styles.scorebug}`}>
           <h1 className={styles.titleBlock} data-testid="host-round-title">
             {round ? (
               <>
@@ -289,32 +362,25 @@ export function HostRound({ host, data, preview }: { host: HostController; data:
               </>
             ) : null}
           </h1>
-          <div className={styles.stats}>
-            <p className={styles.stat} data-testid="host-time-left">
-              <TimeLeft startedAt={round?.started_at ?? null} offset={host.offset ?? 0} />
-            </p>
-            <p className={styles.stat} data-testid="host-finished">
-              <Trans
-                k="host.round.finished"
-                nodes={{
-                  done: <span className={styles.statNum}>{formatNumber(host.scoredCount ?? 0)}</span>,
-                  total: <span className={styles.statNum}>{formatNumber(joined)}</span>,
-                }}
-              />
-            </p>
-          </div>
-          {lineup.length > 1 ? <LineupSummary games={lineup} current={round?.round_no} /> : null}
+          <TimeLeft startedAt={round?.started_at ?? null} offset={host.offset ?? 0} />
+          <Finished done={host.scoredCount ?? 0} total={joined} />
+          {lineup.length > 1 ? (
+            <div className={styles.sideSummary}>
+              <LineupSummary games={lineup} current={round?.round_no} list />
+            </div>
+          ) : null}
         </aside>
         <section className={styles.boardArea} aria-label={t('round.board_title')}>
-          {board && board.length > 0 ? (
-            // New #1 → celebrate shatter on that row (SCREENS H2).
-            <BoardTable rows={board} celebrateLeader testId="host-round-board" />
-          ) : board ? (
-            <p className={styles.emptyBoard}>{t('host.round.no_scores_yet')}</p>
-          ) : null}
+          <BoardTable
+            rows={board ?? NO_ROWS}
+            slots={BOARD_SLOTS}
+            emptyText={board && board.length === 0 ? t('host.round.no_scores_yet') : undefined}
+            celebrateLeader
+            testId="host-round-board"
+          />
         </section>
       </main>
-      <OperatorBar start={<NextGamesButton host={host} pending={data.pending} />}>
+      <Rail start={<NextGamesButton host={host} pending={data.pending} />}>
         <button
           type="button"
           className={styles.primary}
@@ -324,7 +390,7 @@ export function HostRound({ host, data, preview }: { host: HostController; data:
         >
           {t('host.round.force_end')}
         </button>
-      </OperatorBar>
+      </Rail>
       {confirmEnd ? (
         <ConfirmDialog busy={ending} onCancel={() => setConfirmEnd(false)} onConfirm={() => void forceEnd()}>
           {t('host.round.force_end_confirm')}

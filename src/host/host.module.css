@@ -1,6 +1,10 @@
-/* Big screen v2 "quiet scoreboard" (docs/SCREENS.md §2, DESIGN_SYSTEM §0.2).
-   Projector scale only (DESIGN_SYSTEM §3.2): vh units, 5vh safe margins, max 10 rows.
-   Header strip · 12-column body · operator bar. Logical properties only. */
+/* Big screen v3 "Stage and Rail" (ADR-135, docs/plans/host-v3.md §2–§5).
+   Projector scale only (vh units, 5vh safe margins). The shell: brand strip ·
+   stage (a 12-column grid built from type and hairlines, never a control) ·
+   rail (every host control; no fill, a hairline on top, muted type, one ink
+   button). Logical properties only. Board, intermission and results styles
+   live in board/intermission/results.module.css; those screens reuse only
+   .body, .primary and .textButton from here (keep the names stable). */
 
 .host {
   position: relative;
@@ -10,7 +14,7 @@
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font-size: var(--proj-min);
+  font-size: var(--proj-t1);
   font-weight: var(--weight-regular);
   line-height: var(--leading-tight);
 }
@@ -31,9 +35,9 @@
   z-index: var(--z-banner);
   padding-block: var(--proj-s-1);
   padding-inline: var(--big-screen-safe-margin);
-  background: var(--gdg-ink);
-  color: var(--gdg-paper);
-  font-size: var(--proj-min);
+  background: var(--text);
+  color: var(--bg);
+  font-size: var(--proj-t1);
   font-weight: var(--weight-medium);
   text-align: center;
 }
@@ -42,17 +46,16 @@
 
 /* Projector labels: sentence case, medium, muted, no tracking (uppercase at this size
    shouts; letter-spacing would also break joined Arabic letters). */
-.eyebrow,
-.label {
-  font-size: var(--proj-eyebrow);
+.eyebrow {
+  font-size: var(--proj-t1);
   font-weight: var(--weight-medium);
   color: var(--text-muted);
 }
 
 /* A quiet hint next to a control (e.g. why Start is disabled). */
 .hint {
-  font-size: var(--proj-min);
-  color: var(--text-muted);
+  font-size: var(--proj-t1);
+  color: var(--rail-text);
   white-space: nowrap;
 }
 
@@ -68,20 +71,32 @@
   color: var(--text-muted);
 }
 
+/* H1 eyebrows: the other language as a second, muted line (plan §2.1 rule 7). */
+.bilingualStacked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: var(--leading-tight);
+}
+
+.bilingualStacked .bilingualOther {
+  font-weight: var(--weight-regular);
+}
+
 .title {
   display: block;
-  font-size: var(--proj-heading);
+  font-size: var(--proj-t4);
   font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
   color: var(--text);
-  letter-spacing: normal;
-  text-transform: none;
+  text-wrap: balance;
 }
 
 .titleBlock {
   display: flex;
   flex-direction: column;
   gap: var(--proj-s-1);
+  min-inline-size: 0;
 }
 
 /* Kept in the text (" · ") for tests and screen readers' flow; not drawn. */
@@ -89,13 +104,7 @@
   display: none;
 }
 
-.emptyBoard {
-  padding-block: var(--proj-s-3);
-  font-size: var(--proj-row);
-  color: var(--text-muted);
-}
-
-/* ---- header strip ---- */
+/* ---- brand strip ---- */
 
 .header {
   display: flex;
@@ -106,13 +115,12 @@
   block-size: var(--proj-header-height);
   margin-block-start: var(--big-screen-safe-margin);
   padding-inline: var(--big-screen-safe-margin);
-  border-block-end: var(--line-width) solid var(--line);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--proj-s-2);
+  gap: var(--proj-s-3);
   min-inline-size: 0;
 }
 
@@ -120,7 +128,7 @@
   visibility: hidden;
 }
 
-/* H2/H3: the logo lives outside the screen transitions, exactly over the header slot. */
+/* H2/H3: the logo lives outside the screen transitions, exactly over the strip's slot. */
 .host > .logoFloating {
   position: absolute;
   inset-block-start: calc(var(--big-screen-safe-margin) + (var(--proj-header-height) - var(--logo-proj-height)) / 2);
@@ -128,18 +136,14 @@
 }
 
 .brandRule {
+  flex: none;
   inline-size: var(--line-width);
-  block-size: calc(var(--proj-header-height) / 2);
+  block-size: calc(var(--proj-header-height) / 2.5);
   background: var(--line-strong);
 }
 
 .tagline {
   color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.headerTitle {
-  font-size: var(--proj-row);
   font-weight: var(--weight-medium);
   white-space: nowrap;
 }
@@ -148,13 +152,21 @@
   display: flex;
   align-items: center;
   gap: var(--proj-s-2);
+  min-inline-size: 0;
 }
 
-/* Next-session code during play (ADR-015): eyebrow + tabular code. */
+/* Next-session code during play (ADR-015): muted label, then the code in ink. */
 .corner {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--proj-s-2);
+}
+
+.cornerLabel {
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .cornerDigits {
@@ -163,292 +175,38 @@
   letter-spacing: var(--proj-code-letter-spacing);
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--primary-text);
+  color: var(--text);
 }
 
-/* ---- body: a 12-column grid inside the safe margins ---- */
+/* ---- the stage: a 12-column grid inside the safe margins ---- */
 
 .body {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--proj-s-3);
   flex: 1;
   min-block-size: 0;
-  padding-block: var(--proj-s-2) var(--proj-s-1);
+  padding-block: var(--proj-s-3) var(--proj-s-2);
   padding-inline: var(--big-screen-safe-margin);
 }
 
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--proj-s-2);
-}
-
-.fill {
-  flex: 1;
-  min-block-size: 0;
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--proj-s-2);
-  min-block-size: 0;
-  padding: var(--proj-s-2);
-  border: var(--line-width) solid var(--line);
-  border-radius: var(--proj-radius);
-  background: var(--surface);
-}
-
-/* ---- H1 lobby ----
-   One grid, three columns (join · code · players) and three rows (head · main · foot).
-   Each column is a subgrid over the rows, so the three labels share a baseline, the
-   code is centred against the QR, and the players panel ends where the steps end.
-   The block is centred in the body, so a tall window doesn't stretch it. */
-
-.lobby {
-  grid-template-columns: minmax(0, 11fr) minmax(0, 12fr) minmax(0, 13fr);
-  grid-template-rows: auto auto auto;
-  align-content: center;
-  row-gap: var(--proj-s-2);
-  /* single-line labels: the tight leading in both scripts (Cairo's taller default would push
-     the steps under the operator bar) */
-  line-height: var(--leading-tight);
-}
-
-.join,
-.codeHero,
-.playersCol {
-  display: grid;
-  grid-row: 1 / span 3;
-  grid-template-rows: subgrid;
-  min-inline-size: 0;
-}
-
-.colHead {
-  grid-row: 1;
-  align-self: end;
-}
-
-.join {
-  justify-items: start;
-}
-
-.qrWrap {
-  grid-row: 2;
-  border: var(--line-width) solid var(--line);
-  border-radius: var(--proj-radius);
-  line-height: 0;
-  background: var(--qr-light);
-}
-
-.qrWrap svg {
-  /* 85 % of --proj-qr so the three steps fit under it in a laptop browser window too. */
-  inline-size: calc(var(--proj-qr) * 0.85);
-  block-size: calc(var(--proj-qr) * 0.85);
-}
-
-.joinFoot {
-  grid-row: 3;
-  display: flex;
-  flex-direction: column;
-  gap: var(--proj-s-2);
-}
-
-.url {
-  color: var(--text-muted);
-}
-
-.urlText {
-  color: var(--text);
-  font-weight: var(--weight-medium);
-}
-
-.steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--proj-s-1);
-}
-
-.step {
-  display: flex;
-  align-items: baseline;
-  gap: var(--proj-s-2);
-}
-
-.stepNo {
-  flex: none;
-  min-inline-size: 1.2em;
-  color: var(--primary-text);
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-}
-
-.codeHero {
-  justify-items: center;
-}
-
-/* Centred on the QR's row (the lobby's optical centre line). Full column width, so the
-   code can size itself to it (container query units; containment here, not on the subgrid). */
-.codeFrame {
-  grid-row: 2;
-  align-self: center;
-  justify-self: stretch;
-  container-type: inline-size;
-}
-
-.code {
-  /* --proj-code, or smaller when the column is narrow (four digits + both chevrons must fit). */
-  font-size: min(var(--proj-code), calc((100cqi - var(--proj-s-4) * 3) / 2.8));
-  font-weight: var(--proj-code-weight);
-  letter-spacing: var(--proj-code-letter-spacing);
-  margin-inline-end: calc(-1 * var(--proj-code-letter-spacing));
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--text);
-}
-
-.count {
-  font-weight: var(--weight-medium);
-  color: var(--text-muted);
-}
-
-.countNum {
-  font-size: var(--proj-row);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-
-.playersPanel {
-  grid-row: 2 / span 2;
-  min-block-size: 0;
-}
-
-.tags {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--proj-row) * 5.6), 1fr));
-  gap: var(--proj-s-1);
-  align-content: start;
-}
-
-.tagList {
-  flex: 1;
-  min-block-size: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-.tag {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--proj-s-1);
-  min-inline-size: 0;
-  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
-  padding-inline: var(--proj-s-2) var(--proj-s-1);
-  border: var(--line-width) solid var(--line);
-  border-radius: var(--r-tag);
-  background: var(--surface);
-}
-
-.tagName {
-  flex: 1;
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tagOff {
-  color: var(--text-muted);
-}
-
-/* No players yet: a calm, centred message, not placeholder boxes. */
-.empty {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--proj-s-1);
-  text-align: center;
-}
-
-.emptyText {
-  font-size: var(--proj-row);
-  font-weight: var(--weight-medium);
-  color: var(--text);
-}
-
-.emptyHint {
-  color: var(--text-muted);
-}
-
-.dot {
-  inline-size: calc(var(--proj-dot-size) * 0.6);
-  block-size: calc(var(--proj-dot-size) * 0.6);
-  border-radius: 50%;
-  flex: none;
-}
-
-.dotOn {
-  background: var(--primary);
-}
-
-.dotOff {
-  background: transparent;
-  border: var(--line-width-strong) solid var(--text-muted);
-}
-
-.remove {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: var(--touch-target-floor);
-  min-block-size: var(--touch-target-floor);
-  border: none;
-  border-radius: var(--r-tag);
-  background: var(--surface);
-  color: var(--text-muted);
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-standard);
-}
-
-.tag:hover .remove,
-.remove:focus-visible {
-  opacity: 1;
-}
-
-.remove:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.removeIcon {
-  inline-size: var(--proj-eyebrow);
-  block-size: var(--proj-eyebrow);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
-/* ---- facing chevrons (one hero per screen) ---- */
+/* ---- facing chevrons (one hero per screen) ----
+   Callers size them with --frame-chevron-inline / --frame-chevron-block (default:
+   the hero's full height, as in v2). */
 
 .framed {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  gap: var(--proj-s-2);
+  gap: var(--frame-gap, var(--proj-s-2));
 }
 
 .chevron {
   flex: none;
-  inline-size: var(--proj-s-4);
+  align-self: var(--frame-chevron-align, stretch);
+  inline-size: var(--frame-chevron-inline, var(--proj-s-4));
+  block-size: var(--frame-chevron-block, auto);
   fill: none;
   stroke-width: 2;
   stroke-linecap: round;
@@ -485,13 +243,342 @@
   }
 }
 
-/* ---- H2 / H3 / H4: side panel (4 cols) + board (8 cols) ---- */
+/* ---- H1 lobby (plan §4.2) ----
+   Join block (cols 1–7): eyebrow, the code as the one hero, then the QR row.
+   Players (cols 8–12): the count, then a two-column list of hairline rows.
+   The join block is a size container, so the code and the QR shrink to fit a
+   short stage (a laptop window, or a rail that wraps with 10 games). */
 
-.split {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--proj-s-3);
+.lobby {
+  align-items: stretch;
 }
+
+.join {
+  grid-column: 1 / span 7;
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-2);
+  min-inline-size: 0;
+  min-block-size: 0;
+  container-type: size;
+  /* resolved in the children, against this container */
+  --eyebrow-block: calc(var(--proj-t1) * var(--leading-tight-ar) * 2);
+  --qr-size: min(var(--proj-qr), 36cqb);
+  --code-size: min(
+    var(--proj-code),
+    calc((100cqi - 2 * var(--proj-s-3)) / 3.05),
+    calc((100cqb - var(--qr-size) - var(--eyebrow-block) - 4 * var(--proj-s-2)) / var(--proj-leading-hero))
+  );
+}
+
+.codeRow {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 0;
+}
+
+.codeFrame {
+  align-items: center;
+  font-size: var(--code-size);
+  /* thin chevrons: 60 % of the digits' cap height (≈ 0.71 em) */
+  --frame-chevron-block: 0.43em;
+  --frame-chevron-inline: 0.2em;
+  --frame-chevron-align: center;
+  --frame-gap: var(--proj-s-3);
+}
+
+.code {
+  font-size: inherit;
+  font-weight: var(--proj-code-weight);
+  letter-spacing: var(--proj-code-letter-spacing);
+  margin-inline-end: calc(-1 * var(--proj-code-letter-spacing));
+  font-variant-numeric: tabular-nums;
+  line-height: var(--proj-leading-hero);
+  color: var(--text);
+}
+
+.qrRow {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--proj-s-4);
+  min-inline-size: 0;
+}
+
+.qrWrap {
+  flex: none;
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--proj-radius);
+  overflow: hidden;
+  line-height: 0;
+  background: var(--qr-light);
+}
+
+.qrWrap svg {
+  inline-size: var(--qr-size);
+  block-size: var(--qr-size);
+}
+
+.joinText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-3);
+  min-inline-size: 0;
+}
+
+.url {
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+}
+
+.urlText {
+  font-size: var(--proj-t3);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+}
+
+.step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--proj-s-2);
+}
+
+.stepNo {
+  flex: none;
+  min-inline-size: 1ch;
+  color: var(--text);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.playersCol {
+  grid-column: 8 / span 5;
+  container-type: size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-2);
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+/* "12 players": the number at t4, the words at t1 (inline spans: the text stays whole). */
+.count {
+  flex: none;
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+}
+
+.countNum {
+  font-size: var(--proj-t4);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.countWord {
+  font-size: var(--proj-t1);
+}
+
+/* A count phrase with no digits (Arabic "لاعبان") reads at name size, in ink. */
+.countPhrase {
+  font-size: var(--proj-t3);
+  color: var(--text);
+}
+
+.players {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: var(--proj-row-height);
+  column-gap: var(--proj-s-4);
+  align-content: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  container-type: inline-size;
+  /* t3, or smaller when a column can't hold a 12-character name */
+  --name-size: min(
+    var(--proj-t3),
+    calc(((100cqi - var(--proj-s-4)) / 2 - var(--proj-dot-size) - var(--proj-s-2)) / 6.8)
+  );
+}
+
+.playersScroll {
+  flex: 0 1 auto;
+  min-block-size: 0;
+  /* whole rows only: a long list never shows half a name at its edge */
+  max-block-size: round(down, calc(100cqb - var(--proj-t4) * 1.3 - var(--proj-s-2)), var(--proj-row-height));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.player {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: var(--proj-s-2);
+  min-inline-size: 0;
+  border-block-end: var(--line-width) solid var(--line);
+  animation: player-in var(--dur-enter) var(--ease-standard) both;
+}
+
+/* The newest name (first, newest-first order) pulses once on arrival; no shards (ADR-135). */
+.player::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--live-tint);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.player:first-child::before {
+  animation: player-pulse var(--dur-pulse) var(--ease-standard) both;
+}
+
+@keyframes player-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--s-2));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes player-pulse {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.playerName {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--name-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--proj-row-leading);
+}
+
+.playerAway {
+  color: var(--text-muted);
+}
+
+.dot {
+  inline-size: calc(var(--proj-dot-size) * 0.6);
+  block-size: calc(var(--proj-dot-size) * 0.6);
+  border-radius: 50%;
+  flex: none;
+}
+
+.dotOn {
+  background: var(--live);
+}
+
+.dotOff {
+  background: transparent;
+  border: var(--line-width-strong) solid var(--line-strong);
+}
+
+.remove {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--touch-target-floor);
+  min-block-size: var(--touch-target-floor);
+  border: none;
+  border-radius: var(--proj-r-control);
+  background: var(--bg);
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.player:hover .remove,
+.remove:focus-visible {
+  opacity: 1;
+}
+
+.remove:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.removeIcon {
+  inline-size: var(--proj-t1);
+  block-size: var(--proj-t1);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* No players yet: six placeholder rows, the message centred over them. */
+.emptyPlayers {
+  position: relative;
+  flex: none;
+}
+
+.placeholder {
+  border-block-end: var(--line-width) solid var(--slot-line);
+}
+
+.emptyOver {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: repeat(2, var(--proj-row-height));
+  align-content: start;
+  justify-items: center;
+  text-align: center;
+}
+
+.emptyText,
+.emptyHint {
+  align-self: center;
+  max-inline-size: 100%;
+}
+
+.emptyText {
+  font-size: var(--proj-t3);
+  font-weight: var(--weight-medium);
+  line-height: var(--proj-row-leading);
+  color: var(--text);
+}
+
+.emptyHint {
+  color: var(--text-muted);
+}
+
+/* ---- H2 (and the H3/H4 shells): side column (4) + board (8) ---- */
 
 .split .side {
   grid-column: span 4;
@@ -506,6 +593,7 @@
   flex-direction: column;
   gap: var(--proj-s-3);
   min-inline-size: 0;
+  min-block-size: 0;
 }
 
 .boardArea {
@@ -516,26 +604,77 @@
   min-block-size: 0;
 }
 
-.stats {
+/* The scorebug (plan §4.3): round + game, time left, finished, the lineup. */
+.scorebug {
+  gap: var(--proj-s-3);
+}
+
+.scorebug .title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.timeLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.timeNum {
+  font-size: var(--proj-t6);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--proj-leading-hero);
+  color: var(--text);
+}
+
+.timeUnit {
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+
+.finished {
   display: flex;
   flex-direction: column;
   gap: var(--proj-s-2);
 }
 
-.stat {
+/* A thin live bar: done / total, filling toward the inline end. */
+.bar {
+  display: block;
+  overflow: hidden;
+  block-size: var(--proj-bar-height);
+  border-radius: var(--proj-bar-height);
+  background: var(--slot-line);
+}
+
+:global([dir='rtl']) .bar {
+  scale: -1 1;
+}
+
+.barFill {
+  display: block;
+  block-size: 100%;
+  background: var(--live);
+  transform-origin: 0 50%;
+  transition: transform var(--dur-slow) var(--ease-standard);
+}
+
+.finishedText {
   color: var(--text-muted);
   font-weight: var(--weight-medium);
 }
 
-.statNum {
-  font-size: var(--proj-timer);
+.finishedNums {
+  font-size: var(--proj-t2);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
-  line-height: 1;
   color: var(--text);
 }
 
-.upNext {
+.sideSummary {
   color: var(--text-muted);
 }
 
@@ -543,7 +682,8 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--proj-s-1);
+  column-gap: var(--proj-s-1);
+  row-gap: 0;
 }
 
 .summaryItem {
@@ -553,16 +693,44 @@
   white-space: nowrap;
 }
 
+/* The current round: ink with a blue "live" underline (blue is never text, ADR-135). */
 .summaryCurrent {
-  color: var(--primary-text);
+  color: var(--text);
   font-weight: var(--weight-medium);
+  text-decoration-line: underline;
+  text-decoration-color: var(--live);
+  text-decoration-thickness: var(--line-width-strong);
+  text-underline-offset: 0.3em;
 }
 
 .summaryDone {
   color: var(--text-muted);
 }
 
+.summaryList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--proj-s-2);
+}
+
+.summaryNo {
+  flex: none;
+  min-inline-size: 1ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
 .arrow {
+  flex: none;
   inline-size: 0.8em;
   block-size: 0.8em;
   fill: none;
@@ -572,417 +740,61 @@
   stroke-linejoin: round;
 }
 
-:global([dir='rtl']) .arrow {
+:global([dir='rtl']) .arrow,
+:global([dir='rtl']) .slotChevron {
   scale: -1 1;
 }
 
-/* ---- board tables ---- */
+/* ---- the rail (plan §4 "Rail", §4.7) ---- */
 
-.table {
-  inline-size: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: var(--proj-row);
-  font-variant-numeric: tabular-nums;
-}
-
-.table th {
-  padding-block: calc(var(--proj-s-1) / 2);
-  padding-inline: var(--proj-s-2);
-  border-block-end: var(--line-width) solid var(--line-strong);
-  font-size: var(--proj-eyebrow);
-  font-weight: var(--type-eyebrow-weight);
-  color: var(--text-muted);
-  vertical-align: bottom;
-}
-
-.table td {
-  line-height: var(--proj-row-leading);
-  padding-block: var(--proj-row-pad);
-  padding-inline: var(--proj-s-2);
-  border-block-end: var(--line-width) solid var(--line);
-  font-weight: var(--weight-medium);
-}
-
-.colRank {
-  inline-size: calc(var(--proj-row) * 1.9);
-  text-align: start;
-  color: var(--text-muted);
-}
-
-.colName {
-  text-align: start;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.colScore {
-  inline-size: calc(var(--proj-row) * 3.4);
-  text-align: end;
-  white-space: nowrap;
-}
-
-.table th.colScore {
-  white-space: normal;
-}
-
-.sessionTable th.colRound {
-  padding-inline: var(--proj-s-2) var(--proj-s-1);
-}
-
-.row {
-  transition: transform var(--dur-slow) var(--ease-standard);
-}
-
-.rowPodium .colRank {
-  color: var(--text);
-}
-
-.rowFirst td {
-  background: var(--highlight-tint);
-  font-weight: var(--weight-bold);
-}
-
-.rowFirst td:first-child {
-  box-shadow: inset var(--proj-rank-rule) 0 0 var(--highlight);
-}
-
-:global([dir='rtl']) .rowFirst td:first-child {
-  box-shadow: inset calc(-1 * var(--proj-rank-rule)) 0 0 var(--highlight);
-}
-
-/* H5: rows whose best came from this session (first rotation). */
-.rowHighlight td {
-  background: var(--primary-tint);
-}
-
-.rowHighlight td:first-child {
-  box-shadow: inset var(--proj-rank-rule) 0 0 var(--primary);
-}
-
-:global([dir='rtl']) .rowHighlight td:first-child {
-  box-shadow: inset calc(-1 * var(--proj-rank-rule)) 0 0 var(--primary);
-}
-
-/* H4: round columns muted, total in ink. */
-.sessionTable .colRound {
-  inline-size: calc(var(--proj-row) * 3.6);
-  color: var(--text-muted);
-}
-
-/* ---- H3 next intro ---- */
-
-.nextIntro {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--proj-s-3);
-}
-
-.nextGame {
-  font-size: var(--proj-heading);
-  font-weight: var(--weight-medium);
-  text-align: center;
-}
-
-.countdown {
-  font-size: var(--proj-timer);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--primary-text);
-  animation: count-pop var(--dur-countdown) var(--ease-standard) both;
-}
-
-@keyframes count-pop {
-  from {
-    transform: scale(1.4);
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .chevron,
-  .countdown {
-    animation: none;
-  }
-}
-
-/* ---- Stop the Clock guess reveal (games/stop-the-clock.md §6) ---- */
-
-.revealHead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--proj-s-3);
-}
-
-.reveal {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  justify-content: space-around;
-  gap: var(--proj-s-2);
-  min-block-size: 0;
-  /* room for the labels under the last track */
-  padding-block-end: calc(var(--proj-eyebrow) * 1.4);
-}
-
-.strip {
-  display: grid;
-  grid-template-columns: calc(var(--proj-row) * 4) 1fr;
-  align-items: center;
-  gap: var(--proj-s-3);
-}
-
-.stripLabel {
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-}
-
-.stripTrack {
-  position: relative;
-  block-size: calc(var(--proj-row) * 2);
-  border: var(--line-width) solid var(--line);
-  border-radius: var(--proj-radius);
-  background: var(--surface);
-}
-
-.stripTick {
-  position: absolute;
-  inset-block: 35%;
-  inline-size: var(--line-width);
-  background: var(--line);
-}
-
-.stripCentre {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 50%;
-  inline-size: var(--line-width-strong);
-  background: var(--text);
-}
-
-.stripScale {
-  position: relative;
-}
-
-.stripScaleAxis {
-  position: absolute;
-  inset: 0;
-}
-
-.stripAxis {
-  position: absolute;
-  inset-block-end: 0;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  font-size: var(--proj-eyebrow);
-  color: var(--text-muted);
-}
-
-.revealDot {
-  position: absolute;
-  inset-block-start: 50%;
-  inline-size: var(--proj-dot-size);
-  block-size: var(--proj-dot-size);
-  margin-block-start: calc(var(--proj-dot-size) / -2);
-  margin-inline-start: calc(var(--proj-dot-size) / -2);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--primary) 55%, transparent);
-}
-
-.revealDotLabelled {
-  background: var(--primary);
-}
-
-.revealDotPinned {
-  background: transparent;
-  border: var(--line-width-strong) solid var(--primary);
-}
-
-.revealName {
-  position: absolute;
-  inset-block-end: 100%;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  padding-block-end: var(--proj-s-1);
-  font-size: var(--proj-eyebrow);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
-}
-
-.revealNameBelow {
-  inset-block-end: auto;
-  inset-block-start: 100%;
-  padding-block-end: 0;
-  padding-block-start: var(--proj-s-1);
-}
-
-/* ---- H4 winner ---- */
-
-.winner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--proj-s-2);
-}
-
-.winner .chevron {
-  inline-size: var(--proj-s-3);
-}
-
-.winnerBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--proj-s-1);
-  min-inline-size: 0;
-}
-
-.winnerName {
-  font-size: var(--proj-heading);
-  font-weight: var(--weight-bold);
-  line-height: var(--leading-tight);
-  overflow-wrap: break-word;
-}
-
-.winnerScore {
-  font-size: var(--proj-heading);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-/* ---- H5 day boards ---- */
-
-.mergeStage {
-  display: flex;
-  grid-column: 1 / -1;
-  min-block-size: 0;
-}
-
-/* H5: tabs in the side column (4), the board in the other 8. */
-.mergeStageBoard {
-  grid-column: span 8;
-}
-
-.dayboard {
-  display: flex;
-  flex-direction: column;
-}
-
-.tabs {
-  grid-column: span 4;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--proj-s-2);
-}
-
-.tab {
-  min-block-size: var(--touch-target-floor);
-  padding-block: var(--proj-s-1);
-  padding-inline: 0;
-  border: none;
-  border-block-end: var(--line-width-strong) solid transparent;
-  margin-block-end: calc(-1 * var(--line-width));
-  background: none;
-  color: var(--text-muted);
-  font-size: var(--proj-row);
-  font-weight: var(--weight-medium);
-  text-align: start;
-}
-
-.tabOn {
-  color: var(--text);
-  border-block-end: var(--proj-rank-rule) solid var(--primary);
-}
-
-/* ---- operator bar ---- */
-
-.operator {
+.rail {
   display: flex;
   flex: none;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--proj-s-3);
-  min-block-size: var(--proj-operator-height);
+  min-block-size: var(--proj-rail-height);
+  margin-block-end: var(--big-screen-safe-margin);
+  margin-inline: var(--big-screen-safe-margin);
   padding-block-start: var(--proj-s-1);
-  padding-block-end: var(--big-screen-safe-margin);
-  padding-inline: var(--big-screen-safe-margin);
   border-block-start: var(--line-width) solid var(--line);
-  background: var(--surface-2);
+  background: var(--bg);
+  color: var(--rail-text);
 }
 
-.operatorStart,
-.operatorEnd {
+/* H1: the lineup tray takes the whole rail (two lines, more if the pool wraps). */
+.railTray {
+  display: block;
+  min-block-size: var(--proj-rail-height-lobby);
+}
+
+.railStart {
   display: flex;
-  align-items: flex-end;
+  flex: 1 1 auto;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.railEnd {
+  display: flex;
+  flex: none;
+  align-items: center;
   gap: var(--proj-s-2);
-  min-inline-size: 0;
-}
-
-.operatorEnd {
-  justify-content: flex-end;
   margin-inline-start: auto;
-}
-
-/* The lineup takes the free width, so its "+ add" row can show every game it can fit. */
-.operatorStart {
-  flex: 1;
-}
-
-.operatorStart > * {
-  min-inline-size: 0;
-  max-inline-size: 100%;
-}
-
-/* The hint sits on the bar's label line, right above the button it explains. */
-.actionWithHint {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--proj-s-1);
-}
-
-.actionWithHint > .hint {
-  font-size: var(--proj-eyebrow);
-}
-
-/* 16:9 and wider: the hint floats on the label line above Start, so it never widens the
-   actions column (the lineup's "+ add" row keeps the width). */
-@media (min-aspect-ratio: 17/10) {
-  .actionWithHint {
-    position: relative;
-  }
-
-  .actionWithHint > .hint {
-    position: absolute;
-    inset-block-end: calc(100% + var(--proj-s-1));
-    inset-inline-end: 0;
-  }
 }
 
 .primary,
 .textButton,
-.pick,
-.pickAdd,
+.slot,
+.poolItem,
 .menuItem,
 .nextGames {
   font: inherit;
-  font-size: var(--proj-min);
+  font-size: var(--proj-t1);
   color: inherit;
 }
 
+/* The one primary action per screen: ink-filled, so the rail adds no colour. */
 .primary {
   display: inline-flex;
   align-items: center;
@@ -990,27 +802,26 @@
   min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
   padding-inline: var(--proj-s-3);
   border: var(--line-width) solid transparent;
-  border-radius: var(--r-control);
-  background: var(--primary-text);
-  color: var(--on-primary);
+  border-radius: var(--proj-r-control);
+  background: var(--action);
+  color: var(--on-action);
   font-weight: var(--weight-medium);
   white-space: nowrap;
   transition: transform var(--dur-fast) var(--ease-standard);
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: var(--action-hover);
 }
 
 .primary:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-/* Disabled: a clear neutral button, not a washed-out blue one. */
 .primary:disabled {
   border-color: var(--line-strong);
-  background: var(--surface-2);
-  color: var(--text-muted);
+  background: transparent;
+  color: var(--rail-text);
   cursor: not-allowed;
 }
 
@@ -1021,16 +832,16 @@
   min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
   padding-inline: var(--proj-s-1);
   border: none;
-  border-radius: var(--r-control);
+  border-radius: var(--proj-r-control);
   background: none;
-  color: var(--text-muted);
+  color: var(--rail-text);
   font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 
 .textButton:hover:not(:disabled),
 .textButton[aria-expanded='true'] {
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
 }
 
@@ -1040,142 +851,208 @@
 
 .gear,
 .plus,
-.pickRemove {
+.slotRemove {
   flex: none;
-  inline-size: 0.9em;
-  block-size: 0.9em;
+  inline-size: 0.8em;
+  block-size: 0.8em;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
 }
 
+.gear {
+  inline-size: 0.9em;
+  block-size: 0.9em;
+}
+
 .primary:focus-visible,
 .textButton:focus-visible,
-.pick:focus-visible,
-.pickAdd:focus-visible,
+.slot:focus-visible,
+.poolItem:focus-visible,
 .menuItem:focus-visible,
 .nextGames:focus-visible,
-.tab:focus-visible,
 .remove:focus-visible {
   outline: var(--focus-width) solid var(--focus);
   outline-offset: var(--focus-offset);
 }
 
-/* Lineup picker: the picks in order (1 → 2 → 3), then the other games as "+ add". */
-.lineup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--proj-s-1);
+/* ---- the lineup tray (plan §5) ---- */
+
+.trayWrap {
   min-inline-size: 0;
 }
 
-.lineupHead {
+.tray {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-inline-size: 0;
+}
+
+/* Line 1: label | slots … actions (wraps only when the window is very narrow). */
+.trayLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--proj-s-3);
+  row-gap: var(--proj-s-1);
+  min-inline-size: 0;
+}
+
+.trayHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--proj-s-2);
+  row-gap: 0;
+  min-inline-size: 0;
+}
+
+.trayLabel {
+  font-weight: var(--weight-medium);
+  color: var(--rail-text);
+  white-space: nowrap;
+}
+
+.trayStatus {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.trayRule {
+  flex: none;
+  inline-size: var(--line-width);
+  block-size: var(--proj-t1);
+  background: var(--line-strong);
+}
+
+.trayActions {
   display: flex;
   align-items: center;
   gap: var(--proj-s-2);
-  min-inline-size: 0;
+  margin-inline-start: auto;
 }
 
-.adds {
-  display: flex;
-  flex: 1;
-  gap: calc(var(--proj-s-1) / 2);
-  min-inline-size: 0;
-  margin-inline-start: var(--proj-s-1);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.lineupStatus {
-  font-size: var(--proj-eyebrow);
-  font-weight: var(--weight-medium);
-  color: var(--text);
-}
-
-.picks {
+.slots {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: var(--proj-s-1);
 }
 
-.pickItem {
+.slotItem {
   display: inline-flex;
   align-items: center;
   gap: var(--proj-s-1);
 }
 
-.pick {
+.slotChevron {
+  flex: none;
+  inline-size: 0.45em;
+  block-size: 0.9em;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A picked game: ordinal + name, a 2 px underline, the × on hover/focus. No box. */
+.slot {
   display: inline-flex;
   align-items: center;
   gap: var(--proj-s-1);
   min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
-  padding-inline: var(--proj-s-2);
-  border: var(--line-width) solid var(--line-strong);
-  border-radius: var(--r-control);
-  background: var(--surface);
+  padding-inline: var(--proj-s-1);
+  border: none;
+  border-block-end: var(--line-width-strong) solid var(--line-strong);
+  border-radius: 0;
+  background: none;
   color: var(--text);
   font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 
-.pickRemove {
+.slot:hover {
+  border-block-end-color: var(--text);
+  background: var(--surface-2);
+}
+
+.slotRemove {
   color: var(--text-muted);
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-standard);
 }
 
-.pick:hover .pickRemove,
-.pick:focus-visible .pickRemove {
+.slot:hover .slotRemove,
+.slot:focus-visible .slotRemove {
   opacity: 1;
 }
 
-.pickEmpty {
+.slotEmpty {
   display: inline-flex;
   align-items: center;
   min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
-  min-inline-size: calc(var(--proj-row) * 2.4);
-  padding-inline: var(--proj-s-2);
-  border: var(--line-width) solid var(--line);
-  border-radius: var(--r-control);
-  color: var(--text-muted);
+  min-inline-size: calc(var(--proj-t3) * 3);
+  padding-inline: var(--proj-s-1);
+  border-block-end: var(--line-width-strong) solid var(--slot-line);
+  color: var(--rail-text);
   font-variant-numeric: tabular-nums;
 }
 
-.pickAdd {
+.ordinal {
+  min-inline-size: 1ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* Line 2: every other game as a quiet "+ name", wrapping (never scrolling sideways). */
+.pool {
+  display: flex;
+  min-block-size: var(--touch-target-floor);
+  /* the first "+" lines up with the label above it */
+  margin-inline-start: calc(-1 * var(--proj-s-1));
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--proj-s-2);
+  row-gap: 0;
+  min-inline-size: 0;
+}
+
+.poolItem {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: var(--proj-s-1);
+  gap: 0.35em;
   min-block-size: var(--touch-target-floor);
-  font-size: var(--proj-eyebrow);
-  padding-inline: calc(var(--proj-s-1) / 2);
+  padding-inline: var(--proj-s-1);
   border: none;
-  border-radius: var(--r-control);
+  border-radius: var(--proj-r-control);
   background: none;
-  color: var(--text-muted);
+  color: var(--rail-text);
   white-space: nowrap;
 }
 
-.pickAdd:hover:not(:disabled) {
-  background: var(--surface);
+.poolItem:hover:not(:disabled) {
+  background: var(--surface-2);
   color: var(--text);
 }
 
-.pickAdd:disabled {
+.poolItem:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.ordinal {
-  min-inline-size: 0.7em;
-  font-variant-numeric: tabular-nums;
-  color: var(--primary-text);
+/* H1: why Start is disabled, under the Start button at the end of line 2. */
+.trayNote {
+  margin-inline-start: auto;
+  padding-inline-start: var(--proj-s-3);
 }
 
-/* Settings and the next-games picker open just above their button, on its inline-end
-   (Settings, a one-row strip) or inline-start (next games) edge. */
+/* ---- popovers above the rail: Settings (inline-end) and the next games (inline-start) ---- */
+
 .menuWrap {
   position: relative;
 }
@@ -1191,6 +1068,7 @@
   border: var(--line-width) solid var(--line-strong);
   border-radius: var(--proj-radius);
   background: var(--surface);
+  color: var(--text);
 }
 
 .menu {
@@ -1209,6 +1087,11 @@
   max-inline-size: calc(100vw - 2 * var(--big-screen-safe-margin));
 }
 
+.popover .tray {
+  align-self: stretch;
+  gap: var(--proj-s-1);
+}
+
 .menuItem {
   display: flex;
   align-items: center;
@@ -1216,7 +1099,7 @@
   min-block-size: var(--touch-target-floor);
   padding-inline: var(--proj-s-1);
   border: none;
-  border-radius: var(--r-tag);
+  border-radius: var(--proj-r-control);
   background: none;
   text-align: start;
   white-space: nowrap;
@@ -1239,29 +1122,42 @@
 }
 
 .menuItem[aria-pressed='true'] .check {
-  border-color: var(--primary);
-  background: var(--primary);
+  border-color: var(--action);
+  background: var(--action);
 }
 
 .nextGames {
   display: flex;
-  gap: var(--proj-s-2);
-  white-space: nowrap;
   align-items: center;
+  gap: var(--proj-s-2);
+  min-inline-size: 0;
   min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
   padding-inline: var(--proj-s-1);
   border: none;
-  border-radius: var(--r-tag);
+  border-radius: var(--proj-r-control);
   background: none;
+  color: var(--rail-text);
+  white-space: nowrap;
   text-align: start;
 }
 
 .nextGames:hover,
 .nextGames[aria-expanded='true'] {
-  background: var(--surface);
+  background: var(--surface-2);
 }
 
-/* ---- H0 sign-in (not projected; laptop scale) ---- */
+.nextGamesLabel {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.nextGames .summary {
+  flex-wrap: nowrap;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+/* ---- H0 sign-in (plan §4.1; laptop scale, not projected): one column, no card ---- */
 
 .signinPage {
   display: flex;
@@ -1270,6 +1166,7 @@
   min-block-size: 100vh;
   padding: var(--phone-gutter);
   background: var(--bg);
+  color: var(--text);
 }
 
 .signin {
@@ -1277,76 +1174,79 @@
   flex-direction: column;
   gap: var(--s-4);
   inline-size: min(100%, var(--dash-signin-width));
-  padding: var(--s-6);
-  border: var(--line-width) solid var(--line);
-  border-radius: var(--r-panel);
-  background: var(--surface);
+}
+
+/* 48 px, sized by height only; never stretched by the column (DESIGN_SYSTEM §5). */
+.signinLogo {
+  align-self: flex-start;
+  block-size: var(--s-7);
+  inline-size: auto;
+  margin-block-end: var(--s-2);
 }
 
 .signinTitle {
+  margin: 0;
   font-size: var(--type-heading-size);
   font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
 }
 
 .field {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
+}
+
+.fieldLabel {
   font-size: var(--type-small-size);
   font-weight: var(--weight-medium);
 }
 
-/* ---- narrower screens (16:10, 4:3): stack the lobby and the side panels ---- */
+.signinSubmit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: var(--button-height);
+  margin-block-start: var(--s-2);
+  padding-inline: var(--s-5);
+  border: var(--line-width) solid transparent;
+  border-radius: var(--r-control);
+  background: var(--action);
+  color: var(--on-action);
+  font: inherit;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-medium);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+
+.signinSubmit:hover:not(:disabled) {
+  background: var(--action-hover);
+}
+
+.signinSubmit:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.signinSubmit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.signinSubmit:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.signinHint {
+  margin: 0;
+  font-size: var(--type-small-size);
+  color: var(--text-muted);
+}
+
+/* ---- narrower screens (16:10, 4:3) ---- */
 
 @media (max-aspect-ratio: 17/10) {
-  /* Two columns: join on the inline start; code, then players on the other side. */
-  .lobby {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr);
-    align-content: stretch;
-  }
-
-  .join {
-    grid-column: 1;
-    grid-row: 1 / span 4;
-    grid-template-rows: auto auto 1fr;
-  }
-
-  .codeHero {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .playersCol {
-    grid-column: 2;
-    grid-row: 3 / span 2;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .playersCol .colHead {
-    grid-row: 1;
-  }
-
-  .playersPanel {
-    grid-row: 2;
-  }
-
-  .qrWrap svg {
-    inline-size: calc(var(--proj-qr) * 0.6);
-    block-size: calc(var(--proj-qr) * 0.6);
-  }
-
-  /* H1: the lineup picker takes the bar's first full row; the actions wrap to the next one */
-  .operatorStart:has(> [data-testid='host-lineup']) {
-    flex-basis: 100%;
-  }
-
-  /* the bar wraps here: keep the hint beside Start so it stays two lines, not three */
-  .actionWithHint {
-    flex-direction: row;
-    align-items: center;
-  }
-
   .split .side {
     grid-column: span 3;
   }
@@ -1355,55 +1255,24 @@
     grid-column: span 9;
   }
 
-  .title,
-  .winnerName,
-  .winnerScore {
-    font-size: var(--proj-row);
+  .title {
+    font-size: var(--proj-t3);
   }
 
-  /* The operator bar may take two lines; the next lineup shows in its popover. */
-  .operator {
-    flex-wrap: wrap;
-    row-gap: var(--proj-s-1);
+  .timeNum {
+    font-size: var(--proj-t5);
   }
 
+  /* the next lineup shows in its popover */
   .nextGames .summary {
     display: none;
   }
-
-  .winner .chevron {
-    inline-size: var(--proj-s-1);
-  }
-
-  .colRank {
-    inline-size: calc(var(--proj-row) * 1.5);
-  }
-
-  .colScore {
-    inline-size: calc(var(--proj-row) * 2.8);
-  }
-
-  .sessionTable .colRound {
-    inline-size: calc(var(--proj-row) * 2.6);
-  }
-
-  .sessionTable th.colRound {
-    padding-inline: var(--proj-s-1) 0;
-  }
 }
 
-
-/* Extra label lanes for guesses that land on top of each other. */
-.revealNameAbove2 {
-  padding-block-end: calc(var(--proj-s-1) + var(--proj-eyebrow) * 1.3);
-}
-
-.revealNameBelow2 {
-  padding-block-start: calc(var(--proj-s-1) + var(--proj-eyebrow) * 1.3);
-}
-
-/* Sized by height only; never stretched by the form's column (DESIGN_SYSTEM §5). */
-.signinLogo {
-  align-self: center;
-  inline-size: auto;
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .player,
+  .player:first-child::before {
+    animation: none;
+  }
 }

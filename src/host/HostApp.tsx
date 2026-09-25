@@ -3,7 +3,7 @@
  * H3 intermission (×N) → H4 results → H5 day boards → New session. Only an admin JWT (`app_metadata.role`) gets
  * past H0 (ADR-101); the screen shown is reconstructed from the database.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { LangProvider, useT } from '../i18n';
@@ -21,9 +21,27 @@ import { HostLobby, HostRound } from './screens';
 import { HostIntermission } from './Intermission';
 import { HostSessionEnd } from './Results';
 import { HostMotionProvider } from './motion';
-import { HostShell } from './common';
+import { HOST_THEME_KEY, HostShell } from './common';
+
+/** Applies the host's remembered "Dark screen" setting (Settings, plan §4.7) before the first paint. */
+function useStoredHostTheme(): void {
+  useLayoutEffect(() => {
+    let dark = false;
+    try {
+      dark = localStorage.getItem(HOST_THEME_KEY) === 'dark';
+    } catch {
+      // blocked storage: stay on the default light theme (ADR-122)
+    }
+    const root = document.documentElement;
+    if (dark) root.dataset.theme = 'dark';
+    return () => {
+      delete root.dataset.theme;
+    };
+  }, []);
+}
 
 export function HostApp() {
+  useStoredHostTheme();
   return (
     <LangProvider>
       <HostMotionProvider>
@@ -119,6 +137,7 @@ export function SignIn({
   };
 
   const shown = error ?? notice;
+  // H0 (plan §4.1): one quiet column on the page, no card; laptop scale, not projected.
   return (
     <div className={styles.signinPage}>
       <form className={styles.signin} onSubmit={submit} data-testid="host-signin">
@@ -130,7 +149,7 @@ export function SignIn({
         />
         <h1 className={styles.signinTitle}>{t('host.signin.title')}</h1>
         <label className={styles.field}>
-          <span>{t('host.signin.email')}</span>
+          <span className={styles.fieldLabel}>{t('host.signin.email')}</span>
           <input
             className={ui.input}
             type="email"
@@ -141,7 +160,7 @@ export function SignIn({
           />
         </label>
         <label className={styles.field}>
-          <span>{t('host.signin.password')}</span>
+          <span className={styles.fieldLabel}>{t('host.signin.password')}</span>
           <input
             className={ui.input}
             type="password"
@@ -156,14 +175,10 @@ export function SignIn({
             {t(shown)}
           </p>
         ) : null}
-        <button
-          type="submit"
-          className={`${ui.button} ${ui.buttonBlock}`}
-          disabled={busy}
-          data-testid="signin-submit"
-        >
+        <button type="submit" className={styles.signinSubmit} disabled={busy} data-testid="signin-submit">
           {t('host.signin.submit')}
         </button>
+        <p className={styles.signinHint}>{t('host.signin.hint')}</p>
       </form>
     </div>
   );
