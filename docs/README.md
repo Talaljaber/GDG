@@ -21,7 +21,10 @@ Last updated: 2026-09-25
 | [games/trivia.md](games/trivia.md) | Trivia spec, including the per-player draw. |
 | [games/close-brackets.md](games/close-brackets.md) | Close the Brackets spec (ADR-134). |
 | [games/color-clash.md](games/color-clash.md) | Color Clash spec, including the colour-vision check of the inks (ADR-134). |
-| [games/newgames.md](games/newgames.md) | The brief for new games; Phase A items 1–2 are built (ADR-134), the rest is not approved. |
+| [games/how-many.md](games/how-many.md) | How Many? spec, including the flash field and the big-screen count reveal (ADR-136). |
+| [games/swipe-sort.md](games/swipe-sort.md) | Swipe Sort spec, including the gesture reducer and the browser-gesture defence (ADR-136). |
+| [games/pairs.md](games/pairs.md) | Pairs spec, including the 4 x 4 memory board (ADR-136). |
+| [games/newgames.md](games/newgames.md) | The brief for new games; Phase A and B are built (ADR-134, ADR-136), Phase C (Steady Hand) is not approved (OQ-22). |
 | [plans/games-v3.md](plans/games-v3.md) | Implementation plan for How Many?, Swipe Sort and Pairs: rules, scoring, bounds, reveal, migrations, work packages (ADR-136); Steady Hand risk entry. |
 | [SCREENS.md](SCREENS.md) | Every phone, big-screen and dashboard screen, with states, wireframes, transitions and string keys. |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Colour tokens (placeholders), type scales, spacing, shatter motion spec, icons, RTL, accessibility. |

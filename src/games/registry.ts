@@ -10,6 +10,9 @@ import { perfectCircle } from './perfect-circle';
 import { trivia } from './trivia';
 import { closeBrackets } from './close-brackets';
 import { colorClash } from './color-clash';
+import { howMany } from './how-many';
+import { swipeSort } from './swipe-sort';
+import { pairs } from './pairs';
 import { isTriviaAvailable } from './trivia/draw';
 import { triviaPoolFile as poolFile } from './trivia/pool';
 
@@ -27,4 +30,7 @@ export const games: Partial<Record<GameId, GameModule<any>>> = {
   ...(isTriviaAvailable(poolFile.questions) ? { trivia } : {}),
   close_brackets: closeBrackets,
   color_clash: colorClash,
+  how_many: howMany,
+  swipe_sort: swipeSort,
+  pairs,
 };

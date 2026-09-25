@@ -19,10 +19,23 @@ import { evaluateStroke, type Point } from '../src/games/perfect-circle/metric';
 import * as trivia from '../src/games/trivia/scoring';
 import * as cb from '../src/games/close-brackets/scoring';
 import * as cc from '../src/games/color-clash/scoring';
+import * as hm from '../src/games/how-many/scoring';
+import * as ss from '../src/games/swipe-sort/scoring';
+import * as pr from '../src/games/pairs/scoring';
 
 test.describe.configure({ mode: 'serial' });
 
-type Game = 'stop_the_clock' | 'odd_one_out' | 'simon' | 'perfect_circle' | 'trivia' | 'close_brackets' | 'color_clash';
+type Game =
+  | 'stop_the_clock'
+  | 'odd_one_out'
+  | 'simon'
+  | 'perfect_circle'
+  | 'trivia'
+  | 'close_brackets'
+  | 'color_clash'
+  | 'how_many'
+  | 'swipe_sort'
+  | 'pairs';
 
 interface Built {
   raw: unknown;
@@ -101,6 +114,28 @@ function build(game: Game): Built {
       const score = cc.scoreColorClash(raw);
       return { raw, score, durationMs: 31_600, clientReject: cc.validateColorClashRaw(raw, score) };
     }
+    case 'how_many': {
+      // worked example A (docs/games/how-many.md §4): N = [12, 27, 55], guesses 11 / 24 / 46
+      const raw = hm.buildRaw([
+        { true_count: 12, guess: 11, answer_ms: 2400, timed_out: false },
+        { true_count: 27, guess: 24, answer_ms: 3100, timed_out: false },
+        { true_count: 55, guess: 46, answer_ms: 4200, timed_out: false },
+      ]);
+      const score = hm.scoreHowMany(raw);
+      return { raw, score, durationMs: 15_000, clientReject: hm.validateHowManyRaw(raw, score) };
+    }
+    case 'swipe_sort': {
+      // worked example A (docs/games/swipe-sort.md §2.3): 43 / 1 / 5 at a 450 ms mean
+      const raw = ss.buildRaw(43, 1, 5, 43 * 450);
+      const score = ss.scoreSwipeSort(raw);
+      return { raw, score, durationMs: 31_500, clientReject: ss.validateSwipeSortRaw(raw, score) };
+    }
+    case 'pairs': {
+      // worked example A (docs/games/pairs.md §4): 8 pairs, 5 misses, cleared at 34 200 ms
+      const raw = pr.buildRaw(8, 5, 34_200);
+      const score = pr.scorePairs(raw);
+      return { raw, score, durationMs: 35_700, clientReject: pr.validatePairsRaw(raw, score) };
+    }
   }
 }
 
@@ -121,6 +156,7 @@ test('AC3.3: every game’s own buildRaw payload is accepted by the score trigge
     ['stop_the_clock', 'odd_one_out', 'simon'],
     ['perfect_circle', 'trivia', 'stop_the_clock'],
     ['close_brackets', 'color_clash', 'odd_one_out'],
+    ['how_many', 'swipe_sort', 'pairs'],
   ];
   const accepted = new Set<Game>();
 
@@ -179,10 +215,13 @@ test('AC3.3: every game’s own buildRaw payload is accepted by the score trigge
   expect([...accepted].sort()).toEqual([
     'close_brackets',
     'color_clash',
+    'how_many',
     'odd_one_out',
+    'pairs',
     'perfect_circle',
     'simon',
     'stop_the_clock',
+    'swipe_sort',
     'trivia',
   ]);
   await admin.auth.signOut();

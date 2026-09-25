@@ -27,7 +27,10 @@ Last updated: 2026-09-25
 - Perfect Circle synthetic strokes PC-T1 to PC-T10.
 - Close the Brackets (ADR-134): CB-T1–T11 (`src/games/close-brackets/*.test.ts*`): worked examples, `S(n)`, the bounds mirror, seeded openers with no identical neighbours, wrong tap keeps the length, 10 s sequence timeout, reload mid-sequence, round ended.
 - Color Clash (ADR-134): CC-T1–T10 (`src/games/color-clash/*.test.ts*`): worked examples, the bounds mirror, exactly 3 congruent trials per 10, wrong tap and 3 s timeout, reload mid-trial and mid-gap, round ended.
-- `src/games/worstCase.test.tsx` runs every registered game (7): idle player inside its worst case, "round ended" finishes at once.
+- How Many? (ADR-136): HM-T1–T12 (`src/games/how-many/*.test.ts*`): worked examples A–F, the bounds mirror, seeded fields with no overlapping chevrons and true counts never a multiple of 10, `too_fast`/`too_perfect`/`formula_band`/`range`/`timeout`, reload during `look`/`flash`, idle player.
+- Swipe Sort (ADR-136): SS-T1–T12 (`src/games/swipe-sort/*.test.ts*`): worked examples A–F, the bounds mirror, the item window `I(t)` at t = 0/15 000/30 000, the gesture reducer (40 px threshold, vertical/cancel ignored), wrong swipe, idle player, reload mid-item.
+- Pairs (ADR-136): PR-T1–T11, T13 (`src/games/pairs/*.test.ts*`): worked examples A–G, the bounds mirror, the 0.7 s flip-back lock and reload during it, idle player, reload before the 8th match.
+- `src/games/worstCase.test.tsx` runs every registered game (10): idle player inside its worst case, "round ended" finishes at once.
 
 ## 3. Database tests (pgTAP)
 
@@ -55,7 +58,7 @@ Run as three identities: `anon` (no JWT), a guest (anonymous JWT), the admin (JW
 
 **Boards (`07_boards.sql`):** round board `score desc, created_at asc`; session board totals with `total_duration_ms` then `joined_at` tie-breaks, a guest sees only sessions it joined; day board one row per name key with the best score, the earliest of equal bests, names without suffix, current day only; a hidden key leaves all three (rows kept) and comes back when unhidden.
 
-**Trigger bounds:** one passing and one failing case per bound in `SCORING.md` §4 (reason code asserted): `05_score_bounds.sql` for the five original games, `09_score_bounds_new_games.sql` for Close the Brackets and Color Clash (ADR-134; also checks guests can't execute `private.score_bounds_violation`).
+**Trigger bounds:** one passing and one failing case per bound in `SCORING.md` §4 (reason code asserted): `05_score_bounds.sql` for the five original games, `09_score_bounds_new_games.sql` for Close the Brackets and Color Clash (ADR-134; also checks guests can't execute `private.score_bounds_violation`), `10_score_bounds_how_many.sql` / `11_score_bounds_swipe_sort.sql` / `12_score_bounds_pairs.sql` for How Many?, Swipe Sort and Pairs (ADR-136).
 
 **Names:** the §6 vectors in SQL; blocklist "must pass" list (real names that contain short English terms): `Hassan`, `Assem`, `Anass`, `Cassandra`, `Basem`, plus the Arabic names the blocklist owner adds (OQ-13). "Must block" list: maintained with the blocklist (not in this doc).
 
@@ -113,9 +116,9 @@ All four scenarios met their `docs/TESTING.md` §5 pass criteria on the local st
 
 | Device class | Browser | Must pass |
 |---|---|---|
-| iPhone (iOS 17+) | Safari | full session, all seven games, reload mid-round, screen lock, rotation overlay |
+| iPhone (iOS 17+) | Safari | full session, all ten games, reload mid-round, screen lock, rotation overlay |
 | iPhone | Camera-app QR → Safari | QR opens the site directly |
-| Mid-range Android (Android 12+) | Chrome | full session, all seven games |
+| Mid-range Android (Android 12+) | Chrome | full session, all ten games |
 | **Low-end Android** (≤ 3 GB RAM, e.g. a 2020 budget phone) | Chrome | 60 fps target for games and shatter; at least 45 fps measured; no dropped taps in Simon; Odd One Out 6 × 6 usable |
 | Android | Samsung Internet | join + one full session |
 | Android QR scanner app | in-app browser | join works; note that it's a separate identity (E10) |
@@ -130,6 +133,11 @@ Settings to cover: Arabic device language (RTL auto), English; text size 130 %; 
 - Close the Brackets on iPhone Safari and Android Chrome: four keys ≥ 48 px (≈ 76 px at 360 px wide); fast two-thumb tapping registers every tap (60 ms bounce window only); no double-tap zoom on the keys; in Arabic the brackets and the key order are **not** mirrored; rotation overlay and screen lock keep the 30 s clock running.
 - Color Clash: the three inks and the amber word are readable at max brightness under hall light; test with one colour-blind volunteer if possible (the simulation in `npm run contrast` is the baseline, CC-T11); the Arabic words fit on one line at 320 px and 130 % text size.
 - Calibration playtest (CB-T13, CC-T12): ≥ 5 strong players, 2 runs each after one practice run; record the scores in `PROGRESS.md`. Pass: median 780–900, nobody at 1000, nobody rejected by a bound. Otherwise retune the constants (`SCORING.md` §3.6–§3.7) and note it in ADR-134.
+
+**New games (ADR-136, Phase 8 AC8.9–AC8.10):**
+- How Many? (HM-T13): iPhone Safari and Android Chrome, flash-3 chevrons (40–70 items) legible at 360 px under hall light; digit pad keys ≥ 56 px; no double-tap zoom on the pad; the true count never shown on the phone (only the big screen reveal, §5).
+- Swipe Sort (SS-T13): iPhone Safari and iOS Chrome (WKWebView), 20 swipes from the surface centre: 0 navigations, 0 pull-to-refresh triggers; a swipe started within 24 px of either viewport edge never registers (iOS edge-swipe-back).
+- Calibration playtest (HM-T14, SS-T14, PR-T14): ≥ 5 strong players, 2 runs each after one practice run; record the scores in `PROGRESS.md`. Pass: median 780–900, nobody at 1000. Otherwise retune the constants (`D`/`W`, 22/60/450, 6/12/80) and note it in ADR-136.
 
 **Projector check:** real projector (or the venue's if accessible), lights on. From 6 m: code, QR scan (from 3 m with 3 different phones), leaderboard names and scores all readable/scannable. Compare light and dark big-screen themes (ADR-122) and pick one; record in `DECISIONS.md`.
 
@@ -162,7 +170,7 @@ Since Phase 3 sessions are 3 rounds: the slice tests play round 1 (Stop the Cloc
 - E2E-7: `admin_hide_name` (the dashboard's call) during the intermission: gone from the host round board < 1 s, from a phone's P8 board < 3.5 s (3 s poll + one request), never on the totals or results; the hidden player's phone still shows its own total (AC2.9, E24). Unhidden in `finally`.
 - E2E-8: "Sara…", "Sara…", "SARA…" → suffixes 2 and 3 on the lobby, round and session boards; one day-board row for the key with its best score and no suffix, on P10 and in SQL (AC2.6).
 
-**Payloads (`e2e/payloads.spec.ts`, AC3.3).** No browser: an admin client and an anonymous guest client (publishable key) run three real sessions covering all seven games (the third is `close_brackets, color_clash, odd_one_out`, ADR-134); each round's score is built by that game's own `buildRaw` + scorer, passes the game's client-side bounds mirror, is accepted by the trigger and stored as sent. The reject side is pgTAP `05_score_bounds.sql` and `09_score_bounds_new_games.sql`.
+**Payloads (`e2e/payloads.spec.ts`, AC3.3).** No browser: an admin client and an anonymous guest client (publishable key) run four real sessions covering all ten games (the third is `close_brackets, color_clash, odd_one_out`, ADR-134; the fourth is `how_many, swipe_sort, pairs`, ADR-136); each round's score is built by that game's own `buildRaw` + scorer, passes the game's client-side bounds mirror, is accepted by the trigger and stored as sent. The reject side is pgTAP `05_score_bounds.sql`, `09_score_bounds_new_games.sql` and `10_score_bounds_how_many.sql`/`11_score_bounds_swipe_sort.sql`/`12_score_bounds_pairs.sql`.
 
 The e2e web server runs with `E2E_NO_HMR=1` (no hot reload), so a file saved during a run can't reload the test pages. `e2e/env.ts` refuses any non-local Supabase URL: e2e always runs on the local stack.
 

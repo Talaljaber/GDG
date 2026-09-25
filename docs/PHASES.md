@@ -217,3 +217,25 @@ Acceptance criteria:
 - [ ] AC7.10 Native Arabic review of the new strings, especially the colour names (OQ-04, `COPY.md` §5.7).
 
 Depends on: Phase 3. Must pass before Phase 6's final production deploy (the migrations go to the event database, ADR-127).
+
+## Phase 8: New games, Phase B (ADR-136) · M
+
+**Goal:** How Many?, Swipe Sort and Pairs complete, each to its doc (`games/how-many.md`, `games/swipe-sort.md`, `games/pairs.md`), under the same contract as the seven existing games, with no change to existing behaviour; the pool reaches 10 games.
+
+**In:** the three game modules (seeded content, screen states, reload resume, `onFinish` once, round-ended handling); pure scoring + worked examples; enum labels and server bounds by two additive migrations (`20260925000700`, `20260925000800`); pgTAP bound tests (`10_score_bounds_how_many.sql`, `11_score_bounds_swipe_sort.sql`, `12_score_bounds_pairs.sql`); payload e2e and `worstCase.test.tsx` extended to 10 games; AR/EN strings; P7 breakdown rows; How Many?'s big-screen count reveal (H3, extends `StcReveal`); Swipe Sort's browser-gesture defence; docs.
+**Out:** Phase C (Steady Hand, `newgames.md`, OQ-22, not built); the picker grid and scrollable leaderboard tabs from the brief (the existing picker and tabs are data-driven and list 10 games as they are).
+
+Acceptance criteria:
+- [ ] AC8.1 Every worked example and test case in all three game docs passes as a unit test (HM-T1–T12, SS-T1–T12, PR-T1–T11/T13).
+- [ ] AC8.2 All three games finish inside their documented worst case (39/32/62 s) and on "round ended" (`worstCase.test.tsx`, 10 games).
+- [ ] AC8.3 `supabase test db` passes locally, then `--linked` after `db push` (not on an event day, ADR-119): every new bound accepts its passing case and rejects its failing case with the reason code; the seven existing games' bounds tests are unchanged and green.
+- [ ] AC8.4 `e2e/payloads.spec.ts` accepts all three games' own `buildRaw` payloads in a real session (`how_many, swipe_sort, pairs`), alongside the three existing lineups.
+- [ ] AC8.5 Same seed → same How Many? fields (cells, rotations, colours, no overlap), the same Swipe Sort colour sequence, and the same Pairs layout; a reload mid-attempt resumes without resetting any clock (HM-T5/T11, SS-T7/T12, PR-T13).
+- [ ] AC8.6 How Many?'s big-screen reveal (H3) shows three count strips with the true count centred, a crowd-average marker, and never shows a true count on any phone.
+- [ ] AC8.7 Swipe Sort's browser-gesture defence holds: `touch-action: none`, non-passive `touchmove.preventDefault()`, `overscroll-behavior: none` only while mounted, and a 24 px edge guard that blocks a drag from starting.
+- [ ] AC8.8 `npm run typecheck && npm run lint && npx vitest run && npm run check:i18n && npm run check:trivia && npm run build` all green with the three games registered.
+- [ ] AC8.9 On a real iPhone (Safari) and Android (Chrome): touch targets ≥ 48/56 px, How Many?'s flash-3 chevrons legible at 360 px, Swipe Sort's edge-swipe-back never scores a swipe (`TESTING.md` §6, HM-T13/SS-T13).
+- [ ] AC8.10 Playtest with ≥ 5 strong players per game: median 780–900, nobody reaches 1000 (HM-T14, SS-T14, PR-T14); otherwise retune the constants and record it in ADR-136.
+- [ ] AC8.11 Native Arabic review of the new strings (OQ-04, `COPY.md` §5.8–§5.10).
+
+Depends on: Phase 7. Must pass before Phase 6's final production deploy (the migrations go to the event database, ADR-127).

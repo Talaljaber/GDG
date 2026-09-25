@@ -8,6 +8,9 @@
  * - Trivia: correct answers
  * - Close the Brackets: sequences closed · longest · misses (ADR-134)
  * - Color Clash: correct · wrong or missed · average time (ADR-134)
+ * - How Many?: guess per flash, or "no answer" (ADR-136; no true counts on the phone)
+ * - Swipe Sort: correct · wrong way · missed · average time (ADR-136)
+ * - Pairs: pairs found · misses · time, or "not finished" (ADR-136)
  * Read-only display of the submitted `raw`; scores are never recomputed here.
  */
 import { formatNumber, useT } from '../i18n';
@@ -20,6 +23,9 @@ import { closureFromSweep, roundnessFromEpsilon } from '../games/perfect-circle/
 import type { TriviaRaw } from '../games/trivia/scoring';
 import { lengthAfterSolves, type CloseBracketsRaw } from '../games/close-brackets/scoring';
 import type { ColorClashRaw } from '../games/color-clash/scoring';
+import type { HowManyRaw } from '../games/how-many/scoring';
+import type { SwipeSortRaw } from '../games/swipe-sort/scoring';
+import type { PairsRaw } from '../games/pairs/scoring';
 import { DetailList, type DetailRow } from './chrome';
 
 function seconds(ms: number, digits: number): string {
@@ -161,6 +167,52 @@ function detailRows(game: GameId, raw: unknown, t: T): DetailRow[] | null {
           value: t('game.color_clash.result_speed_value', { s: seconds(r.mean_rt_ms, 2) }),
         });
       }
+      return rows;
+    }
+    case 'how_many': {
+      if (!hasArray(raw, 'rounds')) return null;
+      return (raw as unknown as HowManyRaw).rounds.map((r, i) => ({
+        key: String(i),
+        testId: 'result-row',
+        label: t('game.how_many.result_round', { n: i + 1 }),
+        value: r.guess === null ? t('game.how_many.result_missed') : t('game.how_many.result_guess', { g: r.guess }),
+      }));
+    }
+    case 'swipe_sort': {
+      if (!isObject(raw) || typeof raw.correct !== 'number') return null;
+      const r = raw as unknown as SwipeSortRaw;
+      const rows: DetailRow[] = [
+        { key: 'correct', testId: 'result-row', label: t('game.swipe_sort.result_correct'), value: formatNumber(r.correct) },
+        { key: 'wrong', testId: 'result-row', label: t('game.swipe_sort.result_wrong'), value: formatNumber(r.wrong) },
+        { key: 'missed', testId: 'result-row', label: t('game.swipe_sort.result_missed'), value: formatNumber(r.missed) },
+      ];
+      if (r.mean_swipe_ms !== null) {
+        rows.push({
+          key: 'speed',
+          testId: 'result-row',
+          label: t('game.swipe_sort.result_speed'),
+          value: t('game.swipe_sort.result_speed_value', { s: seconds(r.mean_swipe_ms, 2) }),
+        });
+      }
+      return rows;
+    }
+    case 'pairs': {
+      if (!isObject(raw) || typeof raw.matched !== 'number') return null;
+      const r = raw as unknown as PairsRaw;
+      const rows: DetailRow[] = [
+        { key: 'pairs', testId: 'result-row', label: t('game.pairs.result_pairs'), value: formatNumber(r.matched) },
+        { key: 'misses', testId: 'result-row', label: t('game.pairs.result_misses'), value: formatNumber(r.misses) },
+      ];
+      rows.push(
+        r.clear_ms !== null
+          ? {
+              key: 'time',
+              testId: 'result-row',
+              label: t('game.pairs.result_time'),
+              value: t('game.pairs.result_time_value', { s: seconds(r.clear_ms, 1) }),
+            }
+          : { key: 'time', testId: 'result-row', label: t('game.pairs.result_time'), value: t('game.pairs.result_not_cleared') },
+      );
       return rows;
     }
     default:

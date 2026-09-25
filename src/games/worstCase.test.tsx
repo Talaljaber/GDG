@@ -16,6 +16,9 @@ import { perfectCircle } from './perfect-circle';
 import { trivia } from './trivia';
 import { closeBrackets } from './close-brackets';
 import { colorClash } from './color-clash';
+import { howMany } from './how-many';
+import { swipeSort } from './swipe-sort';
+import { pairs } from './pairs';
 import type { TriviaPoolQuestion } from './trivia/draw';
 
 vi.mock('../i18n', () => ({
@@ -49,7 +52,18 @@ vi.mock('../../docs/content/trivia-questions.json', () => ({
 const ROUND_START = 1_700_000_000_000;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MODULES: Array<GameModule<any>> = [stopTheClock, oddOneOut, simon, perfectCircle, trivia, closeBrackets, colorClash];
+const MODULES: Array<GameModule<any>> = [
+  stopTheClock,
+  oddOneOut,
+  simon,
+  perfectCircle,
+  trivia,
+  closeBrackets,
+  colorClash,
+  howMany,
+  swipeSort,
+  pairs,
+];
 
 function renderIdle(mod: GameModule<unknown>, roundEnded = false) {
   const onFinish = vi.fn<(r: GameResult) => void>();

@@ -37,10 +37,11 @@ Last updated: 2026-09-25
 
 Typical session: 3–6 minutes. Aim for a new session every ~8 minutes at busy times.
 
-**Picking games for the crowd (7 in the pool, ADR-134).**
-- *Crowds and busy times* (fast, readable from outside, fun to watch): **Close the Brackets** and **Color Clash** (30 s each, the room sees the scores climb), **Odd One Out**, **Trivia** (people shout answers). A quick lineup: Color Clash → Odd One Out → Close the Brackets (≈ 3 min).
-- *Solo players and quiet moments* (focus, a story to tell afterwards): **Stop the Clock** (the guess reveal is best with 3+ players, but works alone), **Perfect Circle**, **Simon** (the longest; a good player can take ~2 min).
-- Mix a fast game with a focus game so everyone has a chance. Colour-blind guests can play Color Clash (the buttons carry names, the inks differ in lightness), but a guest who can't tell colours at all should get a lineup without it.
+**Picking games for the crowd (10 in the pool, ADR-134, ADR-136).**
+- *Crowds and busy times* (fast, readable from outside, fun to watch): **Close the Brackets** and **Color Clash** (30 s each, the room sees the scores climb), **Odd One Out**, **Trivia** (people shout answers), **How Many?** (the big-screen count reveal is a group "wisdom of the crowd" moment) and **Swipe Sort** (fast hand movement is visible from a distance). A quick lineup: Color Clash → Odd One Out → Close the Brackets (≈ 3 min).
+- *Solo players and quiet moments* (focus, a story to tell afterwards): **Stop the Clock** (the guess reveal is best with 3+ players, but works alone), **Perfect Circle**, **Simon** (the longest; a good player can take ~2 min), **Pairs** (calm, self-paced memory) and **How Many?** (also works well alone).
+- **Pairs** is the calmest of the ten and the best fit for a child at the booth (no timer pressure to see, tap-to-flip, partial credit for an unfinished board); avoid it in a lineup meant to draw a crowd from a distance, since nothing on screen moves fast.
+- Mix a fast game with a focus game so everyone has a chance. Colour-blind guests can play Color Clash (the buttons carry names, the inks differ in lightness) and Swipe Sort (chevron shape/orientation is a second cue), but a guest who can't tell colours at all should get a lineup without either if unsure.
 
 ## 3. What to say (short script)
 

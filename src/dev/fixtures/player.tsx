@@ -28,7 +28,18 @@ import { triviaPoolFile } from '../../games/trivia/pool';
 
 const noop = () => {};
 const LINEUP: GameId[] = ['stop_the_clock', 'odd_one_out', 'trivia'];
-const ALL_GAMES: GameId[] = ['stop_the_clock', 'odd_one_out', 'simon', 'perfect_circle', 'trivia', 'close_brackets', 'color_clash'];
+const ALL_GAMES: GameId[] = [
+  'stop_the_clock',
+  'odd_one_out',
+  'simon',
+  'perfect_circle',
+  'trivia',
+  'close_brackets',
+  'color_clash',
+  'how_many',
+  'swipe_sort',
+  'pairs',
+];
 
 // ---- boards
 
@@ -103,8 +114,7 @@ const RAW: Record<GameId, { score: number; raw: unknown }> = {
   },
   close_brackets: { score: 838, raw: { solved: 9, failed: 1, timeouts: 0, solve_ms: 23562 } },
   color_clash: { score: 821, raw: { correct: 32, wrong: 1, timeouts: 0, mean_rt_ms: 630 } },
-  // Placeholder raws (WP0b, keeps this Record<GameId, …> exhaustive after ADR-136); WP5 should
-  // replace these with real worked examples and per-state fixtures for the three new games.
+  // Worked example A for each ADR-136 game (docs/games/<id>.md §4): How Many? 813, Swipe Sort 864, Pairs 825.
   how_many: {
     score: 813,
     raw: {
@@ -336,6 +346,101 @@ export const fixtures: Fixture[] = [
   phone('p6-color_clash-correct', () =>
     game('color_clash', ccSnapshot({ trialStartEpoch: null, gapEndEpoch: Date.now() + 300, feedback: 'correct', chosen: 'blue' })),
   ),
+  ...(
+    [
+      ['board', { faceUp: [5], matchedIcons: ['gear', 'cloud'], misses: 3 }],
+      ['lock', { faceUp: [3, 8], matchedIcons: ['bug'], misses: 4, lockUntilEpoch: 4102444800000 }],
+      ['cleared', { matchedIcons: ['bug', 'coffee', 'terminal', 'branch', 'cloud', 'bulb', 'rocket', 'gear'], misses: 5, phase: 'done' }],
+    ] as const
+  ).map(([state, over]) =>
+    phone(`p6-pairs-${state}`, () => {
+      const start = Date.now() - 21_000;
+      const clearEpoch = state === 'cleared' ? start + 19_600 : null;
+      return game('pairs', { phase: 'play', gameStartEpoch: start, faceUp: [], lockUntilEpoch: null, clearEpoch, ...over });
+    }),
+  ),
+
+  // WP1: How Many? states (the flash fixture reaches the flash ~5 ms after load; freeze the clock then).
+  ...(
+    [
+      ['intro', null],
+      ['look', { phase: 'look', roundIndex: 0, lookAgoMs: 0 }],
+      ['flash', { phase: 'look', roundIndex: 2, lookAgoMs: 995 }],
+      ['answer', { phase: 'answer', roundIndex: 1, typed: '24', answerAgoMs: 3200 }],
+      ['answer-empty', { phase: 'answer', roundIndex: 0, typed: '', answerAgoMs: 8200 }],
+      ['locked', { phase: 'locked', roundIndex: 1, typed: '' }],
+    ] as const
+  ).map(([state, over]) =>
+    phone(`p6-how_many-${state}`, () => {
+      if (!over) return game('how_many', null);
+      const now = Date.now();
+      const { lookAgoMs = null, answerAgoMs = null, ...rest } = over as Record<string, unknown> & { lookAgoMs?: number; answerAgoMs?: number };
+      const locked = over.phase === 'locked';
+      const rounds = [
+        { true_count: 12, guess: 11, answer_ms: 2400, timed_out: false },
+        { true_count: 27, guess: 24, answer_ms: 4100, timed_out: false },
+      ].slice(0, over.roundIndex + (locked ? 1 : 0));
+      return game('how_many', {
+        lookStartEpoch: lookAgoMs === null ? null : now - lookAgoMs,
+        flashStartEpoch: null,
+        answerStartEpoch: answerAgoMs === null ? null : now - answerAgoMs,
+        lockedEndEpoch: locked ? now + 500 : null,
+        typed: '',
+        rounds,
+        ...rest,
+      });
+    }),
+  ),
+
+  // WP2: Swipe Sort states (intro handled by the ALL_GAMES p6-intro loop above).
+  phone('p6-swipe_sort-item', () => {
+    const now = Date.now();
+    return game('swipe_sort', {
+      phase: 'play',
+      gameStartEpoch: now - 6_000,
+      itemIndex: 8,
+      itemStartEpoch: now - 120,
+      gapEndEpoch: null,
+      correct: 6,
+      wrong: 1,
+      missed: 1,
+      swipeSumMs: 3120,
+      feedback: null,
+      side: null,
+    });
+  }),
+  phone('p6-swipe_sort-drag', () => {
+    const now = Date.now();
+    return game('swipe_sort', {
+      phase: 'play',
+      gameStartEpoch: now - 14_000,
+      itemIndex: 17,
+      itemStartEpoch: now - 260,
+      gapEndEpoch: null,
+      correct: 13,
+      wrong: 2,
+      missed: 2,
+      swipeSumMs: 6890,
+      feedback: null,
+      side: 'left',
+    });
+  }),
+  phone('p6-swipe_sort-gap', () => {
+    const now = Date.now();
+    return game('swipe_sort', {
+      phase: 'play',
+      gameStartEpoch: now - 20_000,
+      itemIndex: 26,
+      itemStartEpoch: null,
+      gapEndEpoch: now + 90,
+      correct: 19,
+      wrong: 3,
+      missed: 4,
+      swipeSumMs: 9950,
+      feedback: 'correct',
+      side: 'right',
+    });
+  }),
 
   // P7 round result, per game; new best; saving; failed; missed; waiting
   ...ALL_GAMES.map((g, i) =>
