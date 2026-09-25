@@ -1,23 +1,52 @@
 /**
- * H4 Session results and H5 Day boards (`SCREENS.md` H4, H5; ADR-010,
- * ADR-022), one screen for both so the day-board merge can play between
- * them. H4: winner card, then the session board (top 10 by total) with
- * each player's round scores ("–" for a missing round). It stays until the
- * host taps Show day board. Then the ~15 s merge (DESIGN_SYSTEM §6.2),
- * exactly once per tap, as soon as the day boards have loaded: the session
- * rows crack into small tiles, each game's day-board tab appears in turn
- * and the tiles glide into the rows that came from this session, then the
- * first tab settles and the tabs auto-rotate every 8 s, top 10 best per
- * name today; rows from this session stay highlighted for one rotation.
- * A reload onto H5 shows the day boards at once (no merge). New session
- * (from either, even mid-merge, E21) turns the pending session into the lobby.
+ * H4 Session results and H5 Day boards, host v3 "Stage and Rail" (ADR-135,
+ * `docs/plans/host-v3.md` §4.5–§4.6; ADR-010, ADR-022). One screen for both,
+ * so the day-board merge can play between them.
+ *
+ * H4, the podium moment: the side column holds the winner (name at t5, then the
+ * total as the screen's one hero number at t7, framed by the facing chevrons
+ * like the lobby code, with an amber rule under the digits), then #2 and #3 as
+ * two plain lines; the session table (top 10 by total, one visible
+ * column per round, "–" for a missing round) fills the other columns in ten
+ * fixed slots. When H4 first appears the rows cascade in and count up, then
+ * the winner's total counts up, then the celebrate shatter plays on the
+ * winner once: the session's one celebration. A 3 s poll refresh or a reload
+ * onto H4 (remembered for this tab) never replays it. It stays until the host
+ * taps Show day board.
+ *
+ * Then the ~15 s merge (DESIGN_SYSTEM §6.2), exactly once per tap, as soon as
+ * the day boards have loaded: the session rows crack into small tiles, each
+ * game's day-board tab appears in turn and the tiles glide into the rows that
+ * came from this session, then the first tab settles. H5: "Today's best" and
+ * the game tabs across the top of the board, the active tab underlined in
+ * blue ("live") with the underline filling over the 8 s until the next tab;
+ * ten slots, best per name today; rows from this session keep a blue
+ * inline-start rule for the first rotation. Tab changes after the merge
+ * crossfade. A reload onto H5 shows the day boards at once (no merge). New
+ * session (from either, even mid-merge, E21) turns the pending session into
+ * the lobby.
  *
  * The merge stage is the board area only, and its tiles are clipped to it:
- * the header (with the logo, §5) and the host controls are never hidden or covered.
+ * the brand strip (with the logo, §5) and the rail are never hidden or covered.
+ *
+ * Render budget (`TESTING.md` §9): an idle H4 commits nothing (polls keep equal
+ * rows, count-ups write the DOM from rAF, the celebrate and the tab underline
+ * run imperatively); H5 commits once per rotation.
  */
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { BOARD_POLL_MS, DAYBOARD_ROTATE_MS } from '../config';
-import { formatNumber, useT } from '../i18n';
+import { formatNumber, translate, useLang, useT } from '../i18n';
 import {
   adminNewSession,
   adminShowDayBoard,
@@ -32,12 +61,77 @@ import {
 } from '../lib/api';
 import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
 import { replaceEqualDeep } from '../lib/equal';
-import { DayBoardMerge } from '../effects/shatter';
-import { useRevealRows } from '../components/useRevealRows';
-import styles from './host.module.css';
+import {
+  DayBoardMerge,
+  playCelebrate,
+  useDensity,
+  useReducedMotion,
+  type ShatterHandle,
+} from '../effects/shatter';
+import hostStyles from './host.module.css';
+import styles from './results.module.css';
 import { BoardTable } from './BoardTable';
+import { useCountUp } from './countUp';
 import { CornerCode, Framed, HostHeader, NextGamesButton, OperatorBar } from './common';
 import type { HostController, HostData } from './useHost';
+
+// ------------------------------------------------------------------ timing
+
+/** A duration token from tokens.css in ms; the reduced-motion rules zero them. Fallback where no stylesheet is loaded (unit tests). */
+function tokenMs(name: string, fallback: number): number {
+  try {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const n = parseFloat(raw);
+    if (Number.isFinite(n)) return raw.endsWith('ms') ? n : raw.endsWith('s') ? n * 1000 : fallback;
+  } catch {
+    // no DOM styles
+  }
+  return fallback;
+}
+
+/** Mirrors tokens.css (§3.4): used only where the tokens can't be read. */
+const FALLBACK = { countup: 1200, countupHero: 1600, stagger: 60, step: 300 } as const;
+
+/** The pause between the table settling and the winner's count-up (plan §4.5). */
+const HERO_AFTER_ROWS_MS = 300;
+
+/** Board slots on the projector (plan §2.1 rule 5). */
+const SLOTS = 10;
+
+/**
+ * When the winner's total starts counting: after the table's rows have cascaded in
+ * and counted up (the last row starts `(n − 1) · stagger` after the first).
+ */
+function heroDelayMs(rows: number): number {
+  const n = Math.min(Math.max(rows, 1), SLOTS);
+  return (
+    (n - 1) * tokenMs('--stagger-row', FALLBACK.stagger) +
+    tokenMs('--dur-countup', FALLBACK.countup) +
+    HERO_AFTER_ROWS_MS
+  );
+}
+
+// A reload onto H4 shows the podium settled (no count-up, no celebrate): the session whose
+// podium this tab has already played is remembered for the tab (sessionStorage survives a reload).
+const PODIUM_PLAYED_KEY = 'gdg.v1.host-podium-played';
+
+function podiumPlayed(sessionId: string): boolean {
+  try {
+    return sessionStorage.getItem(PODIUM_PLAYED_KEY) === sessionId;
+  } catch {
+    return false;
+  }
+}
+
+function markPodiumPlayed(sessionId: string): void {
+  try {
+    sessionStorage.setItem(PODIUM_PLAYED_KEY, sessionId);
+  } catch {
+    // private mode / blocked storage: a reload just plays it again
+  }
+}
+
+// ------------------------------------------------------------------ data
 
 function useNewSession(host: HostController) {
   const [busy, setBusy] = useState(false);
@@ -161,6 +255,11 @@ export interface SessionEndPreview {
   sessionScores?: SessionScoreRow[];
 }
 
+const NO_ROWS: readonly RankedRow[] = [];
+const NO_BREAKDOWN: readonly RoundScoreRow[] = [];
+
+// ------------------------------------------------------------------ the screen
+
 export function HostSessionEnd({
   host,
   data,
@@ -172,9 +271,12 @@ export function HostSessionEnd({
 }) {
   const t = useT();
   const { session } = data;
-  const lineup = roundGames(data);
+  // Stable across re-renders (the boards below are memoised on it).
+  const lineupKey = roundGames(data).join(',');
+  const lineup = useMemo(() => lineupKey.split(',') as GameId[], [lineupKey]);
   const newSession = useNewSession(host);
   const onDayBoard = host.screen === 'dayboard';
+  const reduced = useReducedMotion();
 
   // H4 → H5 while this screen is up plays the merge exactly once; a reload onto H5 doesn't
   // (derived state). Reaching the day board is sticky: a stale reload that briefly says
@@ -200,13 +302,15 @@ export function HostSessionEnd({
   );
   const fetchedDay = useDayBoardData(host, data, lineup, live && onDayBoard);
   const results = preview
-    ? { board: preview.board ?? null, breakdown: preview.breakdown ?? [] }
+    ? { board: preview.board ?? null, breakdown: preview.breakdown ?? NO_BREAKDOWN }
     : fetchedResults;
   const day = preview
     ? { rows: preview.dayRows ?? {}, sessionScores: preview.sessionScores ?? [] }
     : fetchedDay;
 
-  const dayReady = preview ? lineup.every((g) => preview.dayRows?.[g] !== undefined) : fetchedDay.ready;
+  const dayReady = preview
+    ? lineup.every((g) => preview.dayRows?.[g] !== undefined)
+    : fetchedDay.ready;
   useEffect(() => {
     if (!awaitingData) return;
     const timer = window.setTimeout(() => setWaitedOut(true), MERGE_DATA_WAIT_MS);
@@ -217,18 +321,80 @@ export function HostSessionEnd({
     setMergeRun((n) => n + 1);
   }
 
+  // Merge sources: the session table's filled rows (not its empty slots); targets: the rows of
+  // the shown tab that came from this session (highlighted).
+  const resultsArea = useRef<HTMLDivElement>(null);
+  const sources = () =>
+    Array.from(resultsArea.current?.querySelectorAll('tbody tr:not([data-slot])') ?? []);
+  const dayBoardArea = useRef<HTMLDivElement>(null);
+  const targets = () =>
+    Array.from(dayBoardArea.current?.querySelectorAll('[data-highlight="true"]') ?? []);
+
+  // Tab changes after the merge crossfade: the outgoing board is copied and fades out over
+  // the incoming one (DOM only, no extra commit). The merge does its own fades.
+  const fades = useRef(new Set<HTMLElement>());
+  const fadeOutBoard = useCallback(() => {
+    const el = dayBoardArea.current;
+    const parent = el?.parentElement;
+    const ms = tokenMs('--dur-step', FALLBACK.step);
+    if (!el || !parent || reduced || ms <= 0 || typeof el.animate !== 'function') return;
+    const ghost = el.cloneNode(true) as HTMLElement;
+    for (const node of [ghost, ...Array.from(ghost.querySelectorAll('*'))]) {
+      node.removeAttribute('data-testid');
+      node.removeAttribute('data-highlight');
+      node.removeAttribute('data-reveal-key');
+      node.removeAttribute('id');
+    }
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.setAttribute('inert', '');
+    ghost.classList.add(styles.ghost);
+    Object.assign(ghost.style, {
+      top: `${el.offsetTop}px`,
+      left: `${el.offsetLeft}px`,
+      width: `${el.offsetWidth}px`,
+      height: `${el.offsetHeight}px`,
+    });
+    parent.appendChild(ghost);
+    fades.current.add(ghost);
+    const remove = () => {
+      ghost.remove();
+      fades.current.delete(ghost);
+    };
+    const anim = ghost.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: ms,
+      easing: 'ease-out',
+      fill: 'forwards',
+    });
+    anim.onfinish = remove;
+    window.setTimeout(remove, ms + 100);
+  }, [reduced]);
+  useEffect(() => {
+    const set = fades.current;
+    return () => {
+      set.forEach((g) => g.remove());
+      set.clear();
+    };
+  }, []);
+
   const [tab, setTab] = useState(0);
   const [rotations, setRotations] = useState(0);
-  // Tabs auto-rotate every 8 s once the merge is over (the merge drives the tabs while it plays).
+  // Tabs auto-rotate every 8 s once the merge is over (the merge drives the tabs while it
+  // plays). The wait restarts on every tab change, so a tapped tab also gets its full 8 s.
   const rotating = view === 'dayboard' && !merging;
   useEffect(() => {
     if (!rotating) return;
-    const timer = window.setInterval(() => {
+    const timer = window.setTimeout(() => {
+      fadeOutBoard();
       setTab((i) => (i + 1) % Math.max(1, lineup.length));
       setRotations((n) => n + 1);
     }, DAYBOARD_ROTATE_MS);
-    return () => window.clearInterval(timer);
-  }, [rotating, lineup.length]);
+    return () => window.clearTimeout(timer);
+  }, [rotating, tab, rotations, lineup.length, fadeOutBoard]);
+  const pickTab = (i: number) => {
+    if (i === tab) return;
+    if (!merging) fadeOutBoard();
+    setTab(i);
+  };
 
   const [showing, setShowing] = useState(false);
   const showDayBoard = async () => {
@@ -242,18 +408,10 @@ export function HostSessionEnd({
     }
   };
 
-  // Merge sources: the session board's rows; targets: the rows of the shown tab that came
-  // from this session (highlighted).
-  const resultsArea = useRef<HTMLDivElement>(null);
-  const sources = () => Array.from(resultsArea.current?.querySelectorAll('tbody tr') ?? []);
-  const dayBoardArea = useRef<HTMLDivElement>(null);
-  const targets = () =>
-    Array.from(dayBoardArea.current?.querySelectorAll('[data-highlight="true"]') ?? []);
-
   const newSessionButton = (primary: boolean) => (
     <button
       type="button"
-      className={primary ? styles.primary : styles.textButton}
+      className={primary ? hostStyles.primary : hostStyles.textButton}
       onClick={() => void newSession.run()}
       disabled={newSession.busy}
       data-testid="host-new-session"
@@ -266,36 +424,22 @@ export function HostSessionEnd({
     <>
       <HostHeader
         withLogo
-        title={
-          <h1 className={styles.headerTitle}>
-            {t(view === 'results' ? 'results.title' : 'dayboard.title')}
-          </h1>
-        }
         end={<CornerCode pending={data.pending} joined={data.pendingPlayers} />}
       />
-      <main className={styles.body}>
+      <main className={styles.stage}>
         {view === 'dayboard' ? (
-          <nav className={styles.tabs} role="tablist" aria-orientation="vertical" data-testid="host-dayboard-tabs">
-            {lineup.map((g, i) => (
-              <button
-                key={g}
-                type="button"
-                role="tab"
-                aria-selected={i === tab}
-                className={`${styles.tab} ${i === tab ? styles.tabOn : ''}`}
-                onClick={() => setTab(i)}
-                data-testid={`dayboard-tab-${g}`}
-              >
-                {t(`game.${g}.name`)}
-              </button>
-            ))}
-          </nav>
+          <DayBoardTabs
+            lineup={lineup}
+            tab={tab}
+            onPick={pickTab}
+            progress={rotating && !reduced ? `${tab}:${rotations}` : null}
+          />
         ) : null}
         <DayBoardMerge
           trigger={mergeRun}
           games={lineup.map((id) => ({ id, targets }))}
           sources={sources}
-          className={`${styles.mergeStage} ${view === 'dayboard' ? styles.mergeStageBoard : ''}`}
+          className={styles.mergeStage}
           data-testid="host-merge-stage"
           onFragmented={() => setView('dayboard')}
           onGameStart={(_, i) => setTab(i)}
@@ -306,14 +450,16 @@ export function HostSessionEnd({
           }}
         >
           {view === 'results' ? (
-            <SessionResultsBoard
+            <SessionResults
               ref={resultsArea}
+              sessionId={session.id}
               lineup={lineup}
               board={results.board}
               breakdown={results.breakdown}
             />
           ) : (
             <DayBoardPanel
+              key={lineup[tab] ?? lineup[0]}
               ref={dayBoardArea}
               game={lineup[tab] ?? lineup[0]}
               rows={day.rows}
@@ -330,7 +476,7 @@ export function HostSessionEnd({
             {newSessionButton(false)}
             <button
               type="button"
-              className={styles.primary}
+              className={hostStyles.primary}
               onClick={() => void showDayBoard()}
               disabled={showing}
               data-testid="host-show-day-board"
@@ -346,162 +492,289 @@ export function HostSessionEnd({
   );
 }
 
-// ------------------------------------------------------------------ H4 board
+// ------------------------------------------------------------------ H4
 
-const SessionResultsBoard = forwardRef<
-  HTMLDivElement,
-  {
-    lineup: readonly GameId[];
-    board: RankedRow[] | null;
-    breakdown: readonly RoundScoreRow[];
-  }
->(function SessionResultsBoard({ lineup, board, breakdown }, ref) {
-  const t = useT();
-  const winner = board?.[0] ?? null;
-  // Rows shatter in top to bottom as the board appears (DESIGN_SYSTEM §6.2).
-  const bodyRef = useRevealRows<HTMLTableSectionElement>((board ?? []).map((r) => r.playerRowId));
+/** The winner's total: the screen's hero number, counting up once, with an amber rule under the digits. */
+function HeroTotal({ value, delay, animate }: { value: number; delay: number; animate: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  // Only the first count waits for the table; a late score (E22) counts on at once.
+  const first = useRef(true);
+  useCountUp(ref, value, {
+    duration: tokenMs('--dur-countup-hero', FALLBACK.countupHero),
+    delay: first.current ? delay : 0,
+    enabled: animate,
+  });
+  useLayoutEffect(() => {
+    first.current = false;
+  }, []);
+  const final = formatNumber(value);
+  // Reserve the final width so the count-up never reflows the podium (tabular digits are 1ch).
+  const digits = final.replace(/\D/g, '').length;
+  const width = `${digits + (final.length - digits) * 0.5}ch`;
   return (
-    <div ref={ref} className={`${styles.split} ${styles.results} ${styles.fill}`} data-testid="host-results">
-      <aside className={styles.side}>
-        {winner ? (
-          <div className={styles.winner} data-testid="host-winner">
-            <span className={styles.eyebrow}>{t('host.results.winner')}</span>
-            <Framed>
-              <div className={styles.winnerBody}>
-                <bdi className={styles.winnerName}>
-                  {displayName(winner.name, winner.displaySuffix)}
-                </bdi>
-                <span className={styles.winnerScore}>{formatNumber(winner.value)}</span>
-              </div>
-            </Framed>
+    <span className={styles.heroTotal} dir="ltr" style={{ minInlineSize: width }}>
+      <span ref={ref} data-testid="host-winner-total">
+        {final}
+      </span>
+    </span>
+  );
+}
+
+/** H4. Memoised (its props are stable across the host's re-renders), like the boards in it. */
+const SessionResults = memo(
+  forwardRef<
+    HTMLDivElement,
+    {
+      sessionId: string;
+      lineup: readonly GameId[];
+      board: RankedRow[] | null;
+      breakdown: readonly RoundScoreRow[];
+    }
+  >(function SessionResults({ sessionId, lineup, board, breakdown }, ref) {
+    const t = useT();
+    // The columns depend on the language, not on `t` (a new function every render).
+    const { lang } = useLang();
+    const reduced = useReducedMotion();
+    const density = useDensity('projector');
+    // The entry plays once per session on this tab (not after a reload, never on a poll).
+    const [animate] = useState(() => !podiumPlayed(sessionId));
+    const winner = board?.[0] ?? null;
+    const hasWinner = winner !== null;
+    // Read when a count-up or the celebrate starts, so a later value doesn't reschedule them.
+    const heroDelay = heroDelayMs(board?.length ?? 0);
+
+    // The celebrate shatter on the winner, once, when the hero count-up has landed (the
+    // reduced-motion fallback is a static amber ring). Imperative: no React state.
+    const hero = useRef<HTMLDivElement>(null);
+    const celebrated = useRef(false);
+    const latest = useRef({ reduced, density });
+    latest.current = { reduced, density };
+    useEffect(() => {
+      if (!hasWinner || celebrated.current) return;
+      if (!animate) {
+        celebrated.current = true;
+        return;
+      }
+      markPodiumPlayed(sessionId);
+      let handle: ShatterHandle | null = null;
+      const at = reduced ? 0 : heroDelay + tokenMs('--dur-countup-hero', FALLBACK.countupHero);
+      const timer = window.setTimeout(() => {
+        celebrated.current = true;
+        const el = hero.current;
+        if (el)
+          handle = playCelebrate(el, {
+            density: latest.current.density,
+            reducedMotion: latest.current.reduced,
+          });
+      }, at);
+      return () => {
+        window.clearTimeout(timer);
+        handle?.cancel();
+      };
+      // Once per mount: late scores and poll refreshes never replay it.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasWinner]);
+
+    const scoreOf = useMemo(() => {
+      const m = new Map<string, number>();
+      for (const b of breakdown) m.set(`${b.playerRowId}|${b.game}`, b.score);
+      return m;
+    }, [breakdown]);
+    const columns = useMemo(
+      () =>
+        lineup.map((g) => ({
+          key: g,
+          head: translate(lang, `game.${g}.name`),
+          className: styles.roundCol,
+          value: (row: RankedRow): ReactNode => {
+            const s = scoreOf.get(`${row.playerRowId}|${g}`);
+            return (
+              <span data-testid="board-round-score" data-game={g}>
+                {s === undefined ? translate(lang, 'results.breakdown_missing') : formatNumber(s)}
+              </span>
+            );
+          },
+        })),
+      [lineup, scoreOf, lang],
+    );
+
+    const runnersUp = board ? board.slice(1, 3) : NO_ROWS;
+    return (
+      <div ref={ref} className={styles.results} data-testid="host-results">
+        <aside className={styles.podium}>
+          <div className={styles.eyebrows}>
+            <h1 className={styles.eyebrow}>{t('results.eyebrow')}</h1>
+            {winner ? <p className={styles.eyebrow}>{t('host.results.winner')}</p> : null}
           </div>
-        ) : null}
-      </aside>
-      <section className={styles.boardArea}>
-        {board && board.length > 0 ? (
-          <table
-            className={`${styles.table} ${styles.sessionTable}`}
-            data-testid="host-session-board"
-          >
-            <thead>
-              <tr>
-                <th scope="col" className={styles.colRank}>
-                  {t('host.board.rank')}
-                </th>
-                <th scope="col" className={styles.colName}>
-                  {t('host.board.player')}
-                </th>
-                {lineup.map((g) => (
-                  <th key={g} scope="col" className={`${styles.colScore} ${styles.colRound}`}>
-                    {t(`game.${g}.name`)}
-                  </th>
-                ))}
-                <th scope="col" className={styles.colScore}>
-                  {t('host.results.total')}
-                </th>
-              </tr>
-            </thead>
-            <tbody ref={bodyRef}>
-              {board.map((r) => (
-                <tr
-                  key={r.playerRowId}
-                  className={`${styles.row} ${r.rank === 1 ? styles.rowFirst : ''} ${r.rank <= 3 ? styles.rowPodium : ''}`}
-                  data-testid="board-row"
-                  data-reveal-key={r.playerRowId}
-                >
-                  <td className={styles.colRank}>{formatNumber(r.rank)}</td>
-                  <td className={styles.colName}>
-                    <bdi data-testid="board-name">{displayName(r.name, r.displaySuffix)}</bdi>
-                  </td>
-                  {lineup.map((g) => {
-                    const s = breakdown.find(
-                      (b) => b.playerRowId === r.playerRowId && b.game === g,
-                    );
-                    return (
-                      <td
-                        key={g}
-                        className={`${styles.colScore} ${styles.colRound}`}
-                        data-testid="board-round-score"
-                        data-game={g}
-                      >
-                        {s ? formatNumber(s.score) : t('results.breakdown_missing')}
-                      </td>
-                    );
-                  })}
-                  <td className={styles.colScore} data-testid="board-score">
-                    {formatNumber(r.value)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : board ? (
-          <p className={styles.emptyBoard} data-testid="host-no-scores">
-            {t('results.no_scores')}
-          </p>
-        ) : null}
-      </section>
-    </div>
-  );
-});
-
-// ------------------------------------------------------------------ H5 board
-
-const DayBoardPanel = forwardRef<
-  HTMLDivElement,
-  {
-    game: GameId;
-    rows: Record<string, DayBoardRow[]>;
-    sessionScores: readonly SessionScoreRow[];
-    /** Rows from this session are highlighted during the merge and the first rotation. */
-    firstCycle: boolean;
-    /** false while the merge owns the rows (it hides and reassembles them itself). */
-    reveal: boolean;
-  }
->(function DayBoardPanel({ game, rows, sessionScores, firstCycle, reveal }, ref) {
-  const t = useT();
-  const current = rows[game] ?? null;
-  const ranked: RankedRow[] = useMemo(
-    () =>
-      (current ?? []).map((r, i) => ({
-        playerRowId: r.nameKey,
-        name: r.name,
-        displaySuffix: null, // day boards show the name without the suffix (SCORING §6 rule 5)
-        value: r.score,
-        rank: i + 1,
-        isOwn: false,
-        detached: false,
-      })),
-    [current],
-  );
-  const highlight = useMemo(
-    () =>
-      new Set(
-        firstCycle && current
-          ? current.filter((r) => fromSession(r, game, sessionScores)).map((r) => r.nameKey)
-          : [],
-      ),
-    [firstCycle, current, game, sessionScores],
-  );
-  return (
-    <div
-      ref={ref}
-      className={`${styles.dayboard} ${styles.fill}`}
-      data-testid="host-dayboard"
-      data-game={game}
-    >
-      <div className={styles.boardArea} key={game}>
-        {ranked.length > 0 ? (
+          {winner ? (
+            <>
+              {/* The name, then the hero number framed by the chevrons like the lobby code. */}
+              <div ref={hero} className={styles.winner} data-testid="host-winner">
+                <div className={styles.winnerName}>
+                  <bdi>{displayName(winner.name, winner.displaySuffix)}</bdi>
+                </div>
+                <Framed className={styles.frame}>
+                  <HeroTotal value={winner.value} delay={heroDelay} animate={animate} />
+                </Framed>
+              </div>
+              {runnersUp.length > 0 ? (
+                <ol className={styles.runnersUp}>
+                  {runnersUp.map((r) => (
+                    <li key={r.playerRowId} className={styles.runnerUp}>
+                      <span className={styles.runnerRank}>{formatNumber(r.rank)}</span>
+                      <span className={styles.runnerName}>
+                        <bdi>{displayName(r.name, r.displaySuffix)}</bdi>
+                      </span>
+                      <span className={styles.runnerScore}>{formatNumber(r.value)}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
+            </>
+          ) : board ? (
+            <p className={styles.sideEmpty}>{t('results.no_scores')}</p>
+          ) : null}
+        </aside>
+        <section
+          className={styles.sessionArea}
+          data-testid={board && board.length === 0 ? 'host-no-scores' : undefined}
+        >
           <BoardTable
-            rows={ranked}
-            reveal={reveal}
-            testId="host-day-board"
-            highlightIds={highlight}
+            rows={board ?? NO_ROWS}
+            testId="host-session-board"
+            columns={columns}
+            slots={SLOTS}
+            countUp={animate}
           />
-        ) : current ? (
-          <p className={styles.emptyBoard}>{t('host.dayboard.empty')}</p>
-        ) : null}
+        </section>
       </div>
+    );
+  }),
+);
+
+// ------------------------------------------------------------------ H5
+
+/**
+ * "Today's best" and one tab per game of the session, across the top of the board.
+ * `progress` (a new value per rotation, null while the merge plays or under reduced
+ * motion) runs the active tab's underline from 0 to full over DAYBOARD_ROTATE_MS.
+ */
+function DayBoardTabs({
+  lineup,
+  tab,
+  onPick,
+  progress,
+}: {
+  lineup: readonly GameId[];
+  tab: number;
+  onPick(i: number): void;
+  progress: string | null;
+}) {
+  const t = useT();
+  const hintId = useId();
+  return (
+    <div className={styles.dayHead}>
+      <h1 className={styles.eyebrow}>{t('dayboard.title')}</h1>
+      <span className={styles.dayRule} aria-hidden="true" />
+      <nav
+        className={styles.tabs}
+        role="tablist"
+        aria-label={t('dayboard.title')}
+        data-testid="host-dayboard-tabs"
+      >
+        {lineup.map((g, i) => (
+          <button
+            key={g}
+            type="button"
+            role="tab"
+            aria-selected={i === tab}
+            aria-describedby={i === tab && progress !== null ? hintId : undefined}
+            className={`${styles.tab} ${i === tab ? styles.tabOn : ''}`}
+            onClick={() => onPick(i)}
+            data-testid={`dayboard-tab-${g}`}
+          >
+            {t(`game.${g}.name`)}
+            {i === tab ? (
+              <TabUnderline key={progress ?? 'still'} running={progress !== null} />
+            ) : null}
+          </button>
+        ))}
+      </nav>
+      {progress !== null ? (
+        <span id={hintId} className="visually-hidden">
+          {t('host.dayboard.next_in', { s: formatNumber(DAYBOARD_ROTATE_MS / 1000) })}
+        </span>
+      ) : null}
     </div>
   );
-});
+}
+
+/** The active tab's blue underline; while `running` it fills toward the inline end over the rotation (WAAPI, no commits). */
+function TabUnderline({ running }: { running: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!running || !el || typeof el.animate !== 'function') return;
+    const anim = el.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], {
+      duration: DAYBOARD_ROTATE_MS,
+      easing: 'linear',
+      fill: 'both',
+    });
+    return () => anim.cancel();
+  }, [running]);
+  return <span ref={ref} className={styles.tabUnderline} aria-hidden="true" />;
+}
+
+/** One game's day board (keyed per game by the caller, so a tab change cascades its rows in). */
+const DayBoardPanel = memo(
+  forwardRef<
+    HTMLDivElement,
+    {
+      game: GameId;
+      rows: Record<string, DayBoardRow[]>;
+      sessionScores: readonly SessionScoreRow[];
+      /** Rows from this session are marked during the merge and the first rotation. */
+      firstCycle: boolean;
+      /** false while the merge owns the rows: no entry animation (it hides and reassembles them itself). */
+      reveal: boolean;
+    }
+  >(function DayBoardPanel({ game, rows, sessionScores, firstCycle, reveal }, ref) {
+    const t = useT();
+    const current = rows[game] ?? null;
+    const ranked: RankedRow[] = useMemo(
+      () =>
+        (current ?? []).map((r, i) => ({
+          playerRowId: r.nameKey,
+          name: r.name,
+          displaySuffix: null, // day boards show the name without the suffix (SCORING §6 rule 5)
+          value: r.score,
+          rank: i + 1,
+          isOwn: false,
+          detached: false,
+        })),
+      [current],
+    );
+    const highlight = useMemo(
+      () =>
+        new Set(
+          firstCycle && current
+            ? current.filter((r) => fromSession(r, game, sessionScores)).map((r) => r.nameKey)
+            : [],
+        ),
+      [firstCycle, current, game, sessionScores],
+    );
+    return (
+      <div ref={ref} className={styles.dayboard} data-testid="host-dayboard" data-game={game}>
+        <BoardTable
+          rows={ranked}
+          reveal={reveal}
+          testId="host-day-board"
+          highlightIds={highlight}
+          slots={SLOTS}
+          countUp={false}
+          emptyText={current && current.length === 0 ? t('host.dayboard.empty') : undefined}
+        />
+      </div>
+    );
+  }),
+);

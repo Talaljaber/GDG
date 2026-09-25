@@ -1,9 +1,16 @@
 import { act, render, screen } from '@testing-library/react';
-import { StrictMode, type ReactNode } from 'react';
+import { Profiler, StrictMode, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SHATTER_LOGO_CLASS } from '../effects/shatter';
-import { clearMatchMedia, layers, mockBoxes, mockReducedMotion, shardCount, stubAnimate } from '../effects/shatter/test-utils';
-import { LangProvider } from '../i18n';
+import {
+  clearMatchMedia,
+  layers,
+  mockBoxes,
+  mockReducedMotion,
+  shardCount,
+  stubAnimate,
+} from '../effects/shatter/test-utils';
+import { formatNumber, LangProvider } from '../i18n';
 import type { HostController, HostData } from './useHost';
 
 const fetchSessionBoard = vi.fn();
@@ -35,6 +42,19 @@ vi.mock('../effects/shatter/merge', async (importOriginal) => {
   };
 });
 
+// Counts celebrate plays (the real one still runs).
+const celebratePlays = vi.fn();
+vi.mock('../effects/shatter/plays', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../effects/shatter/plays')>();
+  return {
+    ...actual,
+    playCelebrate: (...a: Parameters<typeof actual.playCelebrate>) => {
+      celebratePlays();
+      return actual.playCelebrate(...a);
+    },
+  };
+});
+
 import { HostSessionEnd } from './Results';
 import { HostMotionProvider } from './motion';
 
@@ -48,7 +68,10 @@ const data = {
   pendingPlayers: 0,
 } as unknown as HostData;
 
-function hostOn(screenName: 'results' | 'dayboard', versions = { scoresVersion: 0, dayVersion: 0 }): HostController {
+function hostOn(
+  screenName: 'results' | 'dayboard',
+  versions = { scoresVersion: 0, dayVersion: 0 },
+): HostController {
   return { screen: screenName, act: vi.fn(), ...versions } as unknown as HostController;
 }
 
@@ -89,7 +112,9 @@ beforeEach(() => {
   anim = stubAnimate();
   boxes = mockBoxes();
   localStorage.clear();
+  sessionStorage.clear();
   mergePlays.mockClear();
+  celebratePlays.mockClear();
   fetchSessionBoard.mockResolvedValue({
     top: [
       { playerRowId: 'p1', name: 'Omar', displaySuffix: null, value: 2400 },
@@ -108,7 +133,9 @@ beforeEach(() => {
     own: null,
     total: 2,
   }));
-  fetchSessionScores.mockResolvedValue(GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })));
+  fetchSessionScores.mockResolvedValue(
+    GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })),
+  );
 });
 
 afterEach(() => {
@@ -122,7 +149,9 @@ afterEach(() => {
 
 describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
   it('results stay until Show day board; then the ~15 s merge walks the tabs and settles', async () => {
-    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
+      wrapper: Wrap,
+    });
     await flush();
     expect(screen.getByTestId('host-results')).toBeInTheDocument();
     advance(60_000); // nothing moves on by itself
@@ -140,7 +169,8 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     advance(1500);
     expect(screen.queryByTestId('host-results')).toBeNull();
     expect(shownGame()).toBe(GAMES[0]);
-    const omarRow = () => screen.getAllByTestId('board-row').find((r) => r.textContent?.includes('Omar'));
+    const omarRow = () =>
+      screen.getAllByTestId('board-row').find((r) => r.textContent?.includes('Omar'));
     expect(omarRow()).toHaveAttribute('data-highlight', 'true');
     advance(200); // targets read: the new rows wait for their shards
     expect(omarRow()?.style.opacity).toBe('0');
@@ -163,7 +193,9 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
 
   it('reduced motion: a crossfade straight to the first day board, then the normal rotation', async () => {
     mockReducedMotion(true);
-    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
+      wrapper: Wrap,
+    });
     await flush();
     rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
     await flush();
@@ -191,7 +223,9 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
     );
     const pages = GAMES.map(() => deferred<unknown>());
     const scores = deferred<unknown>();
-    fetchDayBoard.mockImplementation((_day: string, game: string) => pages[GAMES.indexOf(game as never)].promise);
+    fetchDayBoard.mockImplementation(
+      (_day: string, game: string) => pages[GAMES.indexOf(game as never)].promise,
+    );
     fetchSessionScores.mockImplementation(() => scores.promise);
     const page = {
       top: [
@@ -201,7 +235,9 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
       own: null,
       total: 2,
     };
-    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: StrictWrap });
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
+      wrapper: StrictWrap,
+    });
     await flush();
     rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
     await flush();
@@ -214,17 +250,29 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
       await flush();
     }
     expect(mergePlays).not.toHaveBeenCalled();
-    scores.resolve(GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })));
+    scores.resolve(
+      GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })),
+    );
     await flush();
     expect(mergePlays).toHaveBeenCalledTimes(1);
     expect(layers('merge')).toHaveLength(1);
 
     // Mid-merge: new scores of the day, hidden names, fresh host data objects, a stale "results".
-    fetchDayBoard.mockImplementation(async () => ({ ...page, top: page.top.map((r) => ({ ...r })) }));
-    fetchSessionScores.mockResolvedValue(GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })));
+    fetchDayBoard.mockImplementation(async () => ({
+      ...page,
+      top: page.top.map((r) => ({ ...r })),
+    }));
+    fetchSessionScores.mockResolvedValue(
+      GAMES.map((game) => ({ playerRowId: 'p1', game, score: 900, createdAt: AT, name: 'Omar' })),
+    );
     for (let t = 0, v = 1; t < 16_000; t += 1000, v++) {
       const stale = t === 6000;
-      rerender(<HostSessionEnd host={hostOn(stale ? 'results' : 'dayboard', { scoresVersion: v, dayVersion: v })} data={{ ...data }} />);
+      rerender(
+        <HostSessionEnd
+          host={hostOn(stale ? 'results' : 'dayboard', { scoresVersion: v, dayVersion: v })}
+          data={{ ...data }}
+        />,
+      );
       await flush();
       advance(1000);
     }
@@ -236,7 +284,9 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
 
   it('plays anyway (once) when the day boards are slow to load', async () => {
     fetchDayBoard.mockImplementation(() => new Promise(() => {}));
-    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
+      wrapper: Wrap,
+    });
     await flush();
     rerender(<HostSessionEnd host={hostOn('dayboard')} data={data} />);
     await flush();
@@ -250,7 +300,9 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
   });
 
   it('the logo is shatter-safe and outside the merge stage (never hidden or covered)', async () => {
-    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
+      wrapper: Wrap,
+    });
     await flush();
     const logo = screen.getByTestId('logo');
     expect(logo).toHaveClass(SHATTER_LOGO_CLASS);
@@ -267,9 +319,11 @@ describe('H4 → H5 day-board merge (ADR-010, DESIGN_SYSTEM §6.2)', () => {
 
 describe('host "Reduce motion" toggle (SCREENS H6)', () => {
   it('switches the effects to their fallbacks, sets data-motion and is remembered', async () => {
-    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    const { rerender } = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
+      wrapper: Wrap,
+    });
     await flush();
-    advance(2000); // the H4 rows have shattered in (full motion so far)
+    advance(2000); // the H4 rows have cascaded in (full motion so far; no shards on rows)
     expect(layers()).toHaveLength(0);
     act(() => screen.getByTestId('host-settings').click()); // the toggle lives in the Settings menu
     const toggle = screen.getByTestId('host-reduced-motion');
@@ -284,5 +338,227 @@ describe('host "Reduce motion" toggle (SCREENS H6)', () => {
     expect(shardCount()).toBe(0);
     advance(100);
     expect(shownGame()).toBe(GAMES[0]);
+  });
+});
+
+describe('H4 podium (host v3 plan §4.5)', () => {
+  // The count-ups run on requestAnimationFrame + performance.now(): fake those too.
+  beforeEach(() => {
+    vi.useRealTimers();
+    vi.useFakeTimers({
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'Date',
+        'performance',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+      ],
+    });
+  });
+
+  const total = () => screen.getByTestId('host-winner-total').textContent ?? '';
+  const board = (omar: number) => ({
+    top: [
+      { playerRowId: 'p1', name: 'Omar', displaySuffix: null, value: omar },
+      { playerRowId: 'p2', name: 'Lina', displaySuffix: null, value: 2100 },
+    ],
+    own: null,
+    total: 2,
+  });
+
+  it('the winner total counts up after the rows, ends on the formatted total, then the celebrate plays once and never on a poll refresh', async () => {
+    render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    await flush();
+    expect(screen.getByTestId('host-winner')).toHaveTextContent('Omar');
+    // The hero holds while the table's rows cascade in and count up.
+    expect(total()).toBe('0');
+    advance(1000);
+    expect(total()).toBe('0');
+    advance(1500); // mid-count
+    const mid = Number(total().replace(/,/g, ''));
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(2400);
+    expect(celebratePlays).not.toHaveBeenCalled();
+    advance(700); // the hero has landed: exactly the formatted total, then the celebrate
+    expect(total()).toBe(formatNumber(2400));
+    expect(celebratePlays).toHaveBeenCalledTimes(1);
+    expect(layers('celebrate')).toHaveLength(1);
+    expect(shardCount('celebrate')).toBeLessThanOrEqual(48);
+    advance(2000);
+    expect(layers()).toHaveLength(0);
+
+    // 3 s polls with the same rows, then a late score (E22): the total counts on in place,
+    // nothing replays.
+    for (let i = 0; i < 3; i++) {
+      advance(3000);
+      await flush();
+    }
+    fetchSessionBoard.mockResolvedValue(board(2450));
+    advance(3000);
+    await flush();
+    advance(2000);
+    expect(total()).toBe(formatNumber(2450));
+    advance(10_000);
+    await flush();
+    expect(celebratePlays).toHaveBeenCalledTimes(1);
+    expect(layers()).toHaveLength(0);
+  });
+
+  it('a reload onto H4 (same tab) shows the podium settled: no count-up, no celebrate', async () => {
+    const first = render(<HostSessionEnd host={hostOn('results')} data={data} />, {
+      wrapper: Wrap,
+    });
+    await flush();
+    first.unmount(); // the page reloads before the podium has finished
+    render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    await flush();
+    expect(total()).toBe(formatNumber(2400));
+    advance(10_000);
+    expect(celebratePlays).not.toHaveBeenCalled();
+  });
+
+  it('reduced motion: the final total at once and the static ring instead of shards', async () => {
+    mockReducedMotion(true);
+    render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    await flush();
+    expect(total()).toBe(formatNumber(2400));
+    advance(1);
+    expect(celebratePlays).toHaveBeenCalledTimes(1);
+    expect(shardCount()).toBe(0);
+  });
+
+  it('with no scores: the side says so and the table area shows its ten empty slots', async () => {
+    fetchSessionBoard.mockResolvedValue({ top: [], own: null, total: 0 });
+    render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    await flush();
+    expect(screen.queryByTestId('host-winner')).toBeNull();
+    expect(screen.getByTestId('host-results')).toHaveTextContent('No scores this session');
+    expect(
+      screen.getByTestId('host-no-scores').querySelectorAll('tr[data-slot="empty"]'),
+    ).toHaveLength(10);
+    expect(screen.queryAllByTestId('board-row')).toHaveLength(0);
+  });
+
+  it('the session table: one visible head and one score per round, "–" for a missing round', async () => {
+    fetchSessionRoundScores.mockResolvedValue([
+      { playerRowId: 'p1', game: 'stop_the_clock', score: 800 },
+      { playerRowId: 'p1', game: 'odd_one_out', score: 800 },
+      { playerRowId: 'p1', game: 'simon', score: 800 },
+      { playerRowId: 'p2', game: 'stop_the_clock', score: 1000 },
+      { playerRowId: 'p2', game: 'simon', score: 1000 },
+    ]);
+    render(<HostSessionEnd host={hostOn('results')} data={data} />, { wrapper: Wrap });
+    await flush();
+    const table = screen.getByTestId('host-session-board');
+    expect(table.querySelectorAll('thead th[data-column]')).toHaveLength(3);
+    const [omar, lina] = screen.getAllByTestId('board-row');
+    const cells = (row: HTMLElement) =>
+      Array.from(row.querySelectorAll('[data-testid="board-round-score"]')).map(
+        (c) => c.textContent,
+      );
+    expect(cells(omar)).toEqual(['800', '800', '800']);
+    expect(cells(lina)).toEqual(['1,000', '–', '1,000']);
+  });
+});
+
+describe('H5 tabs after the merge', () => {
+  it('rotate every 8 s with the underline filling over the wait; each change crossfades from a copy without test ids', async () => {
+    render(<HostSessionEnd host={hostOn('dayboard')} data={data} />, { wrapper: Wrap });
+    await flush();
+    const underline = () =>
+      anim.calls.filter(
+        (c) =>
+          (c.keyframes as Keyframe[])[0]?.transform === 'scaleX(0)' && c.options.duration === 8000,
+      );
+    expect(underline()).toHaveLength(1);
+    expect(screen.getByTestId(`dayboard-tab-${GAMES[0]}`)).toHaveAttribute('aria-selected', 'true');
+    advance(8000);
+    expect(shownGame()).toBe(GAMES[1]);
+    expect(screen.getByTestId(`dayboard-tab-${GAMES[1]}`)).toHaveAttribute('aria-selected', 'true');
+    expect(underline()).toHaveLength(2);
+    // The outgoing board fades out over the incoming one: a copy, inert and without test ids.
+    const ghosts = document.querySelectorAll('[inert]');
+    expect(ghosts).toHaveLength(1);
+    expect(ghosts[0].querySelector('[data-testid]')).toBeNull();
+    expect(screen.getAllByTestId('host-dayboard')).toHaveLength(1);
+    advance(500);
+    expect(document.querySelectorAll('[inert]')).toHaveLength(0);
+    // A tapped tab gets its full 8 s too.
+    act(() => screen.getByTestId(`dayboard-tab-${GAMES[0]}`).click());
+    expect(shownGame()).toBe(GAMES[0]);
+    advance(7999);
+    expect(shownGame()).toBe(GAMES[0]);
+    advance(1);
+    expect(shownGame()).toBe(GAMES[1]);
+  });
+
+  it('reduced motion: no underline animation and no crossfade copy', async () => {
+    mockReducedMotion(true);
+    render(<HostSessionEnd host={hostOn('dayboard')} data={data} />, { wrapper: Wrap });
+    await flush();
+    advance(8000);
+    expect(shownGame()).toBe(GAMES[1]);
+    expect(document.querySelectorAll('[inert]')).toHaveLength(0);
+    expect(anim.calls.some((c) => (c.keyframes as Keyframe[])[0]?.transform === 'scaleX(0)')).toBe(
+      false,
+    );
+  });
+});
+
+describe('render budget (TESTING.md §9)', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    vi.useFakeTimers({
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'Date',
+        'performance',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+      ],
+    });
+  });
+
+  it('an idle H4 commits nothing over 15 s once the podium has played (3 s polls return the same rows)', async () => {
+    let commits = 0;
+    render(
+      <Profiler id="h4" onRender={() => (commits += 1)}>
+        <HostSessionEnd host={hostOn('results')} data={data} />
+      </Profiler>,
+      { wrapper: Wrap },
+    );
+    await flush();
+    advance(6000); // count-ups and the celebrate are over
+    await flush();
+    commits = 0;
+    for (let i = 0; i < 5; i++) {
+      advance(3000);
+      await flush();
+    }
+    expect(commits).toBe(0);
+  });
+
+  it('H5 commits once per rotation and nothing in between', async () => {
+    let commits = 0;
+    render(
+      <Profiler id="h5" onRender={() => (commits += 1)}>
+        <HostSessionEnd host={hostOn('dayboard')} data={data} />
+      </Profiler>,
+      { wrapper: Wrap },
+    );
+    await flush();
+    advance(8000);
+    commits = 0;
+    advance(7999);
+    await flush();
+    expect(commits).toBe(0);
+    advance(1);
+    expect(commits).toBe(1);
   });
 });

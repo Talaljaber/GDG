@@ -1,0 +1,289 @@
+/* H4 Session results (the podium) and H5 Day boards, host v3 "Stage and Rail"
+   (ADR-135, docs/plans/host-v3.md §4.5–§4.6). Projector scale only (vh, tokens);
+   logical properties only. The shell (brand strip, rail, buttons) is host.module.css;
+   the board rows are BoardTable's (board.module.css). */
+
+/* ---- the stage between the brand strip and the rail ---- */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-2);
+  flex: 1;
+  min-block-size: 0;
+  padding-block: var(--proj-s-2) var(--proj-s-1);
+  padding-inline: var(--big-screen-safe-margin);
+}
+
+/* The merge stage (DayBoardMerge): H4 whole, then the H5 board area under the tabs.
+   Positioned, so a tab change's outgoing copy (.ghost) can sit over the board. */
+.mergeStage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-block-size: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  color: var(--text-muted);
+}
+
+/* ---- H4: podium (inline-start) + session table ---- */
+
+.results {
+  display: grid;
+  /* 4.5 of the 12 columns for the podium: its hero total at 20vh needs the width, and the
+     table's names need the rest (plan §4.5 split, adjusted to fit 12-character names). */
+  grid-template-columns: minmax(0, 9fr) minmax(0, 15fr);
+  gap: var(--proj-s-3);
+  flex: 1;
+  min-block-size: 0;
+}
+
+/* Narrower screens (16:10 projectors, 4:3): the podium takes 3 of the 12 columns, as the
+   side columns do elsewhere (plan §4); its hero number scales down with it (cqi below). */
+@media (max-aspect-ratio: 17/10) {
+  .results {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 18fr);
+  }
+}
+
+.podium {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-2);
+  min-inline-size: 0;
+  min-block-size: 0;
+  container-type: inline-size;
+}
+
+.eyebrows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The winner (the celebrate target: name + total, never the logo or the eyebrows). */
+.winner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-1);
+  min-inline-size: 0;
+}
+
+/* A block in the screen's direction around the <bdi>, so an Arabic name on the English
+   screen still starts at the inline start. At most two lines. */
+.winnerName {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: min(var(--proj-t5), 16cqi);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+:global([lang='ar']) .winnerName {
+  line-height: var(--leading-tight-ar);
+}
+
+/* The hero number framed by the thin facing chevrons, proportioned like the lobby code
+   (60 % of the digits' cap height). The frame's font size is the hero size, so the chevrons
+   scale with it; it shrinks below 20vh only where the column can't hold it. */
+.podium .frame {
+  justify-content: flex-start;
+  font-size: min(var(--proj-t7), calc((100cqi - 2 * var(--proj-s-2)) / 2.95));
+  --frame-chevron-block: 0.43em;
+  --frame-chevron-inline: 0.2em;
+  --frame-chevron-align: center;
+  --frame-gap: var(--proj-s-2);
+}
+
+/* Ink, tabular, with the amber rank-1 rule under the digits (amber is a rule here, never
+   text, ADR-135 (4)). */
+.heroTotal {
+  display: inline-block;
+  padding-block-end: var(--proj-s-1);
+  border-block-end: var(--proj-rank-rule) solid var(--rank1-rule);
+  font-size: inherit;
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--proj-leading-hero);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* #2 and #3: two plain lines under a hairline. */
+.runnersUp {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  margin-block-start: var(--proj-s-1);
+  padding: 0;
+  padding-block-start: var(--proj-s-1);
+  border-block-start: var(--line-width) solid var(--line);
+  list-style: none;
+  font-size: var(--proj-t2);
+  line-height: var(--leading-tight);
+}
+
+.runnerUp {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--proj-s-2);
+  padding-block: calc(var(--proj-s-1) / 2);
+}
+
+.runnerRank {
+  min-inline-size: 1.2em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.runnerName {
+  overflow: hidden;
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runnerScore {
+  font-variant-numeric: tabular-nums;
+}
+
+.sideEmpty {
+  margin: 0;
+  font-size: var(--proj-t2);
+  color: var(--text-muted);
+}
+
+/* The table area sizes its ten slots to the room it has: at most --proj-row-height, less
+   when the visible round heads (up to two lines) need it, so nothing leaves the stage. */
+.sessionArea {
+  --results-row-max: var(--proj-row-height);
+  container-type: size;
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.sessionArea > * {
+  --proj-row-height: min(
+    var(--results-row-max),
+    calc((100cqb - 2.6 * var(--proj-t1) - var(--proj-s-2)) / 10)
+  );
+}
+
+/* One column per round: the game name as a visible head (balanced, up to two lines), the
+   round score in it. Narrower than the board's default extra column and the total a little
+   narrower too, so 12-character names fit the name column at 1080p. */
+.sessionArea col:not(:first-child):not(:nth-child(2)):not(:last-child) {
+  inline-size: calc(var(--proj-t1) * 4.4);
+}
+
+.sessionArea col:last-child {
+  inline-size: calc(var(--proj-t3) * 3.6);
+}
+
+.sessionArea .roundCol {
+  padding-inline: var(--proj-s-1);
+}
+
+/* ---- H5: "Today's best" + tabs, then the board (all 12 columns) ---- */
+
+.dayHead {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--proj-s-3);
+  border-block-end: var(--line-width) solid var(--line);
+}
+
+.dayRule {
+  inline-size: var(--line-width);
+  block-size: var(--proj-t3);
+  background: var(--line-strong);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--proj-s-4);
+  min-inline-size: 0;
+}
+
+.tab {
+  position: relative;
+  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
+  padding-block: var(--proj-s-1);
+  padding-inline: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--proj-t3);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-base) var(--ease-standard);
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tabOn {
+  color: var(--text);
+}
+
+.tab:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+/* The active tab's blue "live" underline, on the head's hairline. While the tabs rotate it
+   fills toward the inline end over DAYBOARD_ROTATE_MS (WAAPI scaleX from the inline start;
+   transform-origin has no logical keyword, hence the dir rule). */
+.tabUnderline {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: calc(-1 * var(--line-width));
+  block-size: var(--proj-rank-rule);
+  background: var(--live);
+  transform-origin: 0 50%;
+}
+
+:global([dir='rtl']) .tabUnderline {
+  transform-origin: 100% 50%;
+}
+
+.dayboard {
+  --results-row-max: var(--proj-row-height);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-block-size: 0;
+  /* Keeps the last slot's rule clear of the rail's hairline. */
+  padding-block-end: var(--proj-s-1);
+  container-type: size;
+}
+
+.dayboard > * {
+  --proj-row-height: min(var(--results-row-max), 10cqb);
+}
+
+/* The outgoing board on a tab change: a copy over the incoming one, fading out (--dur-step). */
+.ghost {
+  position: absolute;
+  margin: 0;
+  background: var(--bg);
+  pointer-events: none;
+}
