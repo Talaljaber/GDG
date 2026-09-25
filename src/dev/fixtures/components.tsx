@@ -2,7 +2,7 @@
  * Dev-only fixtures for the shared components and primitives (src/components/*,
  * DESIGN_SYSTEM §0, §4). Fake data only; never calls Supabase.
  */
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Fixture } from '../Preview';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Leaderboard } from '../../components/Leaderboard';
@@ -13,6 +13,8 @@ import { Trans } from '../../components/Trans';
 import { useT } from '../../i18n';
 import type { RankedRow } from '../../lib/boards';
 import ui from '../../components/ui.module.css';
+import { BoardTable, type BoardColumn } from '../../host/BoardTable';
+import { HostMotionProvider } from '../../host/motion';
 
 const noop = () => {};
 
@@ -301,6 +303,85 @@ function Banner() {
   );
 }
 
+
+// ---- host v3 board engine (BoardTable, FLIP, count-up; docs/plans/host-v3.md WP3) ----
+
+const V3: Array<[string, number]> = [
+  ['عبدالرحمن سا', 940],
+  ['Maximilian R', 903],
+  ['Sara', 866],
+  ['الإسلام لإيلاف', 812],
+  ['Omar', 770],
+  ['Lina', 731],
+  ['Yazan', 688],
+];
+
+function v3Rows(order: number[], values?: number[]): RankedRow[] {
+  return order.map((src, i) => ({
+    playerRowId: `v${src}`,
+    name: V3[src][0],
+    displaySuffix: null,
+    value: values ? values[i] : V3[src][1],
+    rank: i + 1,
+    isOwn: false,
+    detached: false,
+  }));
+}
+
+const boardPage: CSSProperties = { ...projPage, gridTemplateColumns: '5fr 7fr' };
+
+/** Static: a live board with 3 scores (7 empty slots), and H4's round columns. */
+function HostBoard() {
+  const t = useT();
+  const columns = useMemo<BoardColumn[]>(
+    () =>
+      (['stop_the_clock', 'odd_one_out', 'simon'] as const).map((g, gi) => ({
+        key: g,
+        head: t(`game.${g}.name`),
+        value: (r: RankedRow) => (
+          <span data-testid="board-round-score" data-game={g}>
+            {Math.round(r.value / 3) - gi * 7}
+          </span>
+        ),
+      })),
+    [t],
+  );
+  const three = useMemo(() => v3Rows([0, 1, 2]), []);
+  const all = useMemo(() => v3Rows([0, 1, 2, 3, 4, 5, 6], [2890, 2853, 2853, 2610, 2402, 2255, 1990]), []);
+  return (
+    <HostMotionProvider>
+      <div style={boardPage}>
+        <div style={projStack}>
+          <BoardTable rows={[]} testId="board-empty" emptyText={t('host.round.no_scores_yet')} slots={3} />
+          <BoardTable rows={three} testId="board-three" highlightIds={new Set(['v1'])} slots={6} />
+        </div>
+        <div style={projStack}>
+          <BoardTable rows={all} testId="board-columns" columns={columns} />
+        </div>
+      </div>
+    </HostMotionProvider>
+  );
+}
+
+/** Loops round board → total so far every 3.5 s: cascade, count-up, FLIP, pulse, deltas. */
+function HostBoardFlip() {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setStep((s) => (s + 1) % 2), 3500);
+    return () => window.clearInterval(id);
+  }, []);
+  const round = useMemo(() => v3Rows([0, 1, 2, 3, 4, 5, 6]), []);
+  const total = useMemo(() => v3Rows([3, 0, 5, 1, 6, 2, 4], [1890, 1849, 1808, 1767, 1726, 1685, 1644]), []);
+  return (
+    <HostMotionProvider>
+      <div style={boardPage}>
+        <div />
+        <BoardTable rows={step === 0 ? round : total} testId="board-flip" countUp celebrateLeader />
+      </div>
+    </HostMotionProvider>
+  );
+}
+
 export const fixtures: Fixture[] = [
   { name: 'components.primitives', frame: 'phone', render: () => <Primitives /> },
   { name: 'components.board-phone', frame: 'phone', render: () => <PhoneBoard /> },
@@ -310,4 +391,6 @@ export const fixtures: Fixture[] = [
   { name: 'components.dialog', frame: 'phone', render: () => <Dialog /> },
   { name: 'components.dialog-projector', frame: 'projector', render: () => <ProjectorDialog /> },
   { name: 'components.banner-offline', frame: 'phone', render: () => <Banner /> },
+  { name: 'components.host-board', frame: 'projector', render: () => <HostBoard /> },
+  { name: 'components.host-board-flip', frame: 'projector', render: () => <HostBoardFlip /> },
 ];

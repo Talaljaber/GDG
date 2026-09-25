@@ -1,0 +1,212 @@
+/* Host v3 "Stage and Rail" broadcast board (docs/plans/host-v3.md §2.1 principle 5,
+   §4.3–§4.6, ADR-135). Class contract (plan §6): .board .row .rank .name .score .extra
+   .first .podium .highlight .slot .delta .empty. Tokens only; logical properties only. */
+
+.board {
+  position: relative;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--proj-t3);
+  font-weight: var(--weight-medium);
+  line-height: var(--proj-row-leading);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* ---- columns (widths from the colgroup, so the hidden heads never size them) ---- */
+
+.colRank {
+  inline-size: calc(var(--proj-t2) * 1.8);
+}
+
+.colExtra {
+  inline-size: calc(var(--proj-t3) * 3.2);
+}
+
+.colScore {
+  inline-size: calc(var(--proj-t3) * 3.4);
+}
+
+.withColumns .colScore {
+  inline-size: calc(var(--proj-t3) * 3.8);
+}
+
+/* ---- heads: for screen readers; visible only for H4's round columns and total ---- */
+
+.headsHidden th {
+  block-size: 0;
+  padding: 0;
+  border: 0;
+}
+
+.heads th {
+  padding-block: 0 var(--proj-s-1);
+  padding-inline: var(--proj-s-2);
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  color: var(--text-muted);
+  vertical-align: bottom;
+  text-wrap: balance;
+}
+
+.heads th.score {
+  color: var(--text);
+}
+
+/* ---- rows: 10 fixed slots of --proj-row-height ---- */
+
+.row td,
+.slot td {
+  block-size: var(--proj-row-height);
+  padding-block: 0;
+  padding-inline: var(--proj-s-2);
+  vertical-align: middle;
+}
+
+.row td {
+  border-block-end: var(--line-width) solid var(--line);
+}
+
+/* Empty slot: a calm, lighter hairline, no text. */
+.slot td {
+  border-block-end: var(--line-width) solid var(--slot-line);
+}
+
+.rank {
+  font-size: var(--proj-t2);
+  text-align: start;
+  color: var(--text-muted);
+}
+
+.podium .rank {
+  color: var(--text);
+}
+
+/* Long names end in an ellipsis on the inline axis only; Cairo's tall ascenders and
+   hamza-below descenders (plan §8) stay visible on the block axis. `clip` (unlike
+   `hidden`) allows the two axes to differ; x/y are axes here, not directions. */
+.name {
+  text-align: start;
+  overflow-x: clip;
+  overflow-y: visible;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.extra {
+  font-size: var(--proj-t2);
+  text-align: end;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+/* H5: rows whose best came from this session — the live rule only, no tint. */
+.highlight td:first-child {
+  box-shadow: inset var(--proj-rank-rule) 0 0 var(--live);
+}
+
+:global([dir='rtl']) .highlight td:first-child {
+  box-shadow: inset calc(-1 * var(--proj-rank-rule)) 0 0 var(--live);
+}
+
+/* Rank 1: the amber tint and rule (after .highlight, so #1 keeps amber). */
+.first td {
+  background: var(--rank1-tint);
+  font-weight: var(--weight-bold);
+}
+
+.first td:first-child {
+  box-shadow: inset var(--proj-rank-rule) 0 0 var(--rank1-rule);
+}
+
+:global([dir='rtl']) .first td:first-child {
+  box-shadow: inset calc(-1 * var(--proj-rank-rule)) 0 0 var(--rank1-rule);
+}
+
+/* One-shot live pulse on a row that climbed / a new #1 (flip.ts adds and removes it):
+   a --live-tint layer between the cell's background and its text, fading out (opacity
+   only). */
+.pulse td {
+  position: relative;
+  isolation: isolate;
+}
+
+.pulse td::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--live-tint);
+  opacity: 0;
+  animation: pulse var(--dur-pulse) var(--ease-standard);
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ▲ 2 / ▼ 1 after the name on a rank change; fades out after 1 s. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15em;
+  margin-inline-start: var(--proj-s-2);
+  font-size: var(--proj-t1);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  vertical-align: middle;
+  animation: delta-out var(--dur-step) var(--ease-exit) calc(var(--dur-pulse) * 2) forwards;
+}
+
+.deltaIcon {
+  inline-size: 0.8em;
+  block-size: 0.8em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.deltaDown {
+  rotate: 180deg;
+}
+
+@keyframes delta-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Waiting state over the empty slots ("No scores yet"). */
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding-inline: var(--proj-s-3);
+  font-size: var(--proj-t2);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  text-align: center;
+  pointer-events: none;
+}
