@@ -465,6 +465,15 @@ export const fixtures: Fixture[] = [
       </AutoClick>
     ),
   },
+  {
+    name: 'host.lobby-qr-big',
+    frame: 'projector',
+    render: () => (
+      <AutoClick testId="host-qr-toggle">
+        <Lobby n={3} />
+      </AutoClick>
+    ),
+  },
   { name: 'host.round', frame: 'projector', render: () => <Round /> },
   { name: 'host.round-empty', frame: 'projector', render: () => <Round scored={0} boardN={0} /> },
   { name: 'host.round-3', frame: 'projector', render: () => <Round scored={3} n={18} boardN={3} /> },

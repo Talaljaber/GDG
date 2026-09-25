@@ -57,6 +57,16 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   const [confirmRemove, setConfirmRemove] = useState<PlayerRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "Bigger QR" on the rail: the stage shows only the QR (and the code) as large as it fits.
+  const [qrBig, setQrBig] = useState(false);
+  useEffect(() => {
+    if (!qrBig) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setQrBig(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [qrBig]);
 
   // ---- presence dots (ADR-103): re-renders the lobby only when a dot flips
   const dotOf = usePresenceDots(
@@ -103,6 +113,38 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   return (
     <>
       <HostHeader withLogo />
+      {qrBig ? (
+        <main className={styles.qrFull} data-testid="host-lobby">
+          {/* Clicking the QR also brings it back (as the rail button and Escape do). */}
+          <button
+            type="button"
+            className={styles.qrFullWrap}
+            onClick={() => setQrBig(false)}
+            aria-label={t('host.lobby.qr_smaller')}
+            data-testid="host-qr-full"
+          >
+            <QrCode value={url} label={t('host.lobby.scan')} />
+          </button>
+          <div className={styles.qrFullSide}>
+            <Bilingual k="host.lobby.code_label" stacked className={styles.eyebrow} />
+            <p className={styles.qrFullCode} dir="ltr" data-testid="host-code">
+              {session.code}
+            </p>
+            <p className={styles.url}>
+              <Trans
+                k="host.lobby.or_visit"
+                nodes={{
+                  url: (
+                    <span dir="ltr" className={styles.urlText}>
+                      {displayUrl(url)}
+                    </span>
+                  ),
+                }}
+              />
+            </p>
+          </div>
+        </main>
+      ) : (
       <main className={`${styles.body} ${styles.lobby}`} data-testid="host-lobby">
         {/* Join block: the code is the one hero; the QR, URL and steps sit under it. */}
         <section className={styles.join} aria-label={t('host.lobby.join_title')}>
@@ -198,6 +240,7 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
           )}
         </section>
       </main>
+      )}
       <Rail
         tray
         start={
@@ -209,6 +252,22 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
               onSyncedChange={setPickerSynced}
               actions={
                 <>
+                  <button
+                    type="button"
+                    className={styles.textButton}
+                    aria-pressed={qrBig}
+                    onClick={() => setQrBig((b) => !b)}
+                    data-testid="host-qr-toggle"
+                  >
+                    <svg className={styles.gear} viewBox="0 0 24 24" aria-hidden="true">
+                      {qrBig ? (
+                        <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" />
+                      ) : (
+                        <path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6" />
+                      )}
+                    </svg>
+                    {t(qrBig ? 'host.lobby.qr_smaller' : 'host.lobby.qr_bigger')}
+                  </button>
                   <SettingsMenu />
                   <button
                     type="button"

@@ -286,6 +286,8 @@
     "one": "1 player",
     "other": "{n} players"
   },
+  "host.lobby.qr_bigger": "Bigger QR",
+  "host.lobby.qr_smaller": "Smaller QR",
   "host.lobby.remove": "Remove",
   "host.lobby.remove_confirm": "Remove {name} from this session?",
   "host.lobby.scan": "Scan to play",

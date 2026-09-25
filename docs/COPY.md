@@ -341,6 +341,8 @@ The lobby join labels (`host.lobby.join_title`, `host.lobby.step_*`, `host.lobby
 | `host.lobby.empty_hint` | Names appear here as people join | تظهر الأسماء هنا عند انضمام اللاعبين |
 | `host.lobby.remove` | Remove | إزالة |
 | `host.lobby.remove_confirm` | Remove {name} from this session? | إزالة {name} من هذه الجلسة؟ |
+| `host.lobby.qr_bigger` | Bigger QR | تكبير رمز QR |
+| `host.lobby.qr_smaller` | Smaller QR | تصغير رمز QR |
 | `host.lineup.title` | Lineup · pick {n} | الألعاب · اختر {n} |
 | `host.lineup.next_title` | Next session | الجلسة القادمة |
 | `host.lineup.need` (plural) | one: Pick 1 game · other: Pick {n} different games | zero: اختر {n} ألعاب مختلفة · one: اختر لعبة واحدة · two: اختر لعبتين مختلفتين · few: اختر {n} ألعاب مختلفة · many: اختر {n} لعبة مختلفة · other: اختر {n} لعبة مختلفة |

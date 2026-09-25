@@ -314,6 +314,8 @@
     "many": "{n} لاعبًا",
     "other": "{n} لاعب"
   },
+  "host.lobby.qr_bigger": "تكبير رمز QR",
+  "host.lobby.qr_smaller": "تصغير رمز QR",
   "host.lobby.remove": "إزالة",
   "host.lobby.remove_confirm": "إزالة {name} من هذه الجلسة؟",
   "host.lobby.scan": "امسح الرمز لتلعب",
