@@ -8,21 +8,21 @@ import { ROUNDS_PER_SESSION } from '../config';
 import { formatNumber, useT } from '../i18n';
 import { adminRemovePlayer, adminStartSession, fetchRoundBoard, type PlayerRow } from '../lib/api';
 import { displayName, mergeBoard, type RankedRow } from '../lib/boards';
+import { replaceEqualDeep } from '../lib/equal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { QrCode } from '../components/QrCode';
 import { useRevealRows } from '../components/useRevealRows';
 import { Trans } from '../components/Trans';
+import { useSteppedNow } from '../components/useSteppedNow';
 import styles from './host.module.css';
 import { BoardTable } from './BoardTable';
 import { Bilingual, CornerCode, Framed, HostHeader, LineupPicker, LineupSummary, NextGamesButton, OperatorBar } from './common';
 import { displayUrl, shortUrl } from './urls';
 import { roundTimeLeftSeconds } from './hostLoop';
 import { isLineupValid } from './lineup';
-import { presenceDot, updateLastSeen } from './presence';
+import { usePresenceDots } from './presence';
 import { REGISTERED_GAMES, type HostController, type HostData } from './useHost';
 
-const PRESENCE_TICK_MS = 1000;
-const EMPTY_SLOTS = 6;
 const JOIN_STEPS = ['host.lobby.step_scan', 'host.lobby.step_code', 'host.lobby.step_name'] as const;
 
 // ------------------------------------------------------------------ H1
@@ -39,17 +39,11 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ---- presence dots (ADR-103)
-  const [now, setNow] = useState(() => Date.now());
-  const [lastSeen, setLastSeen] = useState<Map<string, number>>(() => new Map());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), PRESENCE_TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
-  const joinedIds = joined.map((p) => p.player_id).join(',');
-  useEffect(() => {
-    setLastSeen((prev) => updateLastSeen(prev, host.presentIds, joinedIds ? joinedIds.split(',') : [], Date.now()));
-  }, [host.presentIds, joinedIds, now]);
+  // ---- presence dots (ADR-103): re-renders the lobby only when a dot flips
+  const dotOf = usePresenceDots(
+    joined.map((p) => p.player_id),
+    host.presentIds,
+  );
 
   // Start needs the saved lineup to be valid (the picker saves valid picks at once).
   const [pickerSynced, setPickerSynced] = useState(true);
@@ -86,94 +80,96 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
     <>
       <HostHeader withLogo />
       <main className={`${styles.body} ${styles.lobby}`} data-testid="host-lobby">
+        {/* Three columns on one three-row grid (head · main · foot, CSS subgrid): the labels share a
+            baseline, the code sits centred against the QR, the players panel ends with the steps. */}
         <section className={styles.join} aria-label={t('host.lobby.join_title')}>
+          <Bilingual k="host.lobby.scan" className={`${styles.eyebrow} ${styles.colHead}`} />
           <div className={styles.qrWrap}>
             <QrCode value={url} label={t('host.lobby.scan')} />
           </div>
-          <p className={styles.url}>
-            <Trans
-              k="host.lobby.or_visit"
-              nodes={{
-                url: (
-                  <span dir="ltr" className={styles.urlText}>
-                    {displayUrl(url)}
-                  </span>
-                ),
-              }}
-            />
-          </p>
-          <ol className={styles.steps}>
-            {JOIN_STEPS.map((k, i) => (
-              <li key={k} className={styles.step}>
-                <span className={styles.stepNo}>{formatNumber(i + 1)}</span>
-                <Bilingual k={k} />
-              </li>
-            ))}
-          </ol>
+          <div className={styles.joinFoot}>
+            <p className={styles.url}>
+              <Trans
+                k="host.lobby.or_visit"
+                nodes={{
+                  url: (
+                    <span dir="ltr" className={styles.urlText}>
+                      {displayUrl(url)}
+                    </span>
+                  ),
+                }}
+              />
+            </p>
+            <ol className={styles.steps}>
+              {JOIN_STEPS.map((k, i) => (
+                <li key={k} className={styles.step}>
+                  <span className={styles.stepNo}>{formatNumber(i + 1)}</span>
+                  <Bilingual k={k} />
+                </li>
+              ))}
+            </ol>
+          </div>
         </section>
 
         <section className={styles.codeHero}>
-          <Bilingual k="host.lobby.code_label" className={styles.eyebrow} />
-          <Framed>
+          <Bilingual k="host.lobby.code_label" className={`${styles.eyebrow} ${styles.colHead}`} />
+          <Framed className={styles.codeFrame}>
             <p className={styles.code} dir="ltr" data-testid="host-code">
               {session.code}
             </p>
           </Framed>
         </section>
 
-        <section className={`${styles.panel} ${styles.playersPanel}`}>
-          <p className={styles.count} data-testid="host-player-count">
+        <section className={styles.playersCol}>
+          <p className={`${styles.count} ${styles.colHead}`} data-testid="host-player-count">
             <Trans
               k="host.lobby.players"
               params={{ count: joined.length }}
               nodes={{ n: <span className={styles.countNum}>{formatNumber(joined.length)}</span> }}
             />
           </p>
-          {joined.length === 0 ? (
-            <div className={styles.empty}>
-              <div className={styles.tags} aria-hidden="true">
-                {Array.from({ length: EMPTY_SLOTS }, (_, i) => (
-                  <span key={i} className={styles.slot} />
-                ))}
+          <div className={`${styles.panel} ${styles.playersPanel}`}>
+            {joined.length === 0 ? (
+              <div className={styles.empty}>
+                <p className={styles.emptyText}>{t('host.lobby.empty')}</p>
+                <p className={styles.emptyHint}>{t('host.lobby.empty_hint')}</p>
               </div>
-              <p className={styles.emptyText}>{t('host.lobby.empty')}</p>
-              <p className={styles.eyebrow}>{t('host.start_disabled_hint')}</p>
-            </div>
-          ) : (
-            <ul ref={chipsRef} className={`${styles.tags} ${styles.tagList}`} data-testid="host-players">
-              {shown.map((p) => {
-                const dot = presenceDot(p.player_id, host.presentIds, lastSeen, now);
-                const name = displayName(p.name, p.display_suffix);
-                return (
-                  <li
-                    key={p.id}
-                    className={`${styles.tag} ${dot === 'off' ? styles.tagOff : ''}`}
-                    data-testid="host-player"
-                    data-presence={dot}
-                    data-online={host.presentIds.has(p.player_id) ? 'true' : 'false'}
-                    data-name={name}
-                    data-reveal-key={p.id}
-                  >
-                    <span className={`${styles.dot} ${dot === 'on' ? styles.dotOn : styles.dotOff}`} aria-hidden="true" />
-                    <span className={styles.tagName}>
-                      <bdi>{name}</bdi>
-                    </span>
-                    <button
-                      type="button"
-                      className={styles.remove}
-                      onClick={() => setConfirmRemove(p)}
-                      aria-label={`${t('host.lobby.remove')} ${name}`}
-                      data-testid="host-remove"
+            ) : (
+              <ul ref={chipsRef} className={`${styles.tags} ${styles.tagList}`} data-testid="host-players">
+                {shown.map((p) => {
+                  const dot = dotOf(p.player_id);
+                  const name = displayName(p.name, p.display_suffix);
+                  return (
+                    <li
+                      key={p.id}
+                      className={`${styles.tag} ${dot === 'off' ? styles.tagOff : ''}`}
+                      data-testid="host-player"
+                      data-presence={dot}
+                      data-online={host.presentIds.has(p.player_id) ? 'true' : 'false'}
+                      data-name={name}
+                      data-reveal-key={p.id}
                     >
-                      <svg className={styles.removeIcon} viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M7 7 L17 17 M17 7 L7 17" />
-                      </svg>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                      <span className={`${styles.dot} ${dot === 'on' ? styles.dotOn : styles.dotOff}`} aria-hidden="true" />
+                      <span className={styles.tagName}>
+                        <bdi>{name}</bdi>
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.remove}
+                        onClick={() => setConfirmRemove(p)}
+                        aria-label={`${t('host.lobby.remove')} ${name}`}
+                        data-testid="host-remove"
+                      >
+                        <svg className={styles.removeIcon} viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M7 7 L17 17 M17 7 L7 17" />
+                        </svg>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </section>
       </main>
       <OperatorBar
@@ -185,9 +181,11 @@ export function HostLobby({ host, data }: { host: HostController; data: HostData
       >
         <div className={styles.actionWithHint}>
           {error ? (
-            <span className={styles.eyebrow} role="alert">
+            <span className={styles.hint} role="alert">
               {t(error)}
             </span>
+          ) : joined.length === 0 ? (
+            <span className={styles.hint}>{t('host.start_disabled_hint')}</span>
           ) : null}
           <button
             type="button"
@@ -219,18 +217,22 @@ export interface RoundPreview {
   board: RankedRow[] | null;
 }
 
+/**
+ * "Time left" on H2, a leaf with its own clock: checked every 250 ms, re-rendered once a
+ * second, so the rest of the round screen (board included) doesn't re-render with it.
+ */
+function TimeLeft({ startedAt, offset }: { startedAt: string | null; offset: number }) {
+  const leftAt = (localNow: number) => roundTimeLeftSeconds(startedAt, localNow + offset);
+  const left = leftAt(useSteppedNow(leftAt, 250));
+  return <Trans k="round.time_left" nodes={{ s: <span className={styles.statNum}>{formatNumber(left)}</span> }} />;
+}
+
 export function HostRound({ host, data, preview }: { host: HostController; data: HostData; preview?: RoundPreview }) {
   const t = useT();
   const round = data.rounds.find((r) => r.status === 'playing') ?? null;
   const [fetched, setBoard] = useState<RankedRow[] | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [ending, setEnding] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 250);
-    return () => window.clearInterval(timer);
-  }, []);
 
   // Board: re-queried on every (throttled) score insert or hidden-name change (ADR-112).
   // Scores only: Stop the Clock guesses stay hidden until the intermission reveal.
@@ -241,7 +243,10 @@ export function HostRound({ host, data, preview }: { host: HostController; data:
     let alive = true;
     void fetchRoundBoard(roundId)
       .then((page) => {
-        if (alive) setBoard(mergeBoard(page.top, null, null));
+        if (!alive) return;
+        // Re-queried on every score and the 3 s safety net: keep the rows when nothing changed.
+        const next = mergeBoard(page.top, null, null);
+        setBoard((prev) => replaceEqualDeep(prev, next));
       })
       .catch(() => {});
     return () => {
@@ -251,9 +256,7 @@ export function HostRound({ host, data, preview }: { host: HostController; data:
   const board = preview ? preview.board : fetched;
 
   const joined = data.players.filter((p) => p.status === 'joined').length;
-  const serverNow = now + (host.offset ?? 0);
-  const left = roundTimeLeftSeconds(round?.started_at ?? null, serverNow);
-  const lineup = [...data.rounds].sort((a, b) => a.round_no - b.round_no).map((r) => r.game);
+  const lineup = useMemo(() => [...data.rounds].sort((a, b) => a.round_no - b.round_no).map((r) => r.game), [data.rounds]);
 
   const forceEnd = async () => {
     setEnding(true);
@@ -288,7 +291,7 @@ export function HostRound({ host, data, preview }: { host: HostController; data:
           </h1>
           <div className={styles.stats}>
             <p className={styles.stat} data-testid="host-time-left">
-              <Trans k="round.time_left" nodes={{ s: <span className={styles.statNum}>{formatNumber(left)}</span> }} />
+              <TimeLeft startedAt={round?.started_at ?? null} offset={host.offset ?? 0} />
             </p>
             <p className={styles.stat} data-testid="host-finished">
               <Trans

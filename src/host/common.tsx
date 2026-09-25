@@ -6,7 +6,7 @@
  * bilingual labels, the facing-chevron frame, and the lineup picker (H1, and
  * the "next games" picker for the pending session during play, ADR-009/E20).
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ROUNDS_PER_SESSION } from '../config';
 import { formatNumber, translate, useLang, useT, type Lang } from '../i18n';
 import { adminSetLineup, type SessionRow } from '../lib/api';
@@ -139,8 +139,11 @@ function Arrow() {
   );
 }
 
-/** "Stop the Clock → Odd One Out → Simon"; the current round (1-based) in blue. */
-export function LineupSummary({ games, current }: { games: readonly string[]; current?: number }) {
+/**
+ * "Stop the Clock → Odd One Out → Simon"; the current round (1-based) in blue. Memoised: it sits
+ * on H2/H3 and in the operator bar, which re-render on every score; callers pass stable arrays.
+ */
+export const LineupSummary = memo(function LineupSummary({ games, current }: { games: readonly string[]; current?: number }) {
   const t = useT();
   return (
     <span className={styles.summary}>
@@ -158,7 +161,7 @@ export function LineupSummary({ games, current }: { games: readonly string[]; cu
       ))}
     </span>
   );
-}
+});
 
 // ------------------------------------------------------------------ operator bar
 
@@ -205,11 +208,15 @@ export function SettingsMenu() {
     <div className={styles.menuWrap} ref={wrap}>
       <button
         type="button"
-        className={styles.textButton}
+        className={`${styles.textButton} ${styles.settingsButton}`}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         data-testid="host-settings"
       >
+        <svg className={styles.gear} viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+        </svg>
         {t('host.settings.title')}
       </button>
       {open ? (
@@ -246,7 +253,8 @@ export function SettingsMenu() {
 // ------------------------------------------------------------------ lineup picker
 
 /**
- * The lineup as a compact segmented list (DESIGN_SYSTEM §0.2): tap to add in
+ * The lineup in pick order (DESIGN_SYSTEM §0.2): the picks 1 → 2 → 3, then the
+ * other games as quiet "+ add" buttons; tap to add in
  * order (small tabular ordinals 1 2 3), tap again to remove, at most
  * ROUNDS_PER_SESSION; only registered games (Trivia appears once it has 5
  * ready questions). A valid pick is saved at once with admin_set_lineup.
@@ -296,33 +304,71 @@ export function LineupPicker({
       data-synced={synced ? 'true' : 'false'}
     >
       <div className={styles.lineupHead}>
-        <span className={styles.eyebrow}>{title}</span>
-        {!valid ? (
-          <span className={`${styles.eyebrow} ${styles.lineupStatus}`} role="status">
+        {/* While the lineup is incomplete its label says what's missing, in ink (one label, not two). */}
+        {valid ? (
+          <span className={styles.label}>{title}</span>
+        ) : (
+          <span className={styles.lineupStatus} role="status">
             {t('host.lineup.need', { n: formatNumber(ROUNDS_PER_SESSION), count: ROUNDS_PER_SESSION })}
           </span>
-        ) : null}
+        )}
         {error ? (
-          <span className={`${styles.eyebrow} ${styles.lineupStatus}`} role="alert">
+          <span className={styles.lineupStatus} role="alert">
             {t(error)}
           </span>
         ) : null}
-      </div>
-      <div className={styles.segments} role="group" aria-label={title}>
-        {REGISTERED_GAMES.map((g) => {
-          const idx = picker.indexOf(g);
-          return (
+        {/* The other games, as quiet "+ add" buttons on the label line (data-driven: any number
+            of registered games; the row scrolls sideways rather than wrap the bar). */}
+        <span className={styles.adds}>
+          {REGISTERED_GAMES.filter((g) => !picker.includes(g)).map((g) => (
             <button
               key={g}
               type="button"
-              className={`${styles.segment} ${idx >= 0 ? styles.segmentOn : ''}`}
-              aria-pressed={idx >= 0}
+              className={styles.pickAdd}
+              aria-pressed="false"
+              disabled={picker.length >= ROUNDS_PER_SESSION}
               onClick={() => setPicker((l) => toggleLineup(l, g, ROUNDS_PER_SESSION))}
               data-testid={`${testIdPrefix}-${g}`}
             >
-              <span className={styles.ordinal}>{idx >= 0 ? formatNumber(idx + 1) : null}</span>
+              <svg className={styles.plus} viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 6 V18 M6 12 H18" />
+              </svg>
               {t(`game.${g}.name`)}
             </button>
+          ))}
+        </span>
+      </div>
+      {/* The picks in order (1 → 2 → 3, tap one to remove it). Every game keeps one button
+          `<prefix>-<game>` with aria-pressed = picked: here when picked, on the label line when not. */}
+      <div className={styles.picks} role="group" aria-label={title}>
+        {Array.from({ length: ROUNDS_PER_SESSION }, (_, i) => {
+          const g = picker[i];
+          if (g)
+            return (
+              <span key={g} className={styles.pickItem}>
+                {i > 0 ? <Arrow /> : null}
+                <button
+                  type="button"
+                  className={`${styles.pick} ${styles.pickOn}`}
+                  aria-pressed="true"
+                  onClick={() => setPicker((l) => toggleLineup(l, g, ROUNDS_PER_SESSION))}
+                  data-testid={`${testIdPrefix}-${g}`}
+                >
+                  <span className={styles.ordinal}>{formatNumber(i + 1)}</span>
+                  {t(`game.${g}.name`)}
+                  <svg className={styles.pickRemove} viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 8 L16 16 M16 8 L8 16" />
+                  </svg>
+                </button>
+              </span>
+            );
+          return (
+            <span key={`empty-${i}`} className={styles.pickItem}>
+              {i > 0 ? <Arrow /> : null}
+              <span className={styles.pickEmpty} aria-hidden="true">
+                {formatNumber(i + 1)}
+              </span>
+            </span>
           );
         })}
       </div>

@@ -40,23 +40,20 @@
 
 /* ---- shared text styles ---- */
 
-.eyebrow {
+/* Projector labels: sentence case, medium, muted, no tracking (uppercase at this size
+   shouts; letter-spacing would also break joined Arabic letters). */
+.eyebrow,
+.label {
   font-size: var(--proj-eyebrow);
-  font-weight: var(--type-eyebrow-weight);
+  font-weight: var(--weight-medium);
   color: var(--text-muted);
 }
 
-/* Latin labels are uppercase with tracking; Arabic is never transformed or spaced
-   (letter-spacing breaks joined letters), also inside a bilingual label. */
-.eyebrow:lang(en),
-.eyebrow :lang(en) {
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-eyebrow);
-}
-
-.eyebrow :lang(ar) {
-  text-transform: none;
-  letter-spacing: normal;
+/* A quiet hint next to a control (e.g. why Start is disabled). */
+.hint {
+  font-size: var(--proj-min);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .bilingual {
@@ -203,45 +200,63 @@
   background: var(--surface);
 }
 
-/* ---- H1 lobby ---- */
+/* ---- H1 lobby ----
+   One grid, three columns (join · code · players) and three rows (head · main · foot).
+   Each column is a subgrid over the rows, so the three labels share a baseline, the
+   code is centred against the QR, and the players panel ends where the steps end.
+   The block is centred in the body, so a tall window doesn't stretch it. */
 
 .lobby {
   grid-template-columns: minmax(0, 11fr) minmax(0, 12fr) minmax(0, 13fr);
+  grid-template-rows: auto auto auto;
+  align-content: center;
+  row-gap: var(--proj-s-2);
+  /* single-line labels: the tight leading in both scripts (Cairo's taller default would push
+     the steps under the operator bar) */
+  line-height: var(--leading-tight);
 }
 
-.lobby > .join {
-  grid-column: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--proj-s-1);
-  min-block-size: 0;
+.join,
+.codeHero,
+.playersCol {
+  display: grid;
+  grid-row: 1 / span 3;
+  grid-template-rows: subgrid;
+  min-inline-size: 0;
 }
 
+.colHead {
+  grid-row: 1;
+  align-self: end;
+}
 
+.join {
+  justify-items: start;
+}
 
 .qrWrap {
+  grid-row: 2;
   border: var(--line-width) solid var(--line);
   border-radius: var(--proj-radius);
-  overflow: hidden;
   line-height: 0;
-}
-
-.qrWrap {
-  flex: none;
-  margin-block: var(--proj-s-1);
   background: var(--qr-light);
 }
 
 .qrWrap svg {
-  /* 90 % of --proj-qr so the three steps fit under it at every aspect ratio. */
-  inline-size: calc(var(--proj-qr) * 0.9);
-  block-size: calc(var(--proj-qr) * 0.9);
+  /* 85 % of --proj-qr so the three steps fit under it in a laptop browser window too. */
+  inline-size: calc(var(--proj-qr) * 0.85);
+  block-size: calc(var(--proj-qr) * 0.85);
+}
+
+.joinFoot {
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--proj-s-2);
 }
 
 .url {
   color: var(--text-muted);
-  text-align: center;
 }
 
 .urlText {
@@ -253,7 +268,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--proj-s-1);
-  margin-block-start: var(--proj-s-1);
 }
 
 .step {
@@ -271,16 +285,21 @@
 }
 
 .codeHero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--proj-s-2);
-  min-inline-size: 0;
+  justify-items: center;
+}
+
+/* Centred on the QR's row (the lobby's optical centre line). Full column width, so the
+   code can size itself to it (container query units; containment here, not on the subgrid). */
+.codeFrame {
+  grid-row: 2;
+  align-self: center;
+  justify-self: stretch;
+  container-type: inline-size;
 }
 
 .code {
-  font-size: var(--proj-code);
+  /* --proj-code, or smaller when the column is narrow (four digits + both chevrons must fit). */
+  font-size: min(var(--proj-code), calc((100cqi - var(--proj-s-4) * 3) / 2.8));
   font-weight: var(--proj-code-weight);
   letter-spacing: var(--proj-code-letter-spacing);
   margin-inline-end: calc(-1 * var(--proj-code-letter-spacing));
@@ -301,9 +320,14 @@
   color: var(--text);
 }
 
+.playersPanel {
+  grid-row: 2 / span 2;
+  min-block-size: 0;
+}
+
 .tags {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--proj-row) * 5.6), 1fr));
   gap: var(--proj-s-1);
   align-content: start;
 }
@@ -316,17 +340,16 @@
 }
 
 .tag {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--proj-s-1);
   min-inline-size: 0;
-  padding-inline-start: var(--proj-s-1);
+  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
+  padding-inline: var(--proj-s-2) var(--proj-s-1);
   border: var(--line-width) solid var(--line);
   border-radius: var(--r-tag);
   background: var(--surface);
-  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
-  padding-inline-end: var(--proj-s-1);
-  position: relative;
 }
 
 .tagName {
@@ -341,19 +364,24 @@
   color: var(--text-muted);
 }
 
-.slot {
-  block-size: max(var(--proj-control-height), var(--touch-target-floor));
-  border: var(--line-width) dashed var(--line-strong);
-  border-radius: var(--r-tag);
-}
-
+/* No players yet: a calm, centred message, not placeholder boxes. */
 .empty {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: var(--proj-s-2);
+  align-items: center;
+  justify-content: center;
+  gap: var(--proj-s-1);
+  text-align: center;
 }
 
 .emptyText {
+  font-size: var(--proj-row);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.emptyHint {
   color: var(--text-muted);
 }
 
@@ -884,7 +912,7 @@
 .operator {
   display: flex;
   flex: none;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--proj-s-3);
   min-block-size: var(--proj-operator-height);
@@ -898,7 +926,7 @@
 .operatorStart,
 .operatorEnd {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--proj-s-2);
   min-inline-size: 0;
 }
@@ -908,6 +936,17 @@
   margin-inline-start: auto;
 }
 
+/* The lineup takes the free width, so its "+ add" row can show every game it can fit. */
+.operatorStart {
+  flex: 1;
+}
+
+.operatorStart > * {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* The hint sits on the bar's label line, right above the button it explains. */
 .actionWithHint {
   display: flex;
   flex-direction: column;
@@ -915,9 +954,28 @@
   gap: var(--proj-s-1);
 }
 
+.actionWithHint > .hint {
+  font-size: var(--proj-eyebrow);
+}
+
+/* 16:9 and wider: the hint floats on the label line above Start, so it never widens the
+   actions column (the lineup's "+ add" row keeps the width). */
+@media (min-aspect-ratio: 17/10) {
+  .actionWithHint {
+    position: relative;
+  }
+
+  .actionWithHint > .hint {
+    position: absolute;
+    inset-block-end: calc(100% + var(--proj-s-1));
+    inset-inline-end: 0;
+  }
+}
+
 .primary,
 .textButton,
-.segment,
+.pick,
+.pickAdd,
 .menuItem,
 .nextGames {
   font: inherit;
@@ -931,7 +989,7 @@
   justify-content: center;
   min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
   padding-inline: var(--proj-s-3);
-  border: none;
+  border: var(--line-width) solid transparent;
   border-radius: var(--r-control);
   background: var(--primary-text);
   color: var(--on-primary);
@@ -948,15 +1006,22 @@
   transform: scale(0.97);
 }
 
+/* Disabled: a clear neutral button, not a washed-out blue one. */
 .primary:disabled {
-  opacity: 0.4;
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
 .textButton {
-  min-block-size: var(--touch-target-floor);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--proj-s-1);
+  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
   padding-inline: var(--proj-s-1);
   border: none;
+  border-radius: var(--r-control);
   background: none;
   color: var(--text-muted);
   font-weight: var(--weight-medium);
@@ -965,18 +1030,30 @@
 
 .textButton:hover:not(:disabled),
 .textButton[aria-expanded='true'] {
+  background: var(--surface);
   color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 .textButton:disabled {
   opacity: 0.4;
 }
 
+.gear,
+.plus,
+.pickRemove {
+  flex: none;
+  inline-size: 0.9em;
+  block-size: 0.9em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 .primary:focus-visible,
 .textButton:focus-visible,
-.segment:focus-visible,
+.pick:focus-visible,
+.pickAdd:focus-visible,
 .menuItem:focus-visible,
 .nextGames:focus-visible,
 .tab:focus-visible,
@@ -985,7 +1062,7 @@
   outline-offset: var(--focus-offset);
 }
 
-/* Lineup picker: a compact segmented list with small tabular ordinals. */
+/* Lineup picker: the picks in order (1 → 2 → 3), then the other games as "+ add". */
 .lineup {
   display: flex;
   flex-direction: column;
@@ -995,54 +1072,110 @@
 
 .lineupHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--proj-s-2);
+  min-inline-size: 0;
+}
+
+.adds {
+  display: flex;
+  flex: 1;
+  gap: calc(var(--proj-s-1) / 2);
+  min-inline-size: 0;
+  margin-inline-start: var(--proj-s-1);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .lineupStatus {
+  font-size: var(--proj-eyebrow);
+  font-weight: var(--weight-medium);
   color: var(--text);
 }
 
-.segments {
-  display: inline-flex;
+.picks {
+  display: flex;
   flex-wrap: nowrap;
-  border: var(--line-width) solid var(--line-strong);
-  border-radius: var(--r-control);
-  background: var(--surface);
-  overflow: hidden;
+  align-items: center;
+  gap: var(--proj-s-1);
 }
 
-.segment {
+.pickItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--proj-s-1);
+}
+
+.pick {
   display: inline-flex;
   align-items: center;
   gap: var(--proj-s-1);
   min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
   padding-inline: var(--proj-s-2);
+  border: var(--line-width) solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.pickRemove {
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.pick:hover .pickRemove,
+.pick:focus-visible .pickRemove {
+  opacity: 1;
+}
+
+.pickEmpty {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
+  min-inline-size: calc(var(--proj-row) * 2.4);
+  padding-inline: var(--proj-s-2);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-control);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pickAdd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--proj-s-1);
+  min-block-size: var(--touch-target-floor);
+  font-size: var(--proj-eyebrow);
+  padding-inline: calc(var(--proj-s-1) / 2);
   border: none;
-  border-inline-start: var(--line-width) solid var(--line);
-  background: transparent;
+  border-radius: var(--r-control);
+  background: none;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
-.segment:first-child {
-  border-inline-start: none;
+.pickAdd:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
 }
 
-.segmentOn {
-  background: var(--primary-tint);
-  color: var(--text);
-  font-weight: var(--weight-medium);
+.pickAdd:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .ordinal {
   min-inline-size: 0.7em;
-  font-size: var(--proj-eyebrow);
   font-variant-numeric: tabular-nums;
   color: var(--primary-text);
 }
 
-/* Settings menu and the next-games popover open upward from the operator bar. */
+/* Settings and the next-games picker open just above their button, on its inline-end
+   (Settings, a one-row strip) or inline-start (next games) edge. */
 .menuWrap {
   position: relative;
 }
@@ -1053,7 +1186,6 @@
   inset-block-end: calc(100% + var(--proj-s-1));
   z-index: var(--z-dialog);
   display: flex;
-  flex-direction: column;
   gap: var(--proj-s-1);
   padding: var(--proj-s-1);
   border: var(--line-width) solid var(--line-strong);
@@ -1063,11 +1195,13 @@
 
 .menu {
   inset-inline-end: 0;
+  flex-direction: row;
   min-inline-size: max-content;
 }
 
 .popover {
   inset-inline-start: 0;
+  flex-direction: column;
   align-items: flex-end;
   gap: var(--proj-s-2);
   padding: var(--proj-s-2);
@@ -1111,10 +1245,10 @@
 
 .nextGames {
   display: flex;
-  align-items: baseline;
   gap: var(--proj-s-2);
   white-space: nowrap;
-  min-block-size: var(--touch-target-floor);
+  align-items: center;
+  min-block-size: max(var(--proj-control-height), var(--touch-target-floor));
   padding-inline: var(--proj-s-1);
   border: none;
   border-radius: var(--r-tag);
@@ -1165,24 +1299,52 @@
 /* ---- narrower screens (16:10, 4:3): stack the lobby and the side panels ---- */
 
 @media (max-aspect-ratio: 17/10) {
+  /* Two columns: join on the inline start; code, then players on the other side. */
   .lobby {
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    align-content: stretch;
   }
 
-  .lobby > .join {
+  .join {
     grid-column: 1;
+    grid-row: 1 / span 4;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .codeHero {
+    grid-column: 2;
     grid-row: 1 / span 2;
   }
 
-  .lobby > .codeHero,
-  .lobby > .playersPanel {
+  .playersCol {
     grid-column: 2;
+    grid-row: 3 / span 2;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .playersCol .colHead {
+    grid-row: 1;
+  }
+
+  .playersPanel {
+    grid-row: 2;
   }
 
   .qrWrap svg {
-    inline-size: calc(var(--proj-qr) * 0.8);
-    block-size: calc(var(--proj-qr) * 0.8);
+    inline-size: calc(var(--proj-qr) * 0.6);
+    block-size: calc(var(--proj-qr) * 0.6);
+  }
+
+  /* H1: the lineup picker takes the bar's first full row; the actions wrap to the next one */
+  .operatorStart:has(> [data-testid='host-lineup']) {
+    flex-basis: 100%;
+  }
+
+  /* the bar wraps here: keep the hint beside Start so it stays two lines, not three */
+  .actionWithHint {
+    flex-direction: row;
+    align-items: center;
   }
 
   .split .side {
@@ -1205,15 +1367,7 @@
     row-gap: var(--proj-s-1);
   }
 
-  .segments {
-    flex-wrap: wrap;
-  }
-
   .nextGames .summary {
-    display: none;
-  }
-
-  .slot:nth-child(n + 3) {
     display: none;
   }
 
