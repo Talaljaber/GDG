@@ -4,13 +4,13 @@ Purpose: the complete Supabase Postgres schema: every table, column, type, const
 
 Last updated: 2026-09-25
 
-Related: `SESSION_LIFECYCLE.md` (which function moves which state), `SCORING.md` (bounds enforced by the score trigger), `SECURITY.md` (why each policy exists), ADR-030, ADR-101, ADR-102, ADR-110, ADR-113, ADR-134.
+Related: `SESSION_LIFECYCLE.md` (which function moves which state), `SCORING.md` (bounds enforced by the score trigger), `SECURITY.md` (why each policy exists), ADR-030, ADR-101, ADR-102, ADR-110, ADR-113, ADR-134, ADR-136.
 
 ---
 
 ## 1. Principles
 
-Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`); follow-ups are new files, never edits: `20260925000200_scores_raw_size.sql`, `20260925000300_lineup_exactly_three.sql` (§3 notes), `20260925000400_join_throttle.sql` (§3 notes, §6), `20260925000500_game_ids_brackets_clash.sql` and `20260925000600_score_bounds_brackets_clash.sql` (§3 notes, §5; ADR-134). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
+Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`); follow-ups are new files, never edits: `20260925000200_scores_raw_size.sql`, `20260925000300_lineup_exactly_three.sql` (§3 notes), `20260925000400_join_throttle.sql` (§3 notes, §6), `20260925000500_game_ids_brackets_clash.sql` and `20260925000600_score_bounds_brackets_clash.sql` (§3 notes, §5; ADR-134), `20260925000700_game_ids_v3.sql` and `20260925000800_score_bounds_v3.sql` (§3 notes, §5; ADR-136). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
 
 1. **RLS is enabled on every table in `public`. Never disabled.** (ADR-030)
 2. Guests are Supabase **anonymous users**: role `authenticated`, `auth.uid()` = playerId (ADR-102). The unsigned `anon` role can read and write nothing except calling `keepalive()`.
@@ -102,6 +102,7 @@ erDiagram
 -- ============ Types ============
 create type public.game_id          as enum ('odd_one_out','stop_the_clock','simon','perfect_circle','trivia');
 -- + 'close_brackets', 'color_clash' (migration 20260925000500, ADR-134; see the notes below)
+-- + 'how_many', 'swipe_sort', 'pairs' (migration 20260925000700, ADR-136; see the notes below)
 create type public.session_status   as enum ('pending','lobby','playing','results','closed');
 create type public.round_status     as enum ('upcoming','playing','done');
 create type public.round_end_reason as enum ('all_finished','time_cap','force_end');
@@ -262,6 +263,7 @@ Notes:
   Postgres checks a CHECK constraint on every UPDATE of a row, so an old *open* 1-game session could never be advanced or closed once the constraint exists; that is why those (and only those) are closed. Closed rows are never updated by any function afterwards. On a fresh database (the cloud project) the constraint is validated at once.
 - `players.name` stores the *cleaned* name (`clean_name`), not the raw input.
 - `public.game_id` (migrations `20260925000500_game_ids_brackets_clash.sql` + `20260925000600_score_bounds_brackets_clash.sql`, ADR-134): two labels appended, `close_brackets` and `color_clash` (additive; no row changes). A new enum label can't be used in the transaction that adds it, so the bounds for the two games are in the second migration; between the two, a score for either game fails with `GD008 game.unknown`. The picker, the lineup check, the boards and the dashboard need no change: they are per `game_id` value.
+- `public.game_id` again (migrations `20260925000700_game_ids_v3.sql` + `20260925000800_score_bounds_v3.sql`, ADR-136): three labels appended, `how_many`, `swipe_sort` and `pairs`, in that order (additive; no row changes), ten games in all. Same two-step pattern: between the two migrations a score for any of the three fails with `GD008 game.unknown`.
 - `private.join_attempts` (migration `20260925000400_join_throttle.sql`, ADR-130): the wrong-join-code log behind the throttle in `join_session` (§6). In the unexposed `private` schema, RLS enabled with **no policies**, and all privileges (table and identity sequence) revoked from `public`, `anon` and `authenticated`, since the cloud's default privileges grant ALL on new objects and `authenticated` has `USAGE` on `private`. Only `join_session` (definer, owner `postgres`) reads or writes it. Rows older than 10 minutes are purged by `join_session`; no FK to `auth.users`.
 
   ```sql
@@ -494,6 +496,7 @@ create trigger scores_mark_finished
 - A `raw` that isn't the game's JSON shape (not an object, a required key missing, a value of the wrong JSON type such as a string or a fractional number where an integer is expected) fails the game's first check, `<prefix>.shape`. Simon and Perfect Circle have no shape code in `SCORING.md` §4, so this adds **`simon.shape`** and **`pc.shape`**. Extra keys are ignored (the total size is bounded by `scores_raw_size`, §3).
 - Trivia: a `correct` answer with `answer_ms = null` fails `trivia.too_fast` (a correct answer must have been given).
 - Close the Brackets and Color Clash (migration `20260925000600`, ADR-134) were added by `create or replace` with the same signature; the other five branches were copied verbatim. Both games check a formula **band** (like Simon), not an exact score: `cb.formula_band` uses `S(solved)` (`SCORING.md` §3.6), `cc.formula_band` uses `net = correct − wrong − timeouts` (§3.7). Execute on the function is revoked from `public`, `anon` and `authenticated`; only the definer trigger calls it (pgTAP `09_score_bounds_new_games.sql`).
+- How Many?, Swipe Sort and Pairs (migration `20260925000800`, ADR-136) were added the same way: `create or replace` with the same signature, the seven existing branches copied verbatim from `20260925000600`, the three new branches before the `game.unknown` fallthrough, and the same revoke. Their reason codes: `hm.shape`, `hm.range`, `hm.timeout`, `hm.too_fast`, `hm.too_perfect`, `hm.formula_band`; `ss.shape`, `ss.range`, `ss.rt`, `ss.zero`, `ss.too_fast`, `ss.too_many`, `ss.formula_band`; `pr.shape`, `pr.range`, `pr.clear`, `pr.zero`, `pr.too_fast`, `pr.formula_band` (in check order; `SCORING.md` §4). The formula bands are computed in `numeric` (`round()` is half away from zero, as `Math.round` for positives): `hm.formula_band` is upper side only (`score ≤ round(1000 × Σ s_i / 3) + 1`, §3.8), `ss.formula_band` uses `net = correct − wrong − missed` (§3.9), `pr.formula_band` allows ±1 around `clamp(round(base − 12 × misses), 0, 1000)` (§3.10). pgTAP per game: `10_score_bounds_how_many.sql`, `11_score_bounds_swipe_sort.sql`, `12_score_bounds_pairs.sql`.
 - Values are read with tolerant helpers (`private.j_int`, `j_num`, `j_bool`), so malformed JSON always yields `GD008` with a reason, never a cast error. `private.simon_min_playback_ms(level)` implements `min_playback_ms`.
 
 ## 6. Functions (migration `20260924000004_functions.sql`)

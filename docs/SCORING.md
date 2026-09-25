@@ -4,7 +4,7 @@ Purpose: the one place that defines how every game turns play into a number: the
 
 Last updated: 2026-09-25
 
-Related: ADR-021, ADR-022, ADR-105, ADR-113, ADR-134.
+Related: ADR-021, ADR-022, ADR-105, ADR-113, ADR-134, ADR-136.
 
 ---
 
@@ -30,6 +30,9 @@ Every game fits inside the 120 s round cap even in the worst case.
 | Trivia | 5 questions | 10 s per question | 1.5 intro + 5 × (10 + 1.5 feedback) ≈ **59 s** |
 | Close the Brackets | sequences of length 2…8 inside a 30 s game clock | 10 s per sequence | 1.5 intro + 30 ≈ **32 s** (transitions run inside the 30 s) |
 | Color Clash | trials inside a 30 s game clock | 3 s per trial | 1.5 intro + 30 ≈ **32 s** (the 0.3 s gaps run inside the 30 s) |
+| How Many? | 3 flashes | 10 s per answer | 1.5 intro + 3 × (1 look + 1 flash + 10 + 0.5 locked) ≈ **39 s** (`worstCaseMs` 40 000) |
+| Swipe Sort | items inside a 30 s game clock | item window `I(t)` 900 → 450 ms | 1.5 intro + 30 ≈ **32 s** (the 0.15 s gaps run inside the 30 s) |
+| Pairs | one 4 × 4 board | 60 s game clock | 1.5 intro + 60 ≈ **62 s** (the 0.7 s mismatch locks run inside the 60 s) |
 
 ## 3. Formulas
 
@@ -89,6 +92,33 @@ Symbols: `clamp(x, lo, hi)`, all times in milliseconds.
 - Every trial is followed by a 0.3 s gap, so the number of trials is bounded by pace: `trials ≈ 30000 / (rt + 300)`. Random tapping (⅓ right) has a negative `net` and scores 0.
 - Calibration assumptions (ADR-134): a **strong** player answers in ≈ 620 ms on average (SD 120 ms) with ≈ 3 % errors → ≈ 32 correct, 1 wrong → **≈ 820** (modelled p10–p90: 750–880). Typical (850 ms, 8 % errors) → ≈ 590; weak (1150 ms, 15 %) → ≈ 380. **1000** needs about 38 correct without a slip at ≤ ≈ 480 ms mean on a Stroop task that is 70 % incongruent, which we treat as out of human reach; faster-than-human clients are stopped by `cc.too_fast` / `cc.too_many`.
 
+### 3.8 How Many?
+
+- Three flashes, true counts `N_i` from the bands 8–15, 20–35, 40–70 (never a multiple of 10), guesses `g_i` (null = no answer).
+- Per flash: `rel_i = |g_i − N_i| / N_i`; `s_i = clamp(1 − max(0, rel_i − D) / (W_i − D), 0, 1)` with **`D = 0.05`** (within 5 % = full marks) and **`W = [0.30, 0.40, 0.50]`** (30 / 40 / 50 % off = 0); a null guess has `s_i = 0`.
+- **`score = round(1000 × (s_1 + s_2 + s_3) / 3)`**, then clamp.
+- The band widens with the flash (Weber's law), so a good estimator scores similarly on all three.
+- Examples (`N = [12, 27, 55]`): guesses 11, 24, 46 → 813; 10, 22, 42 → 578; 9, 18, 30 → 164; 12, null, 50 → 636; 12, 27, 53 → 1000; no answers → 0.
+- Calibration assumptions (ADR-136; re-check at the playtest, `TESTING.md` §4): adult numerosity Weber fractions cluster at 15–25 %; a **strong** booth player is ≈ 8 % off on flash 1, ≈ 11 % on flash 2, ≈ 16 % on flash 3 (bias included) → **≈ 815**. Typical ≈ 17 / 19 / 24 % → ≈ 580. **1000** needs all three inside 5 % (exact on flash 1, ±1 on flash 2, ±2–3 on flash 3, from a 1 s flash of 40–70 items), which we treat as out of reach without luck.
+
+### 3.9 Swipe Sort
+
+- `c` correct, `w` wrong direction, `m` missed items; `net = c − w − m`; `r̄ = mean_swipe_ms`, the rounded mean time from an item's onset to the swipe registering, over correct items.
+- Item window `I(t) = round(900 − 450 × t / 30000)` ms for an item whose onset is at `t` on the 30 s game clock (900 → 450 ms); a 0.15 s gap follows every item.
+- Speed bonus `B = 60 × clamp((700 − r̄) / 300, 0, 1) × clamp(net / 20, 0, 1)` when `c ≥ 1`, else 0 (full at ≤ 400 ms mean and net ≥ 20; 0 at ≥ 700 ms). The `net / 20` factor keeps a random swiper (expected net 0) at ≈ 0.
+- **`score = clamp(round(22 × net + B), 0, 1000)`**; `c = 0` → 0.
+- Examples: 43 / 1 / 5 at 450 ms → 864; 33 / 3 / 8 at 550 ms → 514; 22 / 5 / 12 at 640 ms → 113; a random spammer 30 / 33 / 0 → 0; idle (0 / 0 / 36) → 0; 46 / 1 / 2 at 430 ms → 1000.
+- Calibration assumptions (ADR-136): a **strong** player registers swipes at ≈ 450 ms (SD 80) with 2 % wrong: ≈ 49 items, misses concentrated in the last third where `I(t) < 550` → ≈ 43 / 1 / 5 → **≈ 864**. Typical (550 ms, 5 %) ≈ 33 / 3 / 8 → ≈ 514. **1000** needs `net ≥ 43` with a ≤ 430 ms mean (e.g. 46 / 1 / 2): out of reach at a 450 ms floor.
+
+### 3.10 Pairs
+
+- `p` = pairs found (0–8), `m` = mismatched flip-pairs, `clear_ms` = game-clock time at the eighth match (null unless `p = 8`).
+- Cleared (`p = 8`): `base = 1000 − 6 × max(0, clear_ms − 15000) / 1000`.
+- Not cleared: `base = 730 − 80 × (8 − p)` (continuous with clearing at exactly 60 s: 1000 − 270 = 730).
+- **`score = clamp(round(base − 12 × m), 0, 1000)`**; `p = 0` → 0.
+- Examples: 8 pairs, 5 misses, clear at 34 200 ms → 825; 6 pairs, 9 misses → 462; 3 pairs, 12 misses → 186; 8 pairs, 3 misses, 21 500 ms → 925; 8 pairs, 0 misses, 14 000 ms → 1000; 0 pairs (with or without misses) → 0.
+- Calibration assumptions (ADR-136): **strong** = clear in ≈ 34 s with 5 misses → **≈ 825**; typical = 6 pairs, 9 misses → 462; **1000** needs a clear in ≤ 15 s with 0 misses (16 taps at ≈ 0.9 s each with no forced miss): out of reach.
+
 ## 4. Rejection bounds (enforced by `score_bounds_violation`)
 
 Common to all games: `score` integer 0–1000 (CHECK), `duration_ms` 0–130 000 (CHECK), `raw` must be a JSON object of the game's shape. Per game, in the order the function checks them (reason codes in brackets):
@@ -102,8 +132,11 @@ Common to all games: `score` integer 0–1000 (CHECK), `duration_ms` 0–130 000
 | Trivia | `{"questions":[{"id":"q07","correct":bool,"answer_ms":int\|null,"timed_out":bool}, …×5]}` | exactly 5 entries with distinct ids [`trivia.shape`]; `answer_ms` null iff timed out [`trivia.timeout`]; `answer_ms` 0–10000 [`trivia.range`]; correct ⇒ `answer_ms ≥ 250` [`trivia.too_fast`]; no correct answers ⇒ `score = 0` [`trivia.zero`]; `score ≤ 988` [`trivia.score_above_988`] |
 | Close the Brackets | `{"solved":int,"failed":int,"timeouts":int,"solve_ms":int\|null}` | malformed object/types [`cb.shape`]; `solved` 0–30, `failed` 0–50, `timeouts` 0–3, `solve_ms` 0–30000 [`cb.range`]; `solve_ms` null iff `solved = 0` [`cb.solve_ms`]; `solved = 0` ⇒ `score = 0` [`cb.zero`]; `solve_ms ≥ 150 × S(solved)` [`cb.too_fast`]; `min(1000, 15 S) ≤ score ≤ min(1000, 15 S + 100)` [`cb.formula_band`] |
 | Color Clash | `{"correct":int,"wrong":int,"timeouts":int,"mean_rt_ms":int\|null}` | malformed object/types [`cc.shape`]; `correct` 0–100, `wrong` 0–100, `timeouts` 0–10, `mean_rt_ms` 0–3000 [`cc.range`]; `mean_rt_ms` null iff `correct = 0` [`cc.rt`]; `correct = 0` ⇒ `score = 0` [`cc.zero`]; `mean_rt_ms ≥ 250` [`cc.too_fast`]; `correct × (mean_rt_ms + 300) ≤ 30300` [`cc.too_many`]; `clamp(25 net, 0, 1000) ≤ score ≤ clamp(25 net + 75, 0, 1000)` with `net = correct − wrong − timeouts` [`cc.formula_band`] |
+| How Many? | `{"rounds":[{"true_count":int,"guess":int\|null,"answer_ms":int\|null,"timed_out":bool}, …×3]}` | exactly 3 rounds with those types [`hm.shape`]; `true_count` in the flash's band 8–15, 20–35, 40–70, `guess` 0–999, `answer_ms` 0–10000 [`hm.range`]; `answer_ms` null iff `timed_out`, and `guess` null ⇒ `timed_out` [`hm.timeout`]; not timed out ⇒ `answer_ms ≥ 300` [`hm.too_fast`]; not all three guesses equal their true counts [`hm.too_perfect`]; `score ≤ round(1000 × Σ s_i / 3) + 1` with `s_i` as §3.8 (0 for a null guess; upper side only, under-reporting only hurts the sender) [`hm.formula_band`] |
+| Swipe Sort | `{"correct":int,"wrong":int,"missed":int,"mean_swipe_ms":int\|null}` | malformed object/types [`ss.shape`]; `correct` 0–120, `wrong` 0–120, `missed` 0–80, `mean_swipe_ms` 0–900 [`ss.range`]; `mean_swipe_ms` null iff `correct = 0` [`ss.rt`]; `correct = 0` ⇒ `score = 0` [`ss.zero`]; `mean_swipe_ms ≥ 200` [`ss.too_fast`]; `correct × (mean_swipe_ms + 150) ≤ 30150` [`ss.too_many`]; `clamp(22 net, 0, 1000) ≤ score ≤ clamp(22 net + 60, 0, 1000)` with `net = correct − wrong − missed` [`ss.formula_band`] |
+| Pairs | `{"matched":int,"misses":int,"clear_ms":int\|null}` | malformed object/types [`pr.shape`]; `matched` 0–8, `misses` 0–200, `clear_ms` 0–60000 [`pr.range`]; `clear_ms` null iff `matched < 8` [`pr.clear`]; `matched = 0` ⇒ `score = 0` [`pr.zero`]; cleared ⇒ `clear_ms ≥ 4000 + 700 × misses` [`pr.too_fast`]; `\|score − clamp(round(base − 12 × misses), 0, 1000)\| ≤ 1` with `base` as §3.10 (the ±1 covers rounding) [`pr.formula_band`] |
 
-Why these numbers: 250 ms is below realistic visual-search-plus-tap and read-plus-tap times on a phone; a 60 ms total error across three hidden-timer guesses (20 ms each) is below touch-latency jitter; ε < 0.005 means the radius varied by less than 0.5 %, which fingers don't do; 120 ms mean gap is faster than sustained phone tapping; 150 ms per bracket *including reading the sequence* is faster than anyone closes brackets; a 250 ms mean on a Stroop choice is below human choice-reaction time, and the 0.3 s gap after every trial caps how many trials fit in 30 s. They reject scripted submissions, not lucky humans. Tune only with test evidence (`TESTING.md` §4) and record the change in `DECISIONS.md`.
+Why these numbers: 250 ms is below realistic visual-search-plus-tap and read-plus-tap times on a phone; a 60 ms total error across three hidden-timer guesses (20 ms each) is below touch-latency jitter; ε < 0.005 means the radius varied by less than 0.5 %, which fingers don't do; 120 ms mean gap is faster than sustained phone tapping; 150 ms per bracket *including reading the sequence* is faster than anyone closes brackets; a 250 ms mean on a Stroop choice is below human choice-reaction time, and the 0.3 s gap after every trial caps how many trials fit in 30 s; a How Many? answer needs two taps (a digit and OK) after the pad appears, which takes at least 300 ms, and three exact counts from 1 s flashes happen to about 1 in 1000 honest players (the target is a script that reads the seed); a 200 ms mean to register a Swipe Sort swipe is below choice-reaction time plus 40 px of finger travel, and the 0.15 s gap after every item caps how many fit in 30 s; a Pairs clear needs 16 taps at ≥ 250 ms (4000 ms) plus the 0.7 s lock after every miss (`4000 + 700 × misses`). They reject scripted submissions, not lucky humans. Tune only with test evidence (`TESTING.md` §4) and record the change in `DECISIONS.md`.
 
 ## 5. Leaderboards and tie-breaking
 

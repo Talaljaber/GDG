@@ -558,6 +558,9 @@ export type Database = {
         | "trivia"
         | "close_brackets"
         | "color_clash"
+        | "how_many"
+        | "swipe_sort"
+        | "pairs"
       player_progress: "waiting" | "playing" | "finished"
       player_status: "joined" | "removed"
       round_end_reason: "all_finished" | "time_cap" | "force_end"
@@ -702,6 +705,9 @@ export const Constants = {
         "trivia",
         "close_brackets",
         "color_clash",
+        "how_many",
+        "swipe_sort",
+        "pairs",
       ],
       player_progress: ["waiting", "playing", "finished"],
       player_status: ["joined", "removed"],
