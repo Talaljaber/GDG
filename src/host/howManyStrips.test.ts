@@ -108,20 +108,34 @@ describe('howManyStrips (games-v3 §5)', () => {
     ]);
   });
 
-  it('labels the top 5 of the round board (in board order) and nobody else', () => {
+  it('labels the top 4 of the round board (in board order) and nobody else', () => {
     const rows = Array.from({ length: 8 }, (_, i) => row(i, [12 - (i % 3), 27, 55]));
     const [first] = howManyStrips(rows);
-    expect(HM_REVEAL_LABELLED).toBe(5);
-    expect(first.dots.filter((d) => d.label).map((d) => d.label)).toEqual([
-      'Player 0',
-      'Player 1',
-      'Player 2',
-      'Player 3',
-      'Player 4',
-    ]);
+    expect(HM_REVEAL_LABELLED).toBe(4);
+    expect(first.dots.filter((d) => d.label).map((d) => d.label)).toEqual(['Player 0', 'Player 1', 'Player 2', 'Player 3']);
     // a labelled row that didn't guess this flash takes no label slot from someone else
     const [, second] = howManyStrips([row(0, [12, null, 55]), ...rows.slice(1)]);
-    expect(second.dots.filter((d) => d.label)).toHaveLength(4);
+    expect(second.dots.filter((d) => d.label)).toHaveLength(3);
+  });
+
+  it('ADR-138 small counts: one guess step is a wide step, and exact guesses never stack labels', () => {
+    const small = [5, 11, 16];
+    // count 5: every unit is 20 % off, so 4 / 6 sit at 30 / 70 and 8 is beyond the window
+    const [five] = howManyStrips(
+      [3, 4, 6, 7, 8].map((g, i) => row(i, [g, 11, 16], small)),
+      0,
+    );
+    [10, 30, 70, 90, 100].forEach((pos, i) => expect(five.dots[i].pos).toBeCloseTo(pos, 9));
+    expect(five.dots.map((d) => d.pinned)).toEqual([false, false, false, false, true]);
+    // the whole top of the board typed the exact count: every labelled dot is on the centre line
+    const exact = howManyStrips(Array.from({ length: 8 }, (_, i) => row(i, small, small)));
+    for (const strip of exact) {
+      const labelled = strip.dots.filter((d) => d.label);
+      expect(labelled).toHaveLength(HM_REVEAL_LABELLED);
+      expect(labelled.every((d) => d.pos === 50)).toBe(true);
+      const places = labelLanes(labelled, () => 12);
+      expect(new Set(labelled.map((d) => places.get(d.playerRowId)?.lane)).size).toBe(labelled.length);
+    }
   });
 
   it('ignores malformed payloads', () => {

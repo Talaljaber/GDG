@@ -26,7 +26,7 @@ function hmRow(i: number, guesses: (number | null)[]): RevealRow {
     displaySuffix: null,
     score: 800 - i * 100,
     raw: {
-      rounds: [12, 27, 55].map((true_count, k) => ({
+      rounds: [6, 11, 16].map((true_count, k) => ({
         true_count,
         guess: guesses[k],
         answer_ms: guesses[k] === null ? null : 2500,
@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe('How Many? reveal (games-v3 §5)', () => {
-  const rows = [hmRow(0, [11, 24, 46]), hmRow(1, [10, 22, 42]), hmRow(2, [9, null, 30])];
+  const rows = [hmRow(0, [6, 10, 14]), hmRow(1, [5, 9, 13]), hmRow(2, [4, null, 11])];
 
   it('draws three strips on the true counts, dots at their layout positions, the average last', () => {
     render(
@@ -78,8 +78,8 @@ describe('How Many? reveal (games-v3 §5)', () => {
       </LangProvider>,
     );
     const strips = screen.getAllByTestId('hm-strip');
-    expect(strips.map((s) => s.dataset.count)).toEqual(['12', '27', '55']);
-    expect(strips[0]).toHaveTextContent('Flash 1 · 12');
+    expect(strips.map((s) => s.dataset.count)).toEqual(['6', '11', '16']);
+    expect(strips[0]).toHaveTextContent('Flash 1 · 6');
 
     const layout = howManyStrips(rows);
     strips.forEach((strip, i) => {
@@ -90,7 +90,7 @@ describe('How Many? reveal (games-v3 §5)', () => {
     expect(within(strips[1]).getAllByTestId('hm-dot')).toHaveLength(2); // the null guess has no dot
 
     const means = screen.getAllByTestId('hm-mean');
-    expect(means.map((m) => m.dataset.mean)).toEqual(['10', '23', '39']);
+    expect(means.map((m) => m.dataset.mean)).toEqual(['5', '10', '13']);
     expect(means.map((m) => m.style.insetInlineStart)).toEqual(layout.map((s) => `${s.meanPos}%`));
 
     // no anchor (dev fixtures): timed from the mount. Every dot is in by the end of its slot
@@ -125,7 +125,7 @@ describe('slotDelay / anchoredSlot (ADR-137 (5))', () => {
 });
 
 describe('How Many? reveal timing against ended_at (ADR-129 (1), ADR-137 (5))', () => {
-  const rows = [hmRow(0, [11, 24, 46]), hmRow(1, [10, 22, 42]), hmRow(2, [9, null, 30])];
+  const rows = [hmRow(0, [6, 10, 14]), hmRow(1, [5, 9, 13]), hmRow(2, [4, null, 11])];
   const view = (r: RevealRow[], anchorMs: number | null) => (
     <LangProvider initial="en">
       <HowManyReveal roundId="r1" version={0} rows={r} anchorMs={anchorMs} />
@@ -174,13 +174,13 @@ describe('How Many? reveal timing against ended_at (ADR-129 (1), ADR-137 (5))', 
   });
 
   it('a late row 2.7 s in: overdue dots at once, the rest at max(0, slot − elapsed); a late average at 4.0 s', () => {
-    const noFlash2 = [hmRow(0, [11, null, 46]), hmRow(1, [10, null, 42])];
+    const noFlash2 = [hmRow(0, [6, null, 14]), hmRow(1, [5, null, 13])];
     const anchor = Date.now();
     const { rerender } = render(view(noFlash2, anchor));
     expect(screen.getAllByTestId('hm-mean')).toHaveLength(2); // flash 2 has no guess yet
     advance(2700);
 
-    const late = [...noFlash2, hmRow(2, [9, 25, 30])]; // ranked last, the first flash-2 guess
+    const late = [...noFlash2, hmRow(2, [4, 12, 11])]; // ranked last, the first flash-2 guess
     rerender(view(late, anchor));
     const plan = planOf(late);
     const lateDots = dotsOf('p2');
@@ -202,11 +202,11 @@ describe('How Many? reveal timing against ended_at (ADR-129 (1), ADR-137 (5))', 
   });
 
   it('a late row after 4.0 s: its dots and a first-time average appear at once', () => {
-    const noFlash2 = [hmRow(0, [11, null, 46])];
+    const noFlash2 = [hmRow(0, [6, null, 14])];
     const anchor = Date.now();
     const { rerender } = render(view(noFlash2, anchor));
     advance(5000);
-    rerender(view([...noFlash2, hmRow(1, [10, 22, 42])], anchor));
+    rerender(view([...noFlash2, hmRow(1, [5, 9, 13])], anchor));
     expect(dotsOf('p1').some(hidden)).toBe(false);
     expect(screen.getAllByTestId('hm-mean')).toHaveLength(3);
     expect(screen.getAllByTestId('hm-mean').some(hidden)).toBe(false);
@@ -214,18 +214,18 @@ describe('How Many? reveal timing against ended_at (ADR-129 (1), ADR-137 (5))', 
 
   it('keeps the count a strip first showed, so a refetch never moves the dots on screen', () => {
     const tampered = (id: string): RevealRow => ({
-      ...hmRow(1, [10, 22, 42]),
+      ...hmRow(1, [5, 9, 13]),
       playerRowId: id,
-      raw: { rounds: [15, 27, 55].map((true_count, k) => ({ true_count, guess: [10, 22, 42][k] })) },
+      raw: { rounds: [7, 11, 16].map((true_count, k) => ({ true_count, guess: [5, 9, 13][k] })) },
     });
-    const two = [hmRow(0, [11, 24, 46]), tampered('p1')];
+    const two = [hmRow(0, [6, 10, 14]), tampered('p1')];
     const { rerender } = render(view(two, Date.now() - 6000));
     const strip = () => screen.getAllByTestId('hm-strip')[0];
-    expect(strip().dataset.count).toBe('12'); // a 1–1 tie goes to the top row
+    expect(strip().dataset.count).toBe('6'); // a 1–1 tie goes to the top row
     const before = within(strip()).getAllByTestId('hm-dot').map((d) => d.style.insetInlineStart);
-    // two more rows say 15: the mode would move, the axis on screen doesn't
+    // two more rows say 7: the mode would move, the axis on screen doesn't
     rerender(view([...two, tampered('p8'), tampered('p9')], Date.now()));
-    expect(strip().dataset.count).toBe('12');
+    expect(strip().dataset.count).toBe('6');
     const kept = within(strip())
       .getAllByTestId('hm-dot')
       .filter((d) => d.dataset.player === 'p0' || d.dataset.player === 'p1');

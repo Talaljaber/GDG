@@ -114,14 +114,14 @@ const RAW: Record<GameId, { score: number; raw: unknown }> = {
   },
   close_brackets: { score: 838, raw: { solved: 9, failed: 1, timeouts: 0, solve_ms: 23562 } },
   color_clash: { score: 821, raw: { correct: 32, wrong: 1, timeouts: 0, mean_rt_ms: 630 } },
-  // Worked example A for each ADR-136 game (docs/games/<id>.md §4): How Many? 813, Swipe Sort 864, Pairs 825.
+  // Worked example A for each ADR-136 game (docs/games/<id>.md §4): How Many? 905, Swipe Sort 864, Pairs 825.
   how_many: {
-    score: 813,
+    score: 905,
     raw: {
       rounds: [
-        { true_count: 12, guess: 11, answer_ms: 2400, timed_out: false },
-        { true_count: 27, guess: 24, answer_ms: 4100, timed_out: false },
-        { true_count: 55, guess: 46, answer_ms: 6800, timed_out: false },
+        { true_count: 6, guess: 6, answer_ms: 2400, timed_out: false },
+        { true_count: 11, guess: 10, answer_ms: 4100, timed_out: false },
+        { true_count: 16, guess: 14, answer_ms: 6800, timed_out: false },
       ],
     },
   },
@@ -366,8 +366,8 @@ export const fixtures: Fixture[] = [
     [
       ['look', { phase: 'look', roundIndex: 0, lookAgoMs: 0 }],
       ['flash', { phase: 'look', roundIndex: 2, lookAgoMs: 995 }],
-      ['answer', { phase: 'answer', roundIndex: 1, typed: '24', answerAgoMs: 3200 }],
-      ['answer-empty', { phase: 'answer', roundIndex: 0, typed: '', answerAgoMs: 8200 }],
+      ['answer', { phase: 'answer', roundIndex: 1, typed: '12', answerAgoMs: 3200 }],
+      ['answer-empty', { phase: 'answer', roundIndex: 0, typed: '', answerAgoMs: 13_200 }], // 1.8 s left: the amber countdown
       ['locked', { phase: 'locked', roundIndex: 1, typed: '' }],
     ] as const
   ).map(([state, over]) =>
@@ -377,8 +377,8 @@ export const fixtures: Fixture[] = [
       const { lookAgoMs = null, answerAgoMs = null, ...rest } = over as Record<string, unknown> & { lookAgoMs?: number; answerAgoMs?: number };
       const locked = over.phase === 'locked';
       const rounds = [
-        { true_count: 12, guess: 11, answer_ms: 2400, timed_out: false },
-        { true_count: 27, guess: 24, answer_ms: 4100, timed_out: false },
+        { true_count: 6, guess: 6, answer_ms: 2400, timed_out: false },
+        { true_count: 11, guess: 10, answer_ms: 4100, timed_out: false },
       ].slice(0, over.roundIndex + (locked ? 1 : 0));
       return game('how_many', {
         lookStartEpoch: lookAgoMs === null ? null : now - lookAgoMs,

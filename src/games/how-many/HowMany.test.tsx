@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe('How Many?: flow', () => {
-  it('intro 1.5 s -> look 1 s -> flash exactly 1 s -> answer; three answers finish once', () => {
+  it('intro 1.5 s -> look 1 s -> flash exactly 2.5 s -> answer; three answers finish once', () => {
     const { container, onFinish, last } = renderGame();
     expect(q(container, 'hm-intro')).not.toBeNull();
     advance(1450);
@@ -82,7 +82,7 @@ describe('How Many?: flow', () => {
     expect(chevrons(container)).toHaveLength(0);
     expect(last()).toMatchObject({ phase: 'look', roundIndex: 0, lookStartEpoch: ROUND_START + 1500 });
 
-    const guesses = ['11', '24', '46'];
+    const guesses = ['10', '11', '16'];
     for (let i = 0; i < 3; i++) {
       const lookStart = last().lookStartEpoch as number;
       expect(Date.now()).toBe(lookStart);
@@ -98,14 +98,14 @@ describe('How Many?: flow', () => {
       expect(last()).toMatchObject({ phase: 'flash', flashStartEpoch: lookStart + 1000 });
       const nodes = chevrons(container);
       const html = nodes.map((n) => n.outerHTML);
-      advance(950);
+      advance(2450);
       // Nothing in the field changes between mount and unmount.
       expect(chevrons(container)).toEqual(nodes);
       expect(chevrons(container).map((n) => n.outerHTML)).toEqual(html);
       advance(50);
       expect(chevrons(container)).toHaveLength(0);
       expect(q(container, 'hm-answer')).not.toBeNull();
-      expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: lookStart + 2000, typed: '' });
+      expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: lookStart + 3500, typed: '' });
 
       advance(1500);
       type(container, guesses[i]);
@@ -120,7 +120,7 @@ describe('How Many?: flow', () => {
     const result = onFinish.mock.calls[0][0];
     const raw = result.raw as HowManyRaw;
     expect(raw.rounds.map((r) => r.true_count)).toEqual([0, 1, 2].map((i) => fieldFor(SEED, i).count));
-    expect(raw.rounds.map((r) => r.guess)).toEqual([11, 24, 46]);
+    expect(raw.rounds.map((r) => r.guess)).toEqual([10, 11, 16]);
     for (const r of raw.rounds) {
       expect(r.timed_out).toBe(false);
       expect(r.answer_ms).toBe(1500 + 70 * 2); // 1.5 s wait, then two digits and OK 70 ms apart
@@ -131,9 +131,9 @@ describe('How Many?: flow', () => {
     expect(onFinish).toHaveBeenCalledTimes(1);
   });
 
-  it('HM-T12: an idle player gets three nulls and 0, finished inside the 40 s worst case', () => {
+  it('HM-T12: an idle player gets three nulls and 0, finished inside the 60 s worst case', () => {
     const { onFinish } = renderGame();
-    advance(39_000 - 50);
+    advance(58_500 - 50);
     expect(onFinish).not.toHaveBeenCalled();
     advance(100);
     expect(onFinish).toHaveBeenCalledTimes(1);
@@ -144,7 +144,7 @@ describe('How Many?: flow', () => {
       [null, null, true],
     ]);
     expect(result.score).toBe(0);
-    expect(result.durationMs).toBeLessThanOrEqual(40_000);
+    expect(result.durationMs).toBeLessThanOrEqual(60_000);
     expect(validateHowManyRaw(result.raw, 0)).toBeNull();
   });
 
@@ -152,7 +152,7 @@ describe('How Many?: flow', () => {
     const { container, last } = renderGame();
     advance(1500);
     expect(q(container, 'hm-key-5')).toBeNull(); // no pad during the look
-    advance(2000);
+    advance(3500);
     expect(q(container, 'hm-key-ok')?.hasAttribute('disabled')).toBe(true);
     press(container, 'ok');
     expect(last().phase).toBe('answer');
@@ -168,7 +168,7 @@ describe('How Many?: flow', () => {
 
   it('a bounce (second pointerdown within 60 ms) is ignored', () => {
     const { container, last } = renderGame();
-    advance(3500);
+    advance(5000);
     const key = q(container, 'hm-key-4') as HTMLElement;
     fireEvent.pointerDown(key);
     fireEvent.pointerDown(key);
@@ -177,7 +177,7 @@ describe('How Many?: flow', () => {
 
   it('an OK within 300 ms of the pad appearing is ignored (never a too_fast score)', () => {
     const { container, last } = renderGame();
-    advance(3500);
+    advance(5000);
     fireEvent.pointerDown(q(container, 'hm-key-9') as HTMLElement);
     act(() => {
       vi.advanceTimersByTime(100);
@@ -191,27 +191,27 @@ describe('How Many?: flow', () => {
     expect(last().rounds[0]).toMatchObject({ guess: 9, answer_ms: 350, timed_out: false });
   });
 
-  it('each answer times out after 10 s: typed digits count, nothing typed = null', () => {
+  it('each answer times out after 15 s: typed digits count, nothing typed = null', () => {
     const { container, last } = renderGame();
-    advance(3500); // answer 1 open
+    advance(5000); // answer 1 open
     type(container, '13');
-    advance(10_000 - 140 - 60);
+    advance(15_000 - 140 - 60);
     expect(last().phase).toBe('answer');
     expect(q(container, 'hm-seconds')?.textContent).toBe('1');
     advance(100);
     expect(last().phase).toBe('locked');
     expect(last().rounds[0]).toEqual({ true_count: fieldFor(SEED, 0).count, guess: 13, answer_ms: null, timed_out: true });
     expect(q(container, 'hm-locked')?.textContent).toContain('game.how_many.timeout');
-    advance(500 + 2000 + 10_000);
+    advance(500 + 3500 + 15_000);
     expect(last().rounds[1]).toEqual({ true_count: fieldFor(SEED, 1).count, guess: null, answer_ms: null, timed_out: true });
   });
 
   it('"round ended" finishes at once: the open flash keeps its digits, unstarted flashes are null', () => {
     const { container, onFinish, rerenderWith } = renderGame();
-    advance(3500 + 1000);
+    advance(5000 + 1000);
     type(container, '12');
     press(container, 'ok');
-    advance(500 + 2000);
+    advance(500 + 3500);
     type(container, '3');
     rerenderWith({ roundEnded: true });
     expect(onFinish).toHaveBeenCalledTimes(1);
@@ -255,16 +255,16 @@ describe('How Many?: reload and screen lock (ADR-018)', () => {
     };
   }
 
-  it('HM-T11: a reload during the flash never shows the field; the deadline is flashStart + 11 s', () => {
+  it('HM-T11: a reload during the flash never shows the field; the deadline is flashStart + 17.5 s', () => {
     const flashStart = ROUND_START + 20_000;
     vi.setSystemTime(flashStart + 400);
     const { container, last, onProgress } = renderGame({ snapshot: snap({ phase: 'flash', lookStartEpoch: flashStart - 1000, flashStartEpoch: flashStart }) });
     expect(chevrons(container)).toHaveLength(0);
     expect(q(container, 'hm-answer')).not.toBeNull();
     expect(onProgress).toHaveBeenCalled();
-    expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: flashStart + 1000 });
-    expect(q(container, 'hm-seconds')?.textContent).toBe('10');
-    advance(11_000 - 400 - 50);
+    expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: flashStart + 2500 });
+    expect(q(container, 'hm-seconds')?.textContent).toBe('15');
+    advance(17_500 - 400 - 50);
     expect(last().phase).toBe('answer');
     expect(chevrons(container)).toHaveLength(0);
     advance(100);
@@ -272,12 +272,12 @@ describe('How Many?: reload and screen lock (ADR-018)', () => {
     expect(last().rounds[1]).toMatchObject({ guess: null, timed_out: true });
   });
 
-  it('a reload after the look ended skips the flash; the answer counts from lookStart + 2 s', () => {
+  it('a reload after the look ended skips the flash; the answer counts from lookStart + 3.5 s', () => {
     const lookStart = ROUND_START + 20_000;
     vi.setSystemTime(lookStart + 1200);
     const { container, last } = renderGame({ snapshot: snap({ lookStartEpoch: lookStart }) });
     expect(chevrons(container)).toHaveLength(0);
-    expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: lookStart + 2000, flashStartEpoch: null });
+    expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: lookStart + 3500, flashStartEpoch: null });
     // an OK tap right away is measured from the pad appearing (never below 300 ms, never negative)
     type(container, '25');
     advance(200);
@@ -300,10 +300,10 @@ describe('How Many?: reload and screen lock (ADR-018)', () => {
     const answerStart = ROUND_START + 20_000;
     vi.setSystemTime(answerStart + 6000);
     const { container, last } = renderGame({
-      snapshot: snap({ phase: 'answer', lookStartEpoch: answerStart - 2000, flashStartEpoch: answerStart - 1000, answerStartEpoch: answerStart, typed: '2' }),
+      snapshot: snap({ phase: 'answer', lookStartEpoch: answerStart - 3500, flashStartEpoch: answerStart - 2500, answerStartEpoch: answerStart, typed: '2' }),
     });
     expect(q(container, 'hm-typed')?.textContent).toBe('2');
-    expect(q(container, 'hm-seconds')?.textContent).toBe('4');
+    expect(q(container, 'hm-seconds')?.textContent).toBe('9');
     press(container, '6');
     press(container, 'ok');
     expect(last().rounds[1]).toMatchObject({ guess: 26, answer_ms: 6070, timed_out: false });
@@ -326,14 +326,14 @@ describe('How Many?: reload and screen lock (ADR-018)', () => {
     advance(2550);
     const flashStart = last().flashStartEpoch as number;
     expect(chevrons(container).length).toBeGreaterThan(0);
-    // the timer is throttled: time jumps 4 s without it firing
+    // the timer is throttled: time jumps 5 s past the flash's start without it firing
     vi.setSystemTime(flashStart + 5000);
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
     expect(chevrons(container)).toHaveLength(0);
-    expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: flashStart + 1000 });
-    expect(q(container, 'hm-seconds')?.textContent).toBe('6');
+    expect(last()).toMatchObject({ phase: 'answer', answerStartEpoch: flashStart + 2500 });
+    expect(q(container, 'hm-seconds')?.textContent).toBe('13');
   });
 
   it('a look timer that fires late (screen locked) skips the flash', () => {
@@ -346,7 +346,7 @@ describe('How Many?: reload and screen lock (ADR-018)', () => {
       vi.advanceTimersByTime(1000);
     });
     expect(chevrons(container)).toHaveLength(0);
-    expect(last()).toMatchObject({ phase: 'answer', flashStartEpoch: null, answerStartEpoch: lookStart + 2000 });
+    expect(last()).toMatchObject({ phase: 'answer', flashStartEpoch: null, answerStartEpoch: lookStart + 3500 });
   });
 });
 
@@ -355,25 +355,25 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
     calls.map(([s]) => s).filter((s) => s.phase === 'look').map((s) => s.lookStartEpoch);
 
   it('HM-T15: a reload during the intro keeps look 1 at roundStart + 1.5 s; a passed window skips the flash', () => {
-    vi.setSystemTime(ROUND_START + 3400);
+    vi.setSystemTime(ROUND_START + 4900);
     const { container, last, onProgress, onFinish } = renderGame();
     // Everything overdue is applied before the first paint: no intro replay, no field.
     expect(q(container, 'hm-intro')).toBeNull();
     expect(chevrons(container)).toHaveLength(0);
     expect(looks(onProgress.mock.calls)).toEqual([ROUND_START + 1500]);
-    expect(last()).toMatchObject({ phase: 'answer', roundIndex: 0, flashStartEpoch: null, answerStartEpoch: ROUND_START + 3500 });
-    expect(q(container, 'hm-seconds')?.textContent).toBe('10');
-    // The deadline is roundStart + 1.5 + 2 + 10 s; idle, the round still ends on the 39 s schedule.
-    advance(ROUND_START + 13_500 - Date.now() - 50);
+    expect(last()).toMatchObject({ phase: 'answer', roundIndex: 0, flashStartEpoch: null, answerStartEpoch: ROUND_START + 5000 });
+    expect(q(container, 'hm-seconds')?.textContent).toBe('15');
+    // The deadline is roundStart + 1.5 + 3.5 + 15 s; idle, the round still ends on the 58.5 s schedule.
+    advance(ROUND_START + 20_000 - Date.now() - 50);
     expect(last().phase).toBe('answer');
     advance(100);
     expect(last().phase).toBe('locked');
-    advance(ROUND_START + 39_000 - Date.now() - 50);
+    advance(ROUND_START + 58_500 - Date.now() - 50);
     expect(onFinish).not.toHaveBeenCalled();
     advance(100);
     expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(39_050);
-    expect(looks(onProgress.mock.calls)).toEqual([ROUND_START + 1500, ROUND_START + 14_000, ROUND_START + 26_500]);
+    expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(58_550);
+    expect(looks(onProgress.mock.calls)).toEqual([ROUND_START + 1500, ROUND_START + 20_500, ROUND_START + 39_500]);
   });
 
   it('HM-T15: a reload early in the intro only waits for what is left of it', () => {
@@ -386,12 +386,12 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
     expect(last()).toMatchObject({ phase: 'look', lookStartEpoch: ROUND_START + 1500 });
   });
 
-  it('HM-T16: a 36 s screen lock in answer 1 closes every overdue step on return and finishes by the worst case', () => {
+  it('HM-T16: a screen lock in answer 1 that outlasts the round closes every overdue step on return and finishes by the worst case', () => {
     const { container, onFinish } = renderGame();
-    advance(4000); // answer 1 open since roundStart + 3.5 s
+    advance(5500); // answer 1 open since roundStart + 5 s
     type(container, '1');
-    // Frozen: the clock reaches roundStart + 40 s and no timer fires.
-    vi.setSystemTime(ROUND_START + 40_000);
+    // Frozen: the clock reaches roundStart + 60 s and no timer fires.
+    vi.setSystemTime(ROUND_START + 60_000);
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
@@ -402,37 +402,37 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
       [null, null, true],
       [null, null, true],
     ]);
-    expect(result.durationMs).toBeLessThanOrEqual(40_000 + 100);
+    expect(result.durationMs).toBeLessThanOrEqual(60_000 + 100);
     expect(validateHowManyRaw(result.raw, result.score)).toBeNull();
     expect(chevrons(container)).toHaveLength(0);
   });
 
   it('HM-T16: a shorter lock returns the player to the step the schedule is on, with its remaining time', () => {
     const { container, last, onFinish, onProgress } = renderGame();
-    advance(4000);
-    vi.setSystemTime(ROUND_START + 20_000);
+    advance(5500);
+    vi.setSystemTime(ROUND_START + 30_000);
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    // Answer 1 timed out at 13.5 s, locked until 14 s, look 2 at 14 s (window passed: no flash), answer 2 from 16 s.
-    expect(last()).toMatchObject({ phase: 'answer', roundIndex: 1, lookStartEpoch: ROUND_START + 14_000, answerStartEpoch: ROUND_START + 16_000 });
+    // Answer 1 timed out at 20 s, locked until 20.5 s, look 2 at 20.5 s (window passed: no flash), answer 2 from 24 s.
+    expect(last()).toMatchObject({ phase: 'answer', roundIndex: 1, lookStartEpoch: ROUND_START + 20_500, answerStartEpoch: ROUND_START + 24_000 });
     expect(last().rounds[0]).toMatchObject({ guess: null, timed_out: true });
-    expect(q(container, 'hm-seconds')?.textContent).toBe('6');
-    advance(ROUND_START + 39_000 - Date.now() + 50);
+    expect(q(container, 'hm-seconds')?.textContent).toBe('9');
+    advance(ROUND_START + 58_500 - Date.now() + 50);
     expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(39_100);
-    expect(looks(onProgress.mock.calls)).toEqual([ROUND_START + 1500, ROUND_START + 14_000, ROUND_START + 26_500]);
+    expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(58_600);
+    expect(looks(onProgress.mock.calls)).toEqual([ROUND_START + 1500, ROUND_START + 20_500, ROUND_START + 39_500]);
   });
 
-  it('HM-T17: a reload in "locked in" 3 s after it ended starts the next look at lockedEndEpoch, not at mount', () => {
-    const lockedEnd = ROUND_START + 14_000;
-    vi.setSystemTime(lockedEnd + 3000);
+  it('HM-T17: a reload in "locked in" 4.5 s after it ended starts the next look at lockedEndEpoch, not at mount', () => {
+    const lockedEnd = ROUND_START + 20_500;
+    vi.setSystemTime(lockedEnd + 4500);
     const snapshot: HowManySnapshot = {
       phase: 'locked',
       roundIndex: 0,
       lookStartEpoch: ROUND_START + 1500,
       flashStartEpoch: ROUND_START + 2500,
-      answerStartEpoch: ROUND_START + 3500,
+      answerStartEpoch: ROUND_START + 5000,
       lockedEndEpoch: lockedEnd,
       typed: '',
       rounds: [{ true_count: fieldFor(SEED, 0).count, guess: 11, answer_ms: 2100, timed_out: false }],
@@ -440,18 +440,18 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
     const { container, last, onProgress } = renderGame({ snapshot });
     expect(looks(onProgress.mock.calls)).toEqual([lockedEnd]);
     expect(chevrons(container)).toHaveLength(0);
-    expect(last()).toMatchObject({ phase: 'answer', roundIndex: 1, flashStartEpoch: null, answerStartEpoch: lockedEnd + 2000 });
+    expect(last()).toMatchObject({ phase: 'answer', roundIndex: 1, flashStartEpoch: null, answerStartEpoch: lockedEnd + 3500 });
     // The answer's clock started 1 s ago on the schedule, not at mount.
-    expect(q(container, 'hm-seconds')?.textContent).toBe('9');
+    expect(q(container, 'hm-seconds')?.textContent).toBe('14');
   });
 
   it('HM-T17: an OK tap ends "locked in" 0.5 s after the tap, and the next look starts there', () => {
     const { container, last } = renderGame();
-    advance(3500); // answer 1 from roundStart + 3.5 s
+    advance(5000); // answer 1 from roundStart + 5 s
     advance(1860);
     type(container, '12');
     const tap = Date.now();
-    expect(tap).toBe(ROUND_START + 5500);
+    expect(tap).toBe(ROUND_START + 7000);
     press(container, 'ok');
     expect(last()).toMatchObject({ phase: 'locked', lockedEndEpoch: tap + 500 });
     advance(tap + 500 - Date.now());
@@ -464,11 +464,11 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
       delete (document as unknown as { visibilityState?: unknown }).visibilityState;
     });
 
-    it('HM-T18: hidden with timers still firing: no field ever renders, every answer times out on schedule, finish at 39 s', () => {
+    it('HM-T18: hidden with timers still firing: no field ever renders, every answer times out on schedule, finish at 58.5 s', () => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
       const { container, onFinish, onProgress } = renderGame();
       let fieldSeen = false;
-      for (let t = 0; t < 39_000 - 50; t += 50) {
+      for (let t = 0; t < 58_500 - 50; t += 50) {
         act(() => {
           vi.advanceTimersByTime(50);
         });
@@ -479,13 +479,13 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
       advance(100);
       expect(onFinish).toHaveBeenCalledTimes(1);
       const result = onFinish.mock.calls[0][0];
-      expect(result.durationMs).toBeGreaterThanOrEqual(39_000);
-      expect(result.durationMs).toBeLessThanOrEqual(39_050);
+      expect(result.durationMs).toBeGreaterThanOrEqual(58_500);
+      expect(result.durationMs).toBeLessThanOrEqual(58_550);
       expect((result.raw as HowManyRaw).rounds.every((r) => r.guess === null && r.timed_out)).toBe(true);
-      // The schedule never moved: looks at 1.5 / 14 / 26.5 s, answers from look + 2 s.
-      expect(looks(onProgress.mock.calls)).toEqual([ROUND_START + 1500, ROUND_START + 14_000, ROUND_START + 26_500]);
+      // The schedule never moved: looks at 1.5 / 20.5 / 39.5 s, answers from look + 3.5 s.
+      expect(looks(onProgress.mock.calls)).toEqual([ROUND_START + 1500, ROUND_START + 20_500, ROUND_START + 39_500]);
       const answers = onProgress.mock.calls.map(([s]) => s).filter((s) => s.phase === 'answer').map((s) => s.answerStartEpoch);
-      expect([...new Set(answers)]).toEqual([ROUND_START + 3500, ROUND_START + 16_000, ROUND_START + 28_500]);
+      expect([...new Set(answers)]).toEqual([ROUND_START + 5000, ROUND_START + 24_000, ROUND_START + 43_000]);
     });
   });
 
@@ -501,8 +501,8 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
       typed: '',
       rounds: [],
     };
-    expect(dueEpoch(base, ROUND_START)).toBe(lookStart + 2000);
-    expect(dueEpoch({ ...base, flashStartEpoch: lookStart + 1100 }, ROUND_START)).toBe(lookStart + 2100);
+    expect(dueEpoch(base, ROUND_START)).toBe(lookStart + 3500);
+    expect(dueEpoch({ ...base, flashStartEpoch: lookStart + 1100 }, ROUND_START)).toBe(lookStart + 3600);
     expect(dueEpoch({ ...base, phase: 'intro', lookStartEpoch: null }, ROUND_START)).toBe(ROUND_START + 1500);
     expect(dueEpoch({ ...base, phase: 'done' }, ROUND_START)).toBeNull();
   });
@@ -522,7 +522,7 @@ describe('How Many?: fixed schedule on stored epochs (ADR-137 (2))', () => {
     const lookStart = ROUND_START + 1500;
     expect(frozen).toBe(true);
     expect(chevrons(container)).toHaveLength(0);
-    expect(snaps[snaps.length - 1]).toMatchObject({ phase: 'answer', answerStartEpoch: lookStart + 2000 });
-    expect(q(container, 'hm-seconds')?.textContent).toBe('6');
+    expect(snaps[snaps.length - 1]).toMatchObject({ phase: 'answer', answerStartEpoch: lookStart + 3500 });
+    expect(q(container, 'hm-seconds')?.textContent).toBe('13');
   });
 });

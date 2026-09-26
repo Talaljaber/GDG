@@ -3,8 +3,8 @@
  *
  * Flash i uses a fixed g_i x g_i cell grid (HM_GRID; fixed per flash so the
  * cell size never hints at the count). Rng("<seed>:hm:round<i>") draws, in
- * this order: the count N_i uniformly from the flash's band excluding
- * multiples of 10, then N_i distinct cells, then per chevron jitter-x,
+ * this order: the count N_i uniformly from the flash's band (every integer,
+ * ADR-138), then N_i distinct cells, then per chevron jitter-x,
  * jitter-y, rotation and colour. Each glyph is 70 % of a cell, jittered by at
  * most ±15 % of a cell, so 0.7 + 2 x 0.15 = 1.0: a glyph never leaves its cell,
  * chevrons never overlap and never leave the field. Everyone in a round sees
@@ -13,8 +13,8 @@
 import { Rng } from '../../lib/rng';
 import { HM_BANDS } from './scoring';
 
-/** Grid side per flash (25 / 49 / 100 cells >= the band maxima 15 / 35 / 70). */
-export const HM_GRID: readonly number[] = [5, 7, 10];
+/** Grid side per flash (16 / 25 / 36 cells >= the band maxima 7 / 13 / 18; ADR-138: was 5 / 7 / 10). */
+export const HM_GRID: readonly number[] = [4, 5, 6];
 
 /** Glyph box side, in cells. */
 export const HM_GLYPH = 0.7;
@@ -43,11 +43,11 @@ export interface HmField {
   chevrons: HmChevron[];
 }
 
-/** The counts flash i can draw: its band minus multiples of 10. */
+/** The counts flash i can draw: every integer in its band (ADR-138 dropped the "never a multiple of 10" rule). */
 export function countsFor(index: number): number[] {
   const [lo, hi] = HM_BANDS[index];
   const out: number[] = [];
-  for (let n = lo; n <= hi; n++) if (n % 10 !== 0) out.push(n);
+  for (let n = lo; n <= hi; n++) out.push(n);
   return out;
 }
 

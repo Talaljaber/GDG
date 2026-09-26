@@ -6,11 +6,11 @@
 /** Flashes per round. */
 export const HM_FLASHES = 3;
 
-/** True-count band per flash, inclusive (multiples of 10 are never drawn, field.ts). */
+/** True-count band per flash, inclusive; every integer in it can be drawn (field.ts, ADR-138). */
 export const HM_BANDS: ReadonlyArray<readonly [number, number]> = [
-  [8, 15],
-  [20, 35],
-  [40, 70],
+  [4, 7],
+  [9, 13],
+  [14, 18],
 ];
 
 /** Dead zone: within 5 % of the true count = full marks. */
@@ -19,8 +19,8 @@ export const HM_D = 0.05;
 /** W_i: the relative error that scores 0, per flash (widens with the count, Weber's law). */
 export const HM_W: readonly number[] = [0.3, 0.4, 0.5];
 
-/** Per-answer timeout, from the pad appearing. */
-export const HM_ANSWER_MS = 10_000;
+/** Per-answer timeout, from the end of the flash window (ADR-138: was 10 s). */
+export const HM_ANSWER_MS = 15_000;
 
 /** A non-timed-out answer needs a digit and OK after the pad appears (hm.too_fast). */
 export const HM_MIN_ANSWER_MS = 300;
@@ -86,7 +86,6 @@ export type HowManyRejectReason =
   | 'hm.range'
   | 'hm.timeout'
   | 'hm.too_fast'
-  | 'hm.too_perfect'
   | 'hm.formula_band';
 
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
@@ -95,6 +94,9 @@ const isIntOrNull = (o: Record<string, unknown>, k: string) => k in o && (o[k] =
 /**
  * Mirrors the server's rejection bounds (docs/SCORING.md §4) for tests; the
  * server remains authoritative. Returns the first violated reason, or null.
+ * Three exact guesses are normal play since ADR-138 (no `hm.too_perfect`).
+ * Only the current bands pass here; during the rollout the server also
+ * accepts the pre-ADR-138 bands (migration 20260926000100).
  */
 export function validateHowManyRaw(raw: unknown, score: number): HowManyRejectReason | null {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return 'hm.shape';
@@ -122,7 +124,6 @@ export function validateHowManyRaw(raw: unknown, score: number): HowManyRejectRe
   for (const r of rs) {
     if (!r.timed_out && (r.answer_ms as number) < HM_MIN_ANSWER_MS) return 'hm.too_fast';
   }
-  if (rs.every((r) => r.guess === r.true_count)) return 'hm.too_perfect';
   let sum = 0;
   for (let i = 0; i < HM_FLASHES; i++) sum += flashScore(rs[i], i);
   if (score > Math.round((1000 * sum) / HM_FLASHES) + 1) return 'hm.formula_band';

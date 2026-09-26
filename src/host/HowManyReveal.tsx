@@ -4,8 +4,9 @@
  * Clock reveal (StcReveal.tsx, ADR-025) to a count axis: three flat tracks,
  * one per flash, centred on the true count (the most common `true_count`
  * across rows), the ends at ±50 % relative error (`HM_REVEAL_WINDOW`), ticks
- * every 10 %; one dot per guess (beyond the window: pinned, hollow), the top 5
- * of the round board labelled in lanes. The phones never show the true
+ * every 10 %; one dot per guess (beyond the window: pinned, hollow), the top 4
+ * of the round board labelled in lanes (`HM_REVEAL_LABELLED`, ADR-138: exact
+ * guesses coincide, and 4 labels always fit the 4 lanes). The phones never show the true
  * counts; this is where the room learns them.
  *
  * Timing inside the step, all measured from the round's `ended_at` (the

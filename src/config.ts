@@ -46,8 +46,12 @@ export const STC_REVEAL_LABELLED = 5;
 /** Reveal window around each target: dots further than this are pinned to the strip's edge. */
 export const STC_REVEAL_WINDOW_MS = 5000;
 
-/** Top rows labelled with names on the How Many? count reveal (games-v3 §5, ADR-136). */
-export const HM_REVEAL_LABELLED = 5;
+/**
+ * Top rows labelled with names on the How Many? count reveal (games-v3 §5, ADR-136). 4, not 5
+ * (ADR-138): with small counts many top players type the exact count, so their dots coincide;
+ * the reveal has 4 label lanes, and at most 4 labels always find a free lane.
+ */
+export const HM_REVEAL_LABELLED = 4;
 
 /** How Many? reveal window: ±50 % relative error around the true count; dots beyond are pinned. */
 export const HM_REVEAL_WINDOW = 0.5;

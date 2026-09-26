@@ -115,14 +115,14 @@ function build(game: Game): Built {
       return { raw, score, durationMs: 31_600, clientReject: cc.validateColorClashRaw(raw, score) };
     }
     case 'how_many': {
-      // worked example A (docs/games/how-many.md §4): N = [12, 27, 55], guesses 11 / 24 / 46
+      // worked example A (docs/games/how-many.md §4, ADR-138): N = [6, 11, 16], guesses 6 / 10 / 14 -> 905
       const raw = hm.buildRaw([
-        { true_count: 12, guess: 11, answer_ms: 2400, timed_out: false },
-        { true_count: 27, guess: 24, answer_ms: 3100, timed_out: false },
-        { true_count: 55, guess: 46, answer_ms: 4200, timed_out: false },
+        { true_count: 6, guess: 6, answer_ms: 2400, timed_out: false },
+        { true_count: 11, guess: 10, answer_ms: 3100, timed_out: false },
+        { true_count: 16, guess: 14, answer_ms: 4200, timed_out: false },
       ]);
       const score = hm.scoreHowMany(raw);
-      return { raw, score, durationMs: 15_000, clientReject: hm.validateHowManyRaw(raw, score) };
+      return { raw, score, durationMs: 23_000, clientReject: hm.validateHowManyRaw(raw, score) };
     }
     case 'swipe_sort': {
       // worked example A (docs/games/swipe-sort.md §2.3): 43 / 1 / 5 at a 450 ms mean

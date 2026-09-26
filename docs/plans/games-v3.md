@@ -27,6 +27,8 @@ Same contract as the seven existing games (`.claude/rules/games.md`, `ARCHITECTU
 
 One-line pitch: "A flash of chevrons. How many did you see?"
 
+> **Retuned by ADR-138 (2026-09-26, after the playtest).** The numbers in this section are the original plan and are kept as history. Current values (`docs/games/how-many.md` and `SCORING.md` §3.8/§4 win): bands 4–7 / 9–13 / 14–18 (every integer, no "never a multiple of 10"), grids 4 / 5 / 6, a 2.5 s flash, a 15 s answer, worst case 58.5 s (`worstCaseMs` 60 000), no `hm.too_perfect`, `answer_ms` ≤ 15 000, the reveal labels the top 4, the intro string "3 flashes · 2.5 seconds each"; worked example A is now 905.
+
 ### 1.1 Rules and flow
 
 Three flashes with rising counts. Each flash: a field of brand chevrons (random rotation, blue/amber mix, never overlapping) shows for exactly **1.0 s**, then disappears; the player types a number on an on-screen pad within **10 s**. No feedback on the phone until the end of the round; the true counts are revealed on the big screen (§5), as Stop the Clock reveals guesses (ADR-025).
@@ -475,7 +477,7 @@ Snapshot: `{ phase, gameStartEpoch, faceUp: number[] (0–2 positions), matchedI
 
 | Game | Attempts | Per-attempt timeout | Worst case | `worstCaseMs` |
 |---|---|---|---|---|
-| How Many? | 3 flashes | 10 s per answer | 1.5 + 3 × 12.5 ≈ 39 s | 40 000 |
+| How Many? | 3 flashes | 10 s per answer (15 s since ADR-138) | 1.5 + 3 × 12.5 ≈ 39 s (58.5 s since ADR-138) | 40 000 (60 000 since ADR-138) |
 | Swipe Sort | items inside a 30 s clock | `I(t)` 900 → 450 ms | 1.5 + 30 ≈ 32 s | 32 000 |
 | Pairs | one board | 60 s clock | 1.5 + 60 ≈ 62 s | 62 000 |
 

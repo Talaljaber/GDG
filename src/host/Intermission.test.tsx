@@ -73,7 +73,7 @@ function hmRow(i: number, guesses: number[]): RevealRow {
     displaySuffix: null,
     score: 800 - i * 100,
     raw: {
-      rounds: [12, 27, 55].map((true_count, k) => ({ true_count, guess: guesses[k], answer_ms: 2500, timed_out: false })),
+      rounds: [6, 11, 16].map((true_count, k) => ({ true_count, guess: guesses[k], answer_ms: 2500, timed_out: false })),
     },
   };
 }
@@ -86,7 +86,7 @@ function hmSetup(games: readonly GameId[], endedAt: string, offset = 0) {
   const hmData = { ...data, session: { ...data.session, lineup: games }, rounds: hmRounds } as HostData;
   const hmPreview: IntermissionPreview = {
     ...preview,
-    reveal: [hmRow(0, [11, 24, 46]), hmRow(1, [10, 22, 42]), hmRow(2, [9, 30, 60])],
+    reveal: [hmRow(0, [6, 10, 14]), hmRow(1, [5, 9, 13]), hmRow(2, [4, 13, 18])],
   };
   const hostFor = (roundNo: number, step: IntermissionStep): HostController =>
     ({

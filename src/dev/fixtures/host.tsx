@@ -267,11 +267,11 @@ function reveal(n: number): RevealRow[] {
   }));
 }
 
-/** How Many? raws (games-v3 §1.4) around N = [12, 27, 55]: typical underestimates, a few misses. */
+/** How Many? raws (games-v3 §1.4) around N = [6, 11, 16] (ADR-138 bands): many exact, some under, a few misses. */
 function hmRaw(i: number): unknown {
   const rel = [-0.08, 0.04, -0.17, -0.12, 0.2, -0.25, 0, -0.33, 0.1, -0.05, -0.4, 0.15, -0.2, -0.1, 0.62, -0.15, 0.3, -0.22, -0.02, -0.28];
   return {
-    rounds: [12, 27, 55].map((true_count, k) => {
+    rounds: [6, 11, 16].map((true_count, k) => {
       const r = rel[(i + k * 7) % rel.length] - k * 0.03;
       const guess = i === 19 && k === 1 ? null : Math.max(0, Math.round(true_count * (1 + r)));
       return { true_count, guess, answer_ms: guess === null ? null : 2400, timed_out: guess === null };

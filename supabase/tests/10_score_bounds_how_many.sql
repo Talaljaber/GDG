@@ -1,7 +1,9 @@
--- TESTING.md section 3, "Trigger bounds" for How Many? (ADR-136): one passing and one failing case
--- per bound in SCORING.md section 4 / docs/games/how-many.md section 5, asserting the reason code in
--- the GD008 error detail, plus the worked examples A-F with their documented scores. Same method as
--- 05/09: real guest inserts through the trigger, RLS and CHECK constraints, each rolled back.
+-- TESTING.md section 3, "Trigger bounds" for How Many? (ADR-136, retuned by ADR-138 in migration
+-- 20260926000100): one passing and one failing case per bound in SCORING.md section 4 /
+-- docs/games/how-many.md section 5, asserting the reason code in the GD008 error detail. Payloads on
+-- the new bands (4-7, 9-13, 14-18) are the main fixtures; the pre-ADR-138 worked examples A-F (bands
+-- 8-15, 20-35, 40-70) must still be accepted during the rollout. Same method as 05/09: real guest
+-- inserts through the trigger, RLS and CHECK constraints, each rolled back.
 begin;
 -- isolate from local dev/e2e data (rolled back with the transaction)
 truncate public.scores, public.players, public.rounds, public.sessions, public.hidden_names restart identity cascade;
@@ -54,7 +56,7 @@ returns jsonb language sql immutable as $$
     jsonb_build_object('true_count', n2, 'guess', g2, 'answer_ms', a2, 'timed_out', a2 is null),
     jsonb_build_object('true_count', n3, 'guess', g3, 'answer_ms', a3, 'timed_out', a3 is null))) $$;
 
-select plan(50);
+select plan(70);
 
 -- ============ Fixture: one guest in a How Many? round (inserted directly, as postgres) ============
 select pg_temp.setv('G', '99999999-0000-0000-0000-000000000010');
@@ -71,7 +73,11 @@ with sa as (
 )
 select pg_temp.setv('r_hm', id::text) from rs;
 
--- The worked examples of docs/games/how-many.md section 4 (N = 12, 27, 55).
+-- New-band payloads (ADR-138). n: 5, 12, 15 for N = 6, 11, 16 -> 796;
+-- p: 4, null, 17 for N = 4, 9, 18 (one timeout) -> 663.
+select pg_temp.setv('n', pg_temp.hm(6, 5, 2400, 11, 12, 4100, 16, 15, 6800)::text);
+select pg_temp.setv('p', pg_temp.hm(4, 4, 1900, 9, null, null, 18, 17, 5400)::text);
+-- The pre-ADR-138 worked examples (N = 12, 27, 55): old bands, still accepted during the rollout.
 select pg_temp.setv('a', pg_temp.hm(12, 11, 2400, 27, 24, 4100, 55, 46, 6800)::text);
 select pg_temp.setv('b', pg_temp.hm(12, 10, 3100, 27, 22, 5200, 55, 42, 7300)::text);
 select pg_temp.setv('c', pg_temp.hm(12, 9, 2900, 27, 18, 6100, 55, 30, 8800)::text);
@@ -83,63 +89,87 @@ select pg_temp.login(pg_temp.v('G')::uuid);
 
 select is(pg_temp.sub(sc, raw), want, descr)
 from (values
-  -- ---------------- worked examples ----------------
-  (813, pg_temp.b('a'), 'ok', 'example A (strong) 11, 24, 46 -> 813'),
-  (578, pg_temp.b('b'), 'ok', 'example B (typical) 10, 22, 42 -> 578'),
-  (164, pg_temp.b('c'), 'ok', 'example C (weak) 9, 18, 30 -> 164'),
-  (0, pg_temp.b('d'), 'ok', 'example D (idle) three nulls -> 0'),
-  (636, pg_temp.b('e'), 'ok', 'example E (one timeout) 12, null, 50 -> 636'),
-  (1000, pg_temp.b('f'), 'ok', 'example F (near-perfect) 12, 27, 53 -> 1000'),
+  -- ---------------- new-band payloads (ADR-138) ----------------
+  (796, pg_temp.b('n'), 'ok', 'new bands: 5, 12, 15 for N = 6, 11, 16 -> 796'),
+  (663, pg_temp.b('p'), 'ok', 'new bands: 4, null, 17 for N = 4, 9, 18 -> 663'),
+  -- ---------------- old-band worked examples (rollout: the old bundle keeps saving) ----------------
+  (813, pg_temp.b('a'), 'ok', 'old bands: example A (strong) 11, 24, 46 -> 813'),
+  (578, pg_temp.b('b'), 'ok', 'old bands: example B (typical) 10, 22, 42 -> 578'),
+  (164, pg_temp.b('c'), 'ok', 'old bands: example C (weak) 9, 18, 30 -> 164'),
+  (0, pg_temp.b('d'), 'ok', 'old bands: example D (idle) three nulls -> 0'),
+  (636, pg_temp.b('e'), 'ok', 'old bands: example E (one timeout) 12, null, 50 -> 636'),
+  (1000, pg_temp.b('f'), 'ok', 'old bands: example F (near-perfect) 12, 27, 53 -> 1000'),
   -- ---------------- hm.shape ----------------
-  (813, '[]'::jsonb, 'GD008:hm.shape', 'hm.shape fail: raw is not an object'),
-  (813, '{}'::jsonb, 'GD008:hm.shape', 'hm.shape fail: rounds missing'),
-  (813, jsonb_build_object('rounds', (pg_temp.b('a') -> 'rounds') - 2), 'GD008:hm.shape', 'hm.shape fail: two rounds'),
-  (813, jsonb_build_object('rounds', (pg_temp.b('a') -> 'rounds') || jsonb_build_array(pg_temp.b('a') -> 'rounds' -> 0)),
+  (796, '[]'::jsonb, 'GD008:hm.shape', 'hm.shape fail: raw is not an object'),
+  (796, '{}'::jsonb, 'GD008:hm.shape', 'hm.shape fail: rounds missing'),
+  (796, jsonb_build_object('rounds', (pg_temp.b('n') -> 'rounds') - 2), 'GD008:hm.shape', 'hm.shape fail: two rounds'),
+  (796, jsonb_build_object('rounds', (pg_temp.b('n') -> 'rounds') || jsonb_build_array(pg_temp.b('n') -> 'rounds' -> 0)),
         'GD008:hm.shape', 'hm.shape fail: four rounds'),
-  (813, pg_temp.set('a', '{rounds,1}', '5'), 'GD008:hm.shape', 'hm.shape fail: a round is not an object'),
-  (813, pg_temp.b('a') #- '{rounds,0,guess}', 'GD008:hm.shape', 'hm.shape fail: guess missing'),
-  (813, pg_temp.b('a') #- '{rounds,2,answer_ms}', 'GD008:hm.shape', 'hm.shape fail: answer_ms missing'),
-  (813, pg_temp.set('a', '{rounds,0,true_count}', '"12"'), 'GD008:hm.shape', 'hm.shape fail: true_count is a string'),
-  (813, pg_temp.set('a', '{rounds,1,guess}', '24.5'), 'GD008:hm.shape', 'hm.shape fail: guess not an integer'),
-  (813, pg_temp.set('a', '{rounds,2,timed_out}', '"false"'), 'GD008:hm.shape', 'hm.shape fail: timed_out is a string'),
-  -- ---------------- hm.range ----------------
-  (0, pg_temp.set('a', '{rounds,0,true_count}', '15'), 'ok', 'hm.range pass: true_count 15 on flash 1'),
-  (0, pg_temp.set('a', '{rounds,0,true_count}', '16'), 'GD008:hm.range', 'hm.range fail: true_count 16 on flash 1 (HM-T10)'),
-  (0, pg_temp.set('a', '{rounds,0,true_count}', '7'), 'GD008:hm.range', 'hm.range fail: true_count 7 on flash 1'),
-  (0, pg_temp.set('a', '{rounds,1,true_count}', '20'), 'ok', 'hm.range pass: true_count 20 on flash 2'),
-  (0, pg_temp.set('a', '{rounds,1,true_count}', '19'), 'GD008:hm.range', 'hm.range fail: true_count 19 on flash 2'),
-  (0, pg_temp.set('a', '{rounds,1,true_count}', '36'), 'GD008:hm.range', 'hm.range fail: true_count 36 on flash 2'),
-  (0, pg_temp.set('a', '{rounds,2,true_count}', '70'), 'ok', 'hm.range pass: true_count 70 on flash 3'),
-  (0, pg_temp.set('a', '{rounds,2,true_count}', '71'), 'GD008:hm.range', 'hm.range fail: true_count 71 on flash 3'),
-  (0, pg_temp.set('a', '{rounds,2,true_count}', '12'), 'GD008:hm.range', 'hm.range fail: flash 1''s count on flash 3'),
-  (0, pg_temp.set('a', '{rounds,2,guess}', '999'), 'ok', 'hm.range pass: guess 999'),
-  (0, pg_temp.set('a', '{rounds,2,guess}', '1000'), 'GD008:hm.range', 'hm.range fail: guess 1000'),
-  (0, pg_temp.set('a', '{rounds,0,guess}', '-1'), 'GD008:hm.range', 'hm.range fail: guess -1'),
-  (0, pg_temp.set('a', '{rounds,1,answer_ms}', '10000'), 'ok', 'hm.range pass: answer_ms 10000'),
-  (0, pg_temp.set('a', '{rounds,1,answer_ms}', '10001'), 'GD008:hm.range', 'hm.range fail: answer_ms 10001'),
+  (796, pg_temp.set('n', '{rounds,1}', '5'), 'GD008:hm.shape', 'hm.shape fail: a round is not an object'),
+  (796, pg_temp.b('n') #- '{rounds,0,guess}', 'GD008:hm.shape', 'hm.shape fail: guess missing'),
+  (796, pg_temp.b('n') #- '{rounds,2,answer_ms}', 'GD008:hm.shape', 'hm.shape fail: answer_ms missing'),
+  (796, pg_temp.set('n', '{rounds,0,true_count}', '"6"'), 'GD008:hm.shape', 'hm.shape fail: true_count is a string'),
+  (796, pg_temp.set('n', '{rounds,1,guess}', '12.5'), 'GD008:hm.shape', 'hm.shape fail: guess not an integer'),
+  (796, pg_temp.set('n', '{rounds,2,timed_out}', '"false"'), 'GD008:hm.shape', 'hm.shape fail: timed_out is a string'),
+  -- ---------------- hm.range: true_count, flash 1 (new 4-7, old 8-15: 4-15 in all) ----------------
+  (0, pg_temp.set('n', '{rounds,0,true_count}', '4'), 'ok', 'hm.range pass: true_count 4 on flash 1 (new low edge)'),
+  (0, pg_temp.set('n', '{rounds,0,true_count}', '7'), 'ok', 'hm.range pass: true_count 7 on flash 1 (new high edge)'),
+  (0, pg_temp.set('n', '{rounds,0,true_count}', '15'), 'ok', 'hm.range pass: true_count 15 on flash 1 (old high edge)'),
+  (0, pg_temp.set('n', '{rounds,0,true_count}', '3'), 'GD008:hm.range', 'hm.range fail: true_count 3 on flash 1'),
+  (0, pg_temp.set('n', '{rounds,0,true_count}', '16'), 'GD008:hm.range', 'hm.range fail: true_count 16 on flash 1 (HM-T10)'),
+  -- ---------------- hm.range: true_count, flash 2 (new 9-13, old 20-35) ----------------
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '9'), 'ok', 'hm.range pass: true_count 9 on flash 2 (new low edge)'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '10'), 'ok', 'hm.range pass: true_count 10 on flash 2 (multiples of 10 allowed)'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '13'), 'ok', 'hm.range pass: true_count 13 on flash 2 (new high edge)'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '20'), 'ok', 'hm.range pass: true_count 20 on flash 2 (old low edge)'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '35'), 'ok', 'hm.range pass: true_count 35 on flash 2 (old high edge)'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '8'), 'GD008:hm.range', 'hm.range fail: true_count 8 on flash 2'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '14'), 'GD008:hm.range', 'hm.range fail: true_count 14 on flash 2'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '19'), 'GD008:hm.range', 'hm.range fail: true_count 19 on flash 2'),
+  (0, pg_temp.set('n', '{rounds,1,true_count}', '36'), 'GD008:hm.range', 'hm.range fail: true_count 36 on flash 2'),
+  -- ---------------- hm.range: true_count, flash 3 (new 14-18, old 40-70) ----------------
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '14'), 'ok', 'hm.range pass: true_count 14 on flash 3 (new low edge)'),
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '18'), 'ok', 'hm.range pass: true_count 18 on flash 3 (new high edge)'),
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '70'), 'ok', 'hm.range pass: true_count 70 on flash 3 (old high edge)'),
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '13'), 'GD008:hm.range', 'hm.range fail: true_count 13 on flash 3'),
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '19'), 'GD008:hm.range', 'hm.range fail: true_count 19 on flash 3'),
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '39'), 'GD008:hm.range', 'hm.range fail: true_count 39 on flash 3'),
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '71'), 'GD008:hm.range', 'hm.range fail: true_count 71 on flash 3'),
+  (0, pg_temp.set('n', '{rounds,2,true_count}', '5'), 'GD008:hm.range', 'hm.range fail: flash 1''s count on flash 3'),
+  -- ---------------- hm.range: guess and answer_ms ----------------
+  (0, pg_temp.set('n', '{rounds,2,guess}', '999'), 'ok', 'hm.range pass: guess 999'),
+  (0, pg_temp.set('n', '{rounds,2,guess}', '1000'), 'GD008:hm.range', 'hm.range fail: guess 1000'),
+  (0, pg_temp.set('n', '{rounds,0,guess}', '-1'), 'GD008:hm.range', 'hm.range fail: guess -1'),
+  (0, pg_temp.set('n', '{rounds,1,answer_ms}', '10001'), 'ok', 'hm.range pass: answer_ms 10001 (the old limit + 1)'),
+  (0, pg_temp.set('n', '{rounds,1,answer_ms}', '15000'), 'ok', 'hm.range pass: answer_ms 15000'),
+  (0, pg_temp.set('n', '{rounds,1,answer_ms}', '15001'), 'GD008:hm.range', 'hm.range fail: answer_ms 15001'),
   -- ---------------- hm.timeout ----------------
-  (0, pg_temp.set('a', '{rounds,0,answer_ms}', 'null'), 'GD008:hm.timeout', 'hm.timeout fail: no answer_ms but not timed out'),
-  (0, pg_temp.set('a', '{rounds,0,timed_out}', 'true'), 'GD008:hm.timeout', 'hm.timeout fail: timed out with an answer_ms'),
-  (0, pg_temp.set('a', '{rounds,1,guess}', 'null'), 'GD008:hm.timeout', 'hm.timeout fail: null guess not timed out (HM-T10)'),
-  (813, pg_temp.set2('a', '{rounds,2,answer_ms}', 'null', '{rounds,2,timed_out}', 'true'), 'ok',
+  (0, pg_temp.set('n', '{rounds,0,answer_ms}', 'null'), 'GD008:hm.timeout', 'hm.timeout fail: no answer_ms but not timed out'),
+  (0, pg_temp.set('n', '{rounds,0,timed_out}', 'true'), 'GD008:hm.timeout', 'hm.timeout fail: timed out with an answer_ms'),
+  (0, pg_temp.set('n', '{rounds,1,guess}', 'null'), 'GD008:hm.timeout', 'hm.timeout fail: null guess not timed out (HM-T10)'),
+  (796, pg_temp.set2('n', '{rounds,2,answer_ms}', 'null', '{rounds,2,timed_out}', 'true'), 'ok',
         'hm.timeout pass: typed digits auto-submitted at the timeout'),
   -- ---------------- hm.too_fast ----------------
-  (813, pg_temp.set('a', '{rounds,1,answer_ms}', '300'), 'ok', 'hm.too_fast pass: 300 ms'),
-  (813, pg_temp.set('a', '{rounds,1,answer_ms}', '299'), 'GD008:hm.too_fast', 'hm.too_fast fail: 299 ms (HM-T7)'),
-  (0, pg_temp.set('a', '{rounds,0,answer_ms}', '0'), 'GD008:hm.too_fast', 'hm.too_fast fail: 0 ms'),
-  -- ---------------- hm.too_perfect ----------------
-  (1000, pg_temp.hm(12, 12, 1800, 27, 27, 3300, 55, 55, 4700), 'GD008:hm.too_perfect', 'hm.too_perfect fail: three exact (HM-T8)'),
-  (0, pg_temp.hm(12, 12, 1800, 27, 27, 3300, 55, 55, 4700), 'GD008:hm.too_perfect', 'hm.too_perfect fail: three exact even at score 0'),
-  (1000, pg_temp.hm(12, 12, 1800, 27, 27, 3300, 55, 54, 4700), 'ok', 'hm.too_perfect pass: two exact + one off'),
-  (1000, pg_temp.hm(12, 12, 1800, 27, 27, 3300, 55, 55, null), 'GD008:hm.too_perfect', 'hm.too_perfect fail: three exact, one auto-submitted'),
+  (796, pg_temp.set('n', '{rounds,1,answer_ms}', '300'), 'ok', 'hm.too_fast pass: 300 ms'),
+  (796, pg_temp.set('n', '{rounds,1,answer_ms}', '299'), 'GD008:hm.too_fast', 'hm.too_fast fail: 299 ms (HM-T7)'),
+  (0, pg_temp.set('n', '{rounds,0,answer_ms}', '0'), 'GD008:hm.too_fast', 'hm.too_fast fail: 0 ms'),
+  -- ---------------- three exact guesses are accepted (ADR-138: hm.too_perfect removed) ----------------
+  (1000, pg_temp.hm(5, 5, 1800, 10, 10, 3300, 17, 17, 4700), 'ok', 'three exact accepted: 5, 10, 17 -> 1000'),
+  (0, pg_temp.hm(5, 5, 1800, 10, 10, 3300, 17, 17, 4700), 'ok', 'three exact accepted at score 0'),
+  (1000, pg_temp.hm(5, 5, 1800, 10, 10, 3300, 17, 17, null), 'ok', 'three exact accepted, one auto-submitted'),
+  (1000, pg_temp.hm(12, 12, 1800, 27, 27, 3300, 55, 55, 4700), 'ok', 'three exact accepted on the old bands'),
+  (993, pg_temp.hm(5, 5, 1800, 10, 10, 3300, 17, 16, 4700), 'ok', 'two exact + 16 for N = 17 -> 993'),
   -- ---------------- hm.formula_band ----------------
-  (814, pg_temp.b('a'), 'ok', 'hm.formula_band pass: example A + 1'),
-  (815, pg_temp.b('a'), 'GD008:hm.formula_band', 'hm.formula_band fail: example A + 2 (HM-T9)'),
-  (700, pg_temp.b('a'), 'ok', 'hm.formula_band pass: under-reported 700 (upper side only)'),
-  (637, pg_temp.b('e'), 'ok', 'hm.formula_band pass: example E + 1'),
-  (638, pg_temp.b('e'), 'GD008:hm.formula_band', 'hm.formula_band fail: example E + 2'),
+  (797, pg_temp.b('n'), 'ok', 'hm.formula_band pass: new-band 796 + 1'),
+  (798, pg_temp.b('n'), 'GD008:hm.formula_band', 'hm.formula_band fail: new-band 796 + 2'),
+  (664, pg_temp.b('p'), 'ok', 'hm.formula_band pass: new-band 663 + 1'),
+  (665, pg_temp.b('p'), 'GD008:hm.formula_band', 'hm.formula_band fail: new-band 663 + 2'),
+  (700, pg_temp.b('n'), 'ok', 'hm.formula_band pass: under-reported 700 (upper side only)'),
+  (814, pg_temp.b('a'), 'ok', 'hm.formula_band pass: old example A + 1'),
+  (815, pg_temp.b('a'), 'GD008:hm.formula_band', 'hm.formula_band fail: old example A + 2 (HM-T9)'),
   (1, pg_temp.b('d'), 'ok', 'hm.formula_band pass: idle + 1'),
-  (2, pg_temp.b('d'), 'GD008:hm.formula_band', 'hm.formula_band fail: idle scores 2')
+  (2, pg_temp.b('d'), 'GD008:hm.formula_band', 'hm.formula_band fail: idle scores 2'),
+  (1000, pg_temp.hm(5, 4, 1800, 10, 10, 3300, 17, 17, 4700), 'GD008:hm.formula_band', 'hm.formula_band fail: 1000 with 4 for N = 5 (20 % off)')
 ) t(sc, raw, want, descr);
 
 select pg_temp.as_postgres();

@@ -2,7 +2,7 @@
 
 Purpose: step-by-step setup of the Supabase projects, the Netlify site and the keepalive job, plus environment variables, the migration process, rollback, and the "no deploys on event day" rule. A new team member should be able to stand up a working copy from this file alone. Platform facts are cited inline; re-check them if the event is months away.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 ---
 
@@ -52,6 +52,7 @@ Apply migrations (§5). Then check: Database → Publications → `supabase_real
 ### 2.7 Cloud project status (2026-09-24)
 - `gdg-booth` (`ppikklvltpfdwbxtilme`) created in `eu-central-1`. It replaces the first project (`efujkyahxteycysrcgkl`, `ap-northeast-2` Seoul, schema pasted in by hand with no migration history), which is retired: nothing points at it.
 - `supabase db push` applied the migrations on `main`: `20260924000001`–`0007` and `20260925000200`, then `20260925000300_lineup_exactly_three` (renamed from `…000100` so it sorts after `000200`) once `ROUNDS_PER_SESSION = 3` was on `main`. `migration list --linked` matches local; `sessions_lineup_three` is validated (the project had no old 1-game sessions). `20260925000400_join_throttle` (ADR-130) followed on 2026-09-24; no site was deployed yet, so no older client could misread its new `join_session` results. From now on, the Netlify build that handles them must be live before any similar change. Catalog after it: `private.join_attempts` exists with no `anon`/`authenticated` grants; the public-schema checks above are unchanged.
+- Later pushes: `20260925000500`/`000600` (ADR-134) and `20260925000700`/`000800` (ADR-136) are on the cloud (2026-09-25). **Not yet on the cloud:** `20260926000100_how_many_retune` (ADR-138; widens the How Many? bounds and keeps the old bands, so it must be pushed **before** the Netlify build that uses the new bands: the cloud still rejects their counts and 10–15 s answers).
 - Verified from the catalog: 8 tables in `public`, all with RLS; anon has no table grants and can execute only `keepalive()`; `supabase_realtime` publishes `hidden_names`, `players`, `rounds`, `scores`, `sessions`; the only definer functions in `public` are `join_session`, `keepalive` and Supabase's `rls_auto_enable` (the "automatic RLS" event trigger `ensure_rls`, left on; the pgTAP checks skip event-trigger functions).
 - `supabase test db --linked` runs as a temporary CLI login role that can't `truncate` or create `pgtap`, so the full suite on the cloud needs the database password: `$env:SUPABASE_DB_PASSWORD = "<db password>"; npx supabase test db --linked` (PowerShell), run by a maintainer. Pending: that run (AC0.1), the Auth settings (§2.2–2.3), the admin (§2.4, `host@gdg.com`), the keepalive secrets (§4) and Netlify (§3).
 

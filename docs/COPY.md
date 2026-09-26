@@ -2,7 +2,7 @@
 
 Purpose: every user-facing string in the product, English and Arabic side by side, in the chapter's friendly voice. This file is the source for the app's string files `src/i18n/en.json` and `src/i18n/ar.json`; no user-facing text may be hard-coded in components. Keys match the ones listed per screen in `SCREENS.md`. Trivia questions live in `docs/content/trivia-questions.json`, not here.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 ---
 
@@ -259,7 +259,7 @@ The words (`word.*`) are the stimulus and the names (`ink.*`) label the buttons;
 
 | Key | English | العربية |
 |---|---|---|
-| `game.how_many.intro` | 3 flashes · 1 second each | 3 ومضات · ثانية واحدة لكل ومضة |
+| `game.how_many.intro` | 3 flashes · 2.5 seconds each | 3 ومضات · 2.5 ثانية لكل ومضة |
 | `game.how_many.round` | Flash {n} of 3 | الومضة {n} من 3 |
 | `game.how_many.look` | Look | انظر |
 | `game.how_many.question` | How many? | كم العدد؟ |

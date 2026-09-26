@@ -2,7 +2,7 @@
 
 Purpose: the build plan, phase by phase. Each phase has a goal, scope (in/out), tasks, **checkable acceptance criteria**, dependencies and a rough size (S ≈ 1–3 days, M ≈ 4–7 days, L ≈ 1–2 weeks for a small student team working part-time). A phase is done only when all its acceptance criteria pass; record that in `PROGRESS.md`. Changes to the brief's suggested order are recorded in ADR-118 and ADR-120.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 ---
 
@@ -235,7 +235,7 @@ Acceptance criteria:
 - [ ] AC8.7 Swipe Sort's browser-gesture defence holds: `touch-action: none`, non-passive `touchmove.preventDefault()`, `overscroll-behavior: none` only while mounted, and a 24 px edge guard that blocks a drag from starting.
 - [ ] AC8.8 `npm run typecheck && npm run lint && npx vitest run && npm run check:i18n && npm run check:trivia && npm run build` all green with the three games registered.
 - [ ] AC8.9 On a real iPhone (Safari) and Android (Chrome): touch targets ≥ 48/56 px, How Many?'s flash-3 chevrons legible at 360 px, Swipe Sort's edge-swipe-back never scores a swipe (`TESTING.md` §6, HM-T13/SS-T13).
-- [ ] AC8.10 Playtest with ≥ 5 strong players per game: median 780–900, nobody reaches 1000 (HM-T14, SS-T14, PR-T14); otherwise retune the constants and record it in ADR-136.
+- [ ] AC8.10 Playtest with ≥ 5 strong players per game: median 780–900, nobody reaches 1000 (SS-T14, PR-T14); otherwise retune the constants and record it in ADR-136. How Many? (HM-T14) was retuned after its playtest by ADR-138: 1000 is reachable by design; record the spread and retune only with evidence.
 - [ ] AC8.11 Native Arabic review of the new strings (OQ-04, `COPY.md` §5.8–§5.10).
 
 Depends on: Phase 7. Must pass before Phase 6's final production deploy (the migrations go to the event database, ADR-127).

@@ -19,7 +19,7 @@ describe('fieldFor (docs/games/how-many.md §2)', () => {
     }
   });
 
-  it('HM-T5: N_i in its band, never a multiple of 10, one chevron per distinct cell', () => {
+  it('HM-T5: N_i in its band, one chevron per distinct cell', () => {
     for (let s = 0; s < 200; s++) {
       for (let i = 0; i < 3; i++) {
         const f = fieldFor(`seed-${s}`, i);
@@ -27,7 +27,6 @@ describe('fieldFor (docs/games/how-many.md §2)', () => {
         expect(f.grid).toBe(HM_GRID[i]);
         expect(f.count).toBeGreaterThanOrEqual(lo);
         expect(f.count).toBeLessThanOrEqual(hi);
-        expect(f.count % 10).not.toBe(0);
         expect(f.chevrons).toHaveLength(f.count);
         expect(new Set(f.chevrons.map((c) => c.cell)).size).toBe(f.count);
         for (const c of f.chevrons) {
@@ -68,13 +67,12 @@ describe('fieldFor (docs/games/how-many.md §2)', () => {
     }
   });
 
-  it('countsFor: the bands minus multiples of 10', () => {
-    expect(countsFor(0)).toEqual([8, 9, 11, 12, 13, 14, 15]);
-    expect(countsFor(1)).toHaveLength(14);
-    expect(countsFor(1)).not.toContain(20);
-    expect(countsFor(1)).not.toContain(30);
-    expect(countsFor(2)).toHaveLength(27);
-    for (const n of [40, 50, 60, 70]) expect(countsFor(2)).not.toContain(n);
+  it('countsFor: every integer in the band (ADR-138); the grid holds the band maximum', () => {
+    expect(countsFor(0)).toEqual([4, 5, 6, 7]);
+    expect(countsFor(1)).toEqual([9, 10, 11, 12, 13]);
+    expect(countsFor(2)).toEqual([14, 15, 16, 17, 18]);
+    expect(HM_GRID).toEqual([4, 5, 6]);
+    for (let i = 0; i < 3; i++) expect(HM_GRID[i] * HM_GRID[i]).toBeGreaterThanOrEqual(HM_BANDS[i][1]);
   });
 
   it('draws every count in the band and mixes both colours across seeds', () => {

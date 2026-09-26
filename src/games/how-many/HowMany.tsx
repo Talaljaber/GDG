@@ -2,9 +2,9 @@
  * How Many? screen. Source of truth: docs/games/how-many.md.
  *
  * Three flashes: a 1 s "look" frame with a fixation dot, a field of brand
- * chevrons for exactly 1.0 s, then a number pad with a 10 s timeout and a
- * 0.5 s "locked in". No feedback on the phone; the big screen reveals the true
- * counts. The flash mounts in one commit and never changes; a reload or a late
+ * chevrons for exactly 2.5 s, then a number pad with a 15 s timeout and a
+ * 0.5 s "locked in" (ADR-138). No feedback on the phone; the big screen
+ * reveals the true counts. The flash mounts in one commit and never changes; a reload or a late
  * timer never shows it again. Taps are pointerdown with a 60 ms bounce guard.
  *
  * Fixed schedule (how-many.md §3, ADR-137 (2)): every step boundary comes from
@@ -15,7 +15,7 @@
  * a reload, a screen lock, a JS freeze or a hidden page whose timers were
  * throttled, it closes every step whose time has passed with that step's rule
  * (a missed flash is skipped, a missed answer times out), so the round keeps
- * its 39 s worst case. A hidden page never pauses the schedule (ADR-018).
+ * its 58.5 s worst case. A hidden page never pauses the schedule (ADR-018).
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
@@ -38,16 +38,16 @@ import styles from './HowMany.module.css';
 export const HM_INTRO_MS = 1500;
 /** "Look": the empty field frame with a fixation dot. */
 export const HM_LOOK_MS = 1000;
-/** The flash itself. */
-export const HM_FLASH_MS = 1000;
+/** The flash itself (ADR-138: was 1 s). */
+export const HM_FLASH_MS = 2500;
 /** "Locked in" after every answer or timeout. */
 export const HM_LOCKED_MS = 500;
 /**
  * The end of a look processed later than this (screen lock, a throttled
  * background tab, the catch-up after a freeze), or while the page is hidden,
- * skips the flash, as a reload does: the flash window
- * (`lookStartEpoch + 1000 … + 2000`) belongs to the fixed schedule, so a late
- * flash would stretch the round. A field painted later than this after its
+ * skips the flash, as a reload does: the flash window (`lookStartEpoch +
+ * HM_LOOK_MS … + HM_LOOK_MS + HM_FLASH_MS`, i.e. + 1 … + 3.5 s) belongs to
+ * the fixed schedule, so a late flash would stretch the round. A field painted later than this after its
  * commit (a freeze in between) only stays until the window's end.
  */
 export const HM_FLASH_LATE_MS = 250;
@@ -72,7 +72,7 @@ export interface HowManySnapshot {
   lookStartEpoch: number | null;
   /** Date.now() when the field was committed; null if it was never shown (skipped) or not yet. */
   flashStartEpoch: number | null;
-  /** Anchor of the answer's 10 s timeout (the end of the flash window). */
+  /** Anchor of the answer's timeout (HM_ANSWER_MS, from the end of the flash window). */
   answerStartEpoch: number | null;
   /** Date.now() at which "locked in" ends. */
   lockedEndEpoch: number | null;

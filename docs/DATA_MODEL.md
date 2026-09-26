@@ -2,15 +2,15 @@
 
 Purpose: the complete Supabase Postgres schema: every table, column, type, constraint and index; the realtime publication; the full RLS policies for guests and the admin; and the database functions that perform joins and admin state transitions. The first migrations in Phase 0 are written from this file. If the schema changes, this file changes in the same commit as the migration.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
-Related: `SESSION_LIFECYCLE.md` (which function moves which state), `SCORING.md` (bounds enforced by the score trigger), `SECURITY.md` (why each policy exists), ADR-030, ADR-101, ADR-102, ADR-110, ADR-113, ADR-134, ADR-136.
+Related: `SESSION_LIFECYCLE.md` (which function moves which state), `SCORING.md` (bounds enforced by the score trigger), `SECURITY.md` (why each policy exists), ADR-030, ADR-101, ADR-102, ADR-110, ADR-113, ADR-134, ADR-136, ADR-138.
 
 ---
 
 ## 1. Principles
 
-Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`); follow-ups are new files, never edits: `20260925000200_scores_raw_size.sql`, `20260925000300_lineup_exactly_three.sql` (§3 notes), `20260925000400_join_throttle.sql` (§3 notes, §6), `20260925000500_game_ids_brackets_clash.sql` and `20260925000600_score_bounds_brackets_clash.sql` (§3 notes, §5; ADR-134), `20260925000700_game_ids_v3.sql` and `20260925000800_score_bounds_v3.sql` (§3 notes, §5; ADR-136). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
+Migrations live in `supabase/migrations/` with the CLI's timestamped names, `20260924000001_schema.sql` … `20260924000007_seed.sql`, one per section below ("0001"–"0007" in `PHASES.md`); follow-ups are new files, never edits: `20260925000200_scores_raw_size.sql`, `20260925000300_lineup_exactly_three.sql` (§3 notes), `20260925000400_join_throttle.sql` (§3 notes, §6), `20260925000500_game_ids_brackets_clash.sql` and `20260925000600_score_bounds_brackets_clash.sql` (§3 notes, §5; ADR-134), `20260925000700_game_ids_v3.sql` and `20260925000800_score_bounds_v3.sql` (§3 notes, §5; ADR-136), `20260926000100_how_many_retune.sql` (§5; ADR-138). The migration files are ASCII only: non-ASCII characters are written as `\uXXXX` escapes (regex escapes in plain literals, `E''` escapes in `translate()`).
 
 1. **RLS is enabled on every table in `public`. Never disabled.** (ADR-030)
 2. Guests are Supabase **anonymous users**: role `authenticated`, `auth.uid()` = playerId (ADR-102). The unsigned `anon` role can read and write nothing except calling `keepalive()`.
@@ -497,6 +497,7 @@ create trigger scores_mark_finished
 - Trivia: a `correct` answer with `answer_ms = null` fails `trivia.too_fast` (a correct answer must have been given).
 - Close the Brackets and Color Clash (migration `20260925000600`, ADR-134) were added by `create or replace` with the same signature; the other five branches were copied verbatim. Both games check a formula **band** (like Simon), not an exact score: `cb.formula_band` uses `S(solved)` (`SCORING.md` §3.6), `cc.formula_band` uses `net = correct − wrong − timeouts` (§3.7). Execute on the function is revoked from `public`, `anon` and `authenticated`; only the definer trigger calls it (pgTAP `09_score_bounds_new_games.sql`).
 - How Many?, Swipe Sort and Pairs (migration `20260925000800`, ADR-136) were added the same way: `create or replace` with the same signature, the seven existing branches copied verbatim from `20260925000600`, the three new branches before the `game.unknown` fallthrough, and the same revoke. Their reason codes: `hm.shape`, `hm.range`, `hm.timeout`, `hm.too_fast`, `hm.too_perfect`, `hm.formula_band`; `ss.shape`, `ss.range`, `ss.rt`, `ss.zero`, `ss.too_fast`, `ss.too_many`, `ss.formula_band`; `pr.shape`, `pr.range`, `pr.clear`, `pr.zero`, `pr.too_fast`, `pr.formula_band` (in check order; `SCORING.md` §4). The formula bands are computed in `numeric` (`round()` is half away from zero, as `Math.round` for positives): `hm.formula_band` is upper side only (`score ≤ round(1000 × Σ s_i / 3) + 1`, §3.8), `ss.formula_band` uses `net = correct − wrong − missed` (§3.9), `pr.formula_band` allows ±1 around `clamp(round(base − 12 × misses), 0, 1000)` (§3.10). pgTAP per game: `10_score_bounds_how_many.sql`, `11_score_bounds_swipe_sort.sql`, `12_score_bounds_pairs.sql`.
+- How Many? retune (migration `20260926000100`, ADR-138): same `create or replace` and revoke, only the `how_many` branch changes: `true_count` per flash in 4–7, 9–13, 14–18 **or** the old 8–15, 20–35, 40–70 (the old bands stay accepted so phones on the previous bundle keep saving during the rollout), `answer_ms` 0–15 000, and `hm.too_perfect` is removed (three exact guesses are normal play); `hm.formula_band` is unchanged. pgTAP `10_score_bounds_how_many.sql`.
 - Values are read with tolerant helpers (`private.j_int`, `j_num`, `j_bool`), so malformed JSON always yields `GD008` with a reason, never a cast error. `private.simon_min_playback_ms(level)` implements `min_playback_ms`.
 
 ## 6. Functions (migration `20260924000004_functions.sql`)
