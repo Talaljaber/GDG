@@ -77,7 +77,7 @@ Last updated: 2026-09-26
 2. Phase 3 sign-off per game (AC3.1, AC3.6, AC3.7) and E2E-2 (reload mid-round) for the four newer games in the browser (unit-tested today).
 3. Team answers the blocking open questions: OQ-01 (dates), OQ-02 (roles), OQ-03 (trivia writers), OQ-14 (Netlify account), and reviews Proposed ADRs (OQ-19).
 4. Phase 5 real-hardware checks for the shatter (AC5.3): ≥ 45 fps on the low-end Android (transitions, P7 celebrate), and on the projector the H3 shatter-in/dot bursts and the H4 → H5 merge (TESTING §6); compare with Reduce motion on.
-5. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), set up the external keepalive scheduler (AC0.3; no GitHub Actions, ADR-031). Netlify is live (AC0.4 ✅). Cloud migrations: 000001–000007 and 000200–000800, all 10 games accepted by the cloud trigger (2026-09-25).
+5. Phase 0 cloud (with Talal): full pgTAP run on the cloud (AC0.1, needs the DB password), Auth settings check (`DEPLOYMENT.md` §2.2–2.3), cloud admin `host@gdg.com` (`scripts/cloud-admin.sql`), set up the external keepalive scheduler (AC0.3; no GitHub Actions, ADR-031). Netlify is live (AC0.4 ✅). Cloud migrations: 000001–000007, 000200–000800 and 20260926000100/000200 (pushed 2026-09-26 before `main`), all 10 games accepted by the cloud trigger (2026-09-25).
 
 ## Blockers
 
