@@ -235,7 +235,7 @@ Acceptance criteria:
 - [ ] AC8.7 Swipe Sort's browser-gesture defence holds: `touch-action: none`, non-passive `touchmove.preventDefault()`, `overscroll-behavior: none` only while mounted, and a 24 px edge guard that blocks a drag from starting.
 - [ ] AC8.8 `npm run typecheck && npm run lint && npx vitest run && npm run check:i18n && npm run check:trivia && npm run build` all green with the three games registered.
 - [ ] AC8.9 On a real iPhone (Safari) and Android (Chrome): touch targets ≥ 48/56 px, How Many?'s flash-3 chevrons legible at 360 px, Swipe Sort's edge-swipe-back never scores a swipe (`TESTING.md` §6, HM-T13/SS-T13).
-- [ ] AC8.10 Playtest with ≥ 5 strong players per game: median 780–900, nobody reaches 1000 (SS-T14, PR-T14); otherwise retune the constants and record it in ADR-136. How Many? (HM-T14) was retuned after its playtest by ADR-138: 1000 is reachable by design; record the spread and retune only with evidence.
+- [ ] AC8.10 Playtest with ≥ 5 strong players per game: median 780–900, nobody reaches 1000 (SS-T14, PR-T14); otherwise retune the constants and record it in ADR-136. How Many? (HM-T14) was retuned after its playtest by ADR-138: 1000 is reachable by design; record the spread and retune only with evidence. Swipe Sort's item window was lengthened by ADR-139 (1100 → 600 ms); its model now puts strong players at 1000, so if the playtest confirms it, lower the 22 per net (new bounds migration) or accept it (OQ-24).
 - [ ] AC8.11 Native Arabic review of the new strings (OQ-04, `COPY.md` §5.8–§5.10).
 
 Depends on: Phase 7. Must pass before Phase 6's final production deploy (the migrations go to the event database, ADR-127).

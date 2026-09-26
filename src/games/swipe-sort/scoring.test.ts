@@ -9,7 +9,7 @@ const A = raw(43, 1, 5, 450);
 const B = raw(33, 3, 8, 550);
 const C = raw(22, 5, 12, 640);
 const D = raw(30, 33, 0, 260);
-const E = raw(0, 0, 37, null);
+const E = raw(0, 0, 30, null);
 const F = raw(46, 1, 2, 430);
 
 describe('scoreSwipeSort: worked examples (docs/games/swipe-sort.md §4)', () => {
@@ -33,7 +33,7 @@ describe('scoreSwipeSort: worked examples (docs/games/swipe-sort.md §4)', () =>
     expect(scoreSwipeSort(D)).toBe(0);
   });
 
-  it('E (idle): 37 misses -> 0', () => {
+  it('E (idle): 30 misses -> 0', () => {
     expect(scoreSwipeSort(E)).toBe(0);
   });
 
@@ -48,7 +48,7 @@ describe('scoring contract', () => {
     for (let c = 0; c <= 80; c += 4) {
       for (let w = 0; w <= 30; w += 5) {
         for (let m = 0; m <= 40; m += 10) {
-          for (const rt of [200, 400, 520, 700, 900]) {
+          for (const rt of [200, 400, 520, 700, 900, 1100]) {
             const s = scoreSwipeSort(raw(c, w, m, c ? rt : null));
             expect(Number.isInteger(s)).toBe(true);
             expect(s).toBeGreaterThanOrEqual(0);
@@ -74,13 +74,13 @@ describe('scoring contract', () => {
 });
 
 describe('itemWindowMs (SS-T8)', () => {
-  it('ramps 900 -> 675 -> 450 ms and clamps outside the clock', () => {
-    expect(itemWindowMs(0)).toBe(900);
-    expect(itemWindowMs(15_000)).toBe(675);
-    expect(itemWindowMs(30_000)).toBe(450);
-    expect(itemWindowMs(10_000)).toBe(750);
-    expect(itemWindowMs(-500)).toBe(900);
-    expect(itemWindowMs(40_000)).toBe(450);
+  it('ramps 1100 -> 850 -> 600 ms and clamps outside the clock (ADR-139)', () => {
+    expect(itemWindowMs(0)).toBe(1100);
+    expect(itemWindowMs(15_000)).toBe(850);
+    expect(itemWindowMs(30_000)).toBe(600);
+    expect(itemWindowMs(10_000)).toBe(933);
+    expect(itemWindowMs(-500)).toBe(1100);
+    expect(itemWindowMs(40_000)).toBe(600);
   });
 });
 
@@ -118,7 +118,8 @@ describe('validateSwipeSortRaw mirrors the server bounds (SCORING.md §4)', () =
     expect(validateSwipeSortRaw(raw(121, 0, 0, 500), 1000)).toBe('ss.range');
     expect(validateSwipeSortRaw(raw(10, 121, 0, 500), 0)).toBe('ss.range');
     expect(validateSwipeSortRaw(raw(10, 0, 81, 500), 0)).toBe('ss.range');
-    expect(validateSwipeSortRaw(raw(10, 0, 0, 901), 220)).toBe('ss.range');
+    expect(validateSwipeSortRaw(raw(10, 0, 0, 1100), 220)).toBeNull();
+    expect(validateSwipeSortRaw(raw(10, 0, 0, 1101), 220)).toBe('ss.range');
     expect(validateSwipeSortRaw(raw(0, 0, 80, null), 0)).toBeNull();
     expect(validateSwipeSortRaw(raw(0, 0, 0, 500), 0)).toBe('ss.rt');
     expect(validateSwipeSortRaw(raw(3, 0, 0, null), 66)).toBe('ss.rt');

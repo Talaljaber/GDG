@@ -79,7 +79,7 @@ export function catchUp(s: SwipeSortSnapshot, now: number): SwipeSortSnapshot {
   const gameEnd = gameEndEpoch(s);
   if (s.phase !== 'play' || gameEnd === null) return s;
   let cur = s;
-  // Bounded: at most ~70 items fit in 30 s even at the 450 ms floor.
+  // Bounded: at most ~60 items fit in 30 s even at the 600 ms floor.
   for (let guard = 0; guard < 1000; guard++) {
     if (cur.gapEndEpoch !== null) {
       if (cur.gapEndEpoch > now || cur.gapEndEpoch >= gameEnd) break;

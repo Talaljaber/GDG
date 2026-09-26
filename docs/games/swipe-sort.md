@@ -6,7 +6,7 @@ Last updated: 2026-09-26
 
 Game id: `swipe_sort` · One-line pitch (COPY `game.swipe_sort.pitch`): "Blue goes left, amber goes right. Faster and faster."
 
-Related: ADR-136 (this game, its brief deviations and constants), ADR-134 (per-round seeding), `docs/plans/games-v3.md` §2 (the plan), `docs/games/newgames.md` (the brief, Phase B), `color-clash.md` §7 (the colour pair).
+Related: ADR-139 (the longer item window, 1100 → 600 ms), ADR-136 (this game, its brief deviations and constants), ADR-134 (per-round seeding), `docs/plans/games-v3.md` §2 (the plan), `docs/games/newgames.md` (the brief, Phase B), `color-clash.md` §7 (the colour pair).
 
 ---
 
@@ -21,12 +21,12 @@ Related: ADR-136 (this game, its brief deviations and constants), ADR-134 (per-r
 ## 2. Items and difficulty curve
 
 - Item `k` (0-based) comes from `Rng("<round seed>:ss:item<k>")`: its colour (50/50 blue/amber) and a small tilt of −12…+12° for variety (`src/games/swipe-sort/items.ts`). Everyone in a round gets the same sequence and a reload shows the same item again; only the pace differs (a faster player sees more items).
-- The item window ramps linearly from 900 ms to 450 ms over the 30 s:
+- The item window ramps linearly from 1100 ms to 600 ms over the 30 s (ADR-139):
 
-  `I(t) = round(900 − 450 × t / 30000)` ms, where `t` is the item's onset on the game clock (clamped to 0…30 s): `I(0) = 900`, `I(15000) = 675`, `I(30000) = 450`.
+  `I(t) = round(1100 − 500 × t / 30000)` ms, where `t` is the item's onset on the game clock (clamped to 0…30 s): `I(0) = 1100`, `I(15000) = 850`, `I(30000) = 600`.
 
-- The first ten seconds are relaxed; the last ten sit at the typical choice-reaction floor. Cadence = swipe time + 150 ms gap, so the tempo is the player's own.
-- **Floor 450 ms, not the brief's ≈ 350 ms** (ADR-136 (4)): choice reaction time is 340–410 ms plus the finger's travel, so at 350 ms nobody would score the late items. Tune only with playtest evidence (SS-T14).
+- The first ten seconds are relaxed; the last ten still leave room above choice-reaction time plus the finger's travel. Cadence = swipe time + 150 ms gap, so the tempo is the player's own: a swipe ends its item at once, so a longer window only helps a slower swipe.
+- **Window 1100 → 600 ms** (ADR-139, team request 2026-09-26: "a bit more time for each one"). It was 900 → 450 ms (ADR-136 (4)), itself above the brief's ≈ 350 ms floor because choice reaction time is 340–410 ms plus the finger's travel. Tune only with playtest evidence (SS-T14).
 
 ## 3. Flow, timings and the gesture
 
@@ -46,11 +46,11 @@ stateDiagram-v2
 |---|---|
 | Intro card | 1.5 s, ending at `roundStartEpoch + 1500` (not 1.5 s after mount) |
 | Game clock (everything below runs inside it) | 30 s |
-| Item window `I(t)` | 900 → 450 ms (§2) |
+| Item window `I(t)` | 1100 → 600 ms (§2) |
 | Gap after every item (the chevron flies off / fades; feedback) | 0.15 s |
 | Worst case total | 1.5 + 30 ≈ **32 s** (`worstCaseMs = 32_000`, inside the 120 s cap) |
 
-The timeline is epoch-exact (`timeline.ts`): item `k + 1`'s onset is item `k`'s gap end, and a missed item's gap starts at its deadline. An idle player therefore misses exactly **37** items (as in `docs/plans/games-v3.md`); an item or gap still open at the 30 s mark doesn't count.
+The timeline is epoch-exact (`timeline.ts`): item `k + 1`'s onset is item `k`'s gap end, and a missed item's gap starts at its deadline. An idle player therefore misses exactly **30** items (37 on the pre-ADR-139 900 → 450 ms window, as in `docs/plans/games-v3.md`); an item or gap still open at the 30 s mark doesn't count.
 
 The game clock is anchored on the round start: `gameStartEpoch = itemStartEpoch(0) = roundStartEpoch + 1500`, never the time the phone mounted the game or became visible. A phone hidden during the 3-2-1 or the intro (or mounting late) lands on that epoch; the windows that already elapsed are counted as misses in order (the same catch-up as a screen lock), and the game still ends at `roundStartEpoch + 31.5 s` (worst case 32 s).
 
@@ -80,7 +80,7 @@ The same applies to iOS Chrome (WKWebView).
 - Speed bonus `B = 60 × clamp((700 − r̄) / 300, 0, 1) × clamp(net / 20, 0, 1)` when `c ≥ 1`, else 0 (full at ≤ 400 ms mean and net ≥ 20; 0 at ≥ 700 ms). The `net / 20` factor keeps a random swiper (expected net 0) at ≈ 0.
 - **`score = clamp(round(22 × net + B), 0, 1000)`**; `c = 0` → 0.
 
-Calibration (`SCORING.md` §3.9): a **strong** player registers swipes at ≈ 450 ms (SD 80) with 2 % wrong: ≈ 49 items, misses concentrated in the last third where `I(t) < 550` → ≈ 43 / 1 / 5 → **≈ 864**. Typical (550 ms, 5 %) ≈ 33 / 3 / 8 → ≈ 514. **1000** needs `net ≥ 43` with a ≤ 430 ms mean (e.g. 46 / 1 / 2): out of reach at a 450 ms floor.
+Calibration (`SCORING.md` §3.9). On the original 900 → 450 ms window a **strong** player (swipes registering at ≈ 450 ms, SD 80, 2 % wrong) sorted ≈ 49 items with the misses in the last third where `I(t) < 550` → ≈ 43 / 1 / 5 → **≈ 864**; typical (550 ms, 5 %) ≈ 33 / 3 / 8 → ≈ 514. **With the ADR-139 window (1100 → 600 ms)** the strong player's swipe times are unchanged (a swipe ends its item early), but those late misses mostly disappear: only a swipe slower than ≈ 600 ms misses (≈ 3 % at SD 80). Re-modelled with the same assumptions (Monte Carlo, swipe times normal and capped at the window): strong ≈ 49 / 1 / 0 → net ≈ 48 → **1000 (capped)** in most runs; typical ≈ 39 / 2 / 2 → **≈ 815**; weak (640 ms, SD 120, 10 %) ≈ 30 / 3 / 5 → ≈ 490. **1000** needs `22 × net + B ≥ 999.5` (net 43 at ≤ 430 ms, net 44 at ≤ ≈ 540 ms, or net ≥ 46 at any speed): no longer out of reach for strong players. The playtest (SS-T14) decides whether the 22 per net needs retuning (ADR-139).
 
 | Player | c / w / m | `r̄` (ms) | net | B | Score |
 |---|---|---|---|---|---|
@@ -88,7 +88,7 @@ Calibration (`SCORING.md` §3.9): a **strong** player registers swipes at ≈ 45
 | B (typical) | 33 / 3 / 8 | 550 | 22 | 60 × 0.5 × 1 = 30 | **514** |
 | C (weak) | 22 / 5 / 12 | 640 | 5 | 60 × 0.2 × 0.25 = 3 | round(113) = **113** |
 | D (random spammer) | 30 / 33 / 0 | 260 | −3 | 0 (net ≤ 0) | clamp(−66) = **0** |
-| E (idle) | 0 / 0 / 37 | null | −37 | 0 | **0** |
+| E (idle) | 0 / 0 / 30 | null | −30 | 0 | **0** |
 | F (near-perfect) | 46 / 1 / 2 | 430 | 43 | 60 × 0.9 × 1 = 54 | clamp(1000) = **1000** |
 
 ## 5. Submission and rejection bounds
@@ -104,14 +104,14 @@ Calibration (`SCORING.md` §3.9): a **strong** player registers swipes at ≈ 45
     "correct":       { "type": "integer", "minimum": 0, "maximum": 120 },
     "wrong":         { "type": "integer", "minimum": 0, "maximum": 120 },
     "missed":        { "type": "integer", "minimum": 0, "maximum": 80 },
-    "mean_swipe_ms": { "type": ["integer", "null"], "minimum": 0, "maximum": 900 }
+    "mean_swipe_ms": { "type": ["integer", "null"], "minimum": 0, "maximum": 1100 }
   }
 }
 ```
 
-Database bounds (`SCORING.md` §4, in check order; `validateSwipeSortRaw` mirrors them): malformed object/types [`ss.shape`]; `correct` 0–120, `wrong` 0–120, `missed` 0–80, `mean_swipe_ms` 0–900 [`ss.range`]; `mean_swipe_ms` null iff `correct = 0` [`ss.rt`]; `correct = 0` ⇒ `score = 0` [`ss.zero`]; `mean_swipe_ms ≥ 200` [`ss.too_fast`]; `correct × (mean_swipe_ms + 150) ≤ 30150` [`ss.too_many`]; `clamp(22 net, 0, 1000) ≤ score ≤ clamp(22 net + 60, 0, 1000)` [`ss.formula_band`].
+Database bounds (`SCORING.md` §4, in check order; `validateSwipeSortRaw` mirrors them): malformed object/types [`ss.shape`]; `correct` 0–120, `wrong` 0–120, `missed` 0–80, `mean_swipe_ms` 0–1100 [`ss.range`]; `mean_swipe_ms` null iff `correct = 0` [`ss.rt`]; `correct = 0` ⇒ `score = 0` [`ss.zero`]; `mean_swipe_ms ≥ 200` [`ss.too_fast`]; `correct × (mean_swipe_ms + 150) ≤ 30150` [`ss.too_many`]; `clamp(22 net, 0, 1000) ≤ score ≤ clamp(22 net + 60, 0, 1000)` [`ss.formula_band`].
 
-Why: a 200 ms mean to register a swipe is below choice-reaction time plus 40 px of finger travel; the 0.15 s gap after every item caps how many correct items fit in 30 s; `mean_swipe_ms` can't exceed the longest window (900 ms); 37 misses fill the game for an idle player, so 80 is generous. Scores above 1000 fail the band first (the trigger runs before the table's CHECK).
+Why: a 200 ms mean to register a swipe is below choice-reaction time plus 40 px of finger travel; the 0.15 s gap after every item caps how many correct items fit in 30 s; `mean_swipe_ms` can't exceed the longest window (1100 ms, ADR-139; migration `20260926000200`); 30 misses fill the game for an idle player, so 80 is generous. The `ss.too_many` and band checks don't depend on the window. Scores above 1000 fail the band first (the trigger runs before the table's CHECK).
 
 ## 6. UI states (phone)
 
@@ -157,7 +157,7 @@ P7 breakdown (`SCREENS.md` P7): correct · wrong way · missed · average time (
 | Hidden or late during the 3-2-1 / intro | The first chevron's onset is `roundStartEpoch + 1.5 s` regardless; on mount or return the elapsed windows are misses in order and the game ends at the original 30 s. |
 | Reload mid-drag | Drag lost; the same item continues from `itemStartEpoch` with its original window (a reload never gains time). |
 | Reload during the gap | The gap ends at `gapEndEpoch`, then item `k + 1` (its onset is that epoch). |
-| Screen lock / tab in the background | Epochs run. On return (timer or `visibilitychange`) the elapsed windows are counted as misses **in order** until the clock catches up: each due miss advances `itemIndex` onto the next window of the ramp, so a 10 s lock yields ≈ 13–15 misses, as an idle player would get. The game still ends at the original 30 s. |
+| Screen lock / tab in the background | Epochs run. On return (timer or `visibilitychange`) the elapsed windows are counted as misses **in order** until the clock catches up: each due miss advances `itemIndex` onto the next window of the ramp, so a 10 s lock yields ≈ 8–12 misses (more late in the ramp), as an idle player would get. The game still ends at the original 30 s. |
 | Round ended early (cap / force-end / all others finished) | Finish now: elapsed windows are misses, the open item doesn't count. `onFinish` is called exactly once. |
 | Rotation | The shell's portrait overlay covers the game; clocks keep running (E16). |
 | Language toggle | Hidden during rounds (E17). |
@@ -175,12 +175,12 @@ Snapshot (persisted with `onProgress` after every start, swipe, miss and gap end
 | SS-T5 | 60 correct at 353 ms (60 × 503 = 30180) | `GD008 ss.too_many`; 352 ms accepted | pgTAP 11, `scoring.test.ts` |
 | SS-T6 | Example A with score 875 (22 × 37 + 61) | `GD008 ss.formula_band`; 814 and 874 accepted | pgTAP 11, `scoring.test.ts` |
 | SS-T7 | Same seed | same colour sequence; over 200 items 40–60 % blue | `items.test.ts` |
-| SS-T8 | `I(t)`: t = 0 → 900; t = 15000 → 675; t = 30000 → 450 | as listed; the idle timeline follows the ramp | `scoring.test.ts`, `SwipeSort.test.tsx` |
+| SS-T8 | `I(t)`: t = 0 → 1100; t = 15000 → 850; t = 30000 → 600 | as listed; the idle timeline follows the ramp | `scoring.test.ts`, `SwipeSort.test.tsx` |
 | SS-T9 | Gesture: 39 px → nothing; 40 px right → `right`; dy 50 / dx 30 → nothing; cancel → nothing | as listed | `gesture.test.ts`, `SwipeSort.test.tsx` |
 | SS-T10 | Wrong swipe | wrong + 1, gap 150 ms, next item | `SwipeSort.test.tsx` |
-| SS-T11 | Idle player | 37 misses, score 0, finishes by 32 s | `SwipeSort.test.tsx`, `worstCase.test.tsx` |
+| SS-T11 | Idle player | 30 misses, score 0, finishes by 32 s | `SwipeSort.test.tsx`, `worstCase.test.tsx` |
 | SS-T12 | Reload mid-item | same item, same deadline; the game ends at the original 30 s | `SwipeSort.test.tsx` |
 | SS-T13 | **Manual, real devices:** an iPhone in Safari and in iOS Chrome, plus an Android phone in Chrome, on the deployed preview | 20 swipes from the surface centre: 0 back-navigations, 0 refreshes, 0 page scrolls; then 5 swipes starting at the very left edge and 5 at the right edge: none scores (a back-navigation, if iOS makes one, returns to the round and it resumes); a pull-down from the surface doesn't refresh | device matrix (`TESTING.md` §6) |
-| SS-T14 | Playtest, 5 strong players | median 780–900, nobody 1000 → else retune 22 / 60 / the 450 ms floor (ADR-136) | playtest |
+| SS-T14 | Playtest, 5 strong players | median 780–900, nobody 1000 → else retune 22 / 60 / the window (ADR-136, ADR-139; the ADR-139 model puts strong players at 1000, so expect a retune of the 22 or an accepted 1000, OQ-24) | playtest |
 | SS-T15 | Mount 5 s after `roundStartEpoch` (a hidden 3-2-1) | `gameStartEpoch = roundStartEpoch + 1500`; the elapsed windows counted as misses; the game ends at the original 30 s | `SwipeSort.test.tsx` |
 | SS-T16 | A drag held across a miss, moved on the next item; a swipe registering past its deadline | the next chevron keeps `--ss-drag: 0px` and nothing is counted; the chevron springs back to 0 | `SwipeSort.test.tsx` |

@@ -193,6 +193,8 @@ Snapshot: `{ phase, roundIndex, lookStartEpoch, flashStartEpoch, answerStartEpoc
 
 One-line pitch: "Blue goes left, amber goes right. Faster and faster."
 
+> **Item window lengthened by ADR-139 (2026-09-26, team request).** The numbers in this section are the original plan and are kept as history. Current values (`docs/games/swipe-sort.md` and `SCORING.md` §3.9/§4 win): `I(t) = round(1100 − 500 × t / 30000)` ms (1100 → 850 → 600 ms), `mean_swipe_ms` ≤ 1100 (migration `20260926000200`), an idle player misses 30 items (worked example E = 0 / 0 / 30); gap, clock, formula and the other bounds unchanged. The calibration below (strong ≈ 864, 1000 out of reach) no longer holds: the re-modelled strong player reaches 1000 (`SCORING.md` §3.9).
+
 ### 2.1 Rules and flow
 
 Chevrons appear one at a time in the middle of a swipe surface. Swipe **left for blue**, **right for amber** (game geometry, same in Arabic). Each chevron lives for a shrinking window; not swiping in time is a **miss**. 30 s game clock from the first chevron.
@@ -478,7 +480,7 @@ Snapshot: `{ phase, gameStartEpoch, faceUp: number[] (0–2 positions), matchedI
 | Game | Attempts | Per-attempt timeout | Worst case | `worstCaseMs` |
 |---|---|---|---|---|
 | How Many? | 3 flashes | 10 s per answer (15 s since ADR-138) | 1.5 + 3 × 12.5 ≈ 39 s (58.5 s since ADR-138) | 40 000 (60 000 since ADR-138) |
-| Swipe Sort | items inside a 30 s clock | `I(t)` 900 → 450 ms | 1.5 + 30 ≈ 32 s | 32 000 |
+| Swipe Sort | items inside a 30 s clock | `I(t)` 900 → 450 ms (1100 → 600 ms since ADR-139) | 1.5 + 30 ≈ 32 s | 32 000 |
 | Pairs | one board | 60 s clock | 1.5 + 60 ≈ 62 s | 62 000 |
 
 ---

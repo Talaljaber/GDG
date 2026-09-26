@@ -5,7 +5,7 @@
  * amber ones RIGHT (physical screen sides, the same in Arabic: game
  * geometry, never mirrored). A blue chevron always points left, an amber one
  * right (the shape cue beside colour). Each item has a window I(t) that
- * shrinks from 900 to 450 ms over the 30 s game clock; no swipe in time is a
+ * shrinks from 1100 to 600 ms over the 30 s game clock; no swipe in time is a
  * miss. The first chevron appears at roundStartEpoch + 1.5 s (never from
  * mount, so a phone hidden during the 3-2-1 or the intro doesn't start
  * late). Swipe time = performance.now() at the swipe registering (40 px of

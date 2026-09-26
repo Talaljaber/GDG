@@ -182,25 +182,25 @@ describe('Swipe Sort: play', () => {
     expect(container.querySelector(`[data-testid="ss-zone-${first.side}"]`)?.className).toMatch(/zoneCorrect/);
   });
 
-  it('an item not swiped within its window is a miss (900 ms for the first)', () => {
+  it('an item not swiped within its window is a miss (1100 ms for the first)', () => {
     const { container, last } = renderGame();
     advance(1500);
-    advance(850);
+    advance(1050);
     expect(last().missed).toBe(0);
     advance(50);
-    expect(last()).toMatchObject({ missed: 1, feedback: 'missed', itemStartEpoch: null, gapEndEpoch: GAME_START + 900 + 150 });
+    expect(last()).toMatchObject({ missed: 1, feedback: 'missed', itemStartEpoch: null, gapEndEpoch: GAME_START + 1100 + 150 });
     expect(container.querySelector('[data-testid="ss-missed"]')?.textContent).toBe('game.swipe_sort.missed');
     advance(150);
-    expect(last()).toMatchObject({ itemIndex: 1, itemStartEpoch: GAME_START + 1050 });
+    expect(last()).toMatchObject({ itemIndex: 1, itemStartEpoch: GAME_START + 1250 });
   });
 
   it('a drag that started on an item that then timed out never sorts the next item', () => {
     const { container, last } = renderGame();
     advance(1500);
     const el = surface(container);
-    advance(800);
+    advance(1000);
     pointer(el, 'pointerdown', CX, CY);
-    advance(250); // item 0 missed at 900 ms, item 1 appears at 1050 ms
+    advance(250); // item 0 missed at 1100 ms, item 1 appears at 1250 ms
     expect(last()).toMatchObject({ missed: 1, itemIndex: 1 });
     pointer(el, 'pointermove', CX + 80, CY);
     pointer(el, 'pointermove', CX - 80, CY);
@@ -231,7 +231,7 @@ describe('Swipe Sort: play', () => {
 });
 
 describe('Swipe Sort: the ramp and the clock (fake timers)', () => {
-  it('SS-T8 / SS-T11: an idle player misses every item on the I(t) ramp: 37 misses, 0, finished once at 30 s', () => {
+  it('SS-T8 / SS-T11: an idle player misses every item on the I(t) ramp: 30 misses, 0, finished once at 30 s', () => {
     const { onProgress, onFinish } = renderGame();
     advance(1500 + 29_950);
     expect(onFinish).not.toHaveBeenCalled();
@@ -247,12 +247,12 @@ describe('Swipe Sort: the ramp and the clock (fake timers)', () => {
       expect(onsets[i]).toBe(prev + itemWindowMs(prev - GAME_START) + 150);
     }
     const windows = onsets.map((o) => itemWindowMs(o - GAME_START));
-    expect(windows[0]).toBe(900);
-    expect(windows[windows.length - 1]).toBeGreaterThanOrEqual(450);
-    expect(windows[windows.length - 1]).toBeLessThan(470);
+    expect(windows[0]).toBe(1100);
+    expect(windows[windows.length - 1]).toBeGreaterThanOrEqual(600);
+    expect(windows[windows.length - 1]).toBeLessThan(620);
 
     const result = onFinish.mock.calls[0][0];
-    expect(result.raw).toEqual({ correct: 0, wrong: 0, missed: 37, mean_swipe_ms: null });
+    expect(result.raw).toEqual({ correct: 0, wrong: 0, missed: 30, mean_swipe_ms: null });
     expect(result.score).toBe(0);
     expect(validateSwipeSortRaw(result.raw, result.score)).toBeNull();
     expect(result.durationMs).toBeGreaterThanOrEqual(31_500);
@@ -287,14 +287,15 @@ describe('Swipe Sort: the ramp and the clock (fake timers)', () => {
     const before = last();
     expect(before.missed).toBeGreaterThan(0);
 
-    // The phone sleeps: the clock jumps 10 s without any timer firing.
+    // The phone sleeps: the clock jumps 10 s without any timer firing; the page is visible again.
     act(() => {
       vi.setSystemTime(Date.now() + 10_000);
+      document.dispatchEvent(new Event('visibilitychange'));
     });
     advance(50);
     const after = last();
-    expect(after.missed - before.missed).toBeGreaterThanOrEqual(12);
-    expect(after.itemIndex - before.itemIndex).toBeGreaterThanOrEqual(12);
+    expect(after.missed - before.missed).toBeGreaterThanOrEqual(10);
+    expect(after.itemIndex - before.itemIndex).toBeGreaterThanOrEqual(10);
     // The sequence stayed epoch-exact: the current item's deadline is still ahead or its gap is running.
     expect(after.itemStartEpoch !== null || after.gapEndEpoch !== null).toBe(true);
     expect(shownItem(container)?.index ?? after.itemIndex).toBe(after.itemIndex);
@@ -314,7 +315,7 @@ describe('Swipe Sort: reload (ADR-018) and round end', () => {
     const snapshot = playSnapshot({ itemIndex: 14, itemStartEpoch: onset, correct: 12, wrong: 1, missed: 1, swipeSumMs: 6000 });
     const { container, last, onFinish, onProgress } = renderGame({ snapshot });
     expect(shownItem(container)?.index).toBe(14);
-    const windowMs = itemWindowMs(12_000); // 720
+    const windowMs = itemWindowMs(12_000); // 900
     advance(windowMs - 300 - 50);
     expect(onProgress).not.toHaveBeenCalled(); // the same item is still open
     advance(100);
@@ -429,14 +430,14 @@ describe('Swipe Sort: anchored game clock (SS-T15)', () => {
     const { last, onFinish } = renderGame();
     advance(50);
     const expected = catchUp(playSnapshot({}), ROUND_START + 5_000);
-    expect(expected.missed).toBeGreaterThanOrEqual(3);
+    expect(expected.missed).toBeGreaterThanOrEqual(2);
     expect(last()).toMatchObject({ phase: 'play', gameStartEpoch: GAME_START, missed: expected.missed, itemIndex: expected.itemIndex });
 
     advance(GAME_START + 30_000 - Date.now() - 60);
     expect(onFinish).not.toHaveBeenCalled();
     advance(100);
     expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(onFinish.mock.calls[0][0].raw).toMatchObject({ correct: 0, wrong: 0, missed: 37 });
+    expect(onFinish.mock.calls[0][0].raw).toMatchObject({ correct: 0, wrong: 0, missed: 30 });
     expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(32_000);
   });
 
@@ -467,7 +468,7 @@ describe('Swipe Sort: anchored game clock (SS-T15)', () => {
     const { onFinish } = renderGame();
     advance(100);
     expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(onFinish.mock.calls[0][0].raw).toMatchObject({ correct: 0, wrong: 0, missed: 37 });
+    expect(onFinish.mock.calls[0][0].raw).toMatchObject({ correct: 0, wrong: 0, missed: 30 });
   });
 });
 
@@ -479,11 +480,11 @@ describe('Swipe Sort: the chevron offset (SS-T16)', () => {
     const { container, last } = renderGame();
     advance(1500);
     const el = surface(container);
-    advance(800);
+    advance(1000);
     pointer(el, 'pointerdown', CX, CY);
     pointer(el, 'pointermove', CX + 10, CY);
     expect(dragOf(container)).toBe('10px'); // item 0 follows its own drag
-    advance(250); // item 0 missed at 900 ms, item 1 live at 1050 ms
+    advance(250); // item 0 missed at 1100 ms, item 1 live at 1250 ms
     expect(shownItem(container)?.index).toBe(1);
     pointer(el, 'pointermove', CX + 30, CY);
     expect(dragOf(container)).toBe('0px');
@@ -501,8 +502,8 @@ describe('Swipe Sort: the chevron offset (SS-T16)', () => {
     pointer(el, 'pointerdown', CX, CY);
     pointer(el, 'pointermove', CX + 20, CY);
     expect(dragOf(container)).toBe('20px');
-    // The clock passes item 0's 900 ms deadline without its timer firing yet.
-    vi.setSystemTime(Date.now() + 1_000);
+    // The clock passes item 0's 1100 ms deadline without its timer firing yet.
+    vi.setSystemTime(Date.now() + 1_200);
     pointer(el, 'pointermove', CX + 60, CY);
     expect(dragOf(container)).toBe('0px');
     expect(last()).toMatchObject({ correct: 0, wrong: 0 });

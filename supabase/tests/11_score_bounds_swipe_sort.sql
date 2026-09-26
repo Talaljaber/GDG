@@ -1,4 +1,4 @@
--- TESTING.md section 3, "Trigger bounds" for Swipe Sort (ADR-136): one passing and one failing case
+-- TESTING.md section 3, "Trigger bounds" for Swipe Sort (ADR-136; item window ADR-139): one passing and one failing case
 -- per bound in SCORING.md section 4 (ss.*), asserting the reason code in the GD008 error detail.
 -- Same method as 05_score_bounds.sql / 09_score_bounds_new_games.sql: real guest inserts through the
 -- trigger, RLS and CHECK constraints, each rolled back. Base raws = docs/games/swipe-sort.md section 4.
@@ -47,7 +47,7 @@ create function pg_temp.set2(k text, p1 text, v1 text, p2 text, v2 text) returns
   select jsonb_set(pg_temp.set(k, p1, v1), p2::text[], v2::jsonb) $$;
 create function pg_temp.b(k text) returns jsonb language sql stable as $$ select pg_temp.v(k)::jsonb $$;
 
-select plan(38);
+select plan(39);
 
 -- ============ Fixture: one guest in a Swipe Sort round (inserted directly, as postgres) ============
 select pg_temp.setv('G', '99999999-0000-0000-0000-000000000003');
@@ -69,7 +69,7 @@ select pg_temp.setv('ss', '{"correct":43,"wrong":1,"missed":5,"mean_swipe_ms":45
 select pg_temp.setv('ss_b', '{"correct":33,"wrong":3,"missed":8,"mean_swipe_ms":550}');
 select pg_temp.setv('ss_c', '{"correct":22,"wrong":5,"missed":12,"mean_swipe_ms":640}');
 select pg_temp.setv('ss_spam', '{"correct":30,"wrong":33,"missed":0,"mean_swipe_ms":260}');
-select pg_temp.setv('ss0', '{"correct":0,"wrong":0,"missed":37,"mean_swipe_ms":null}');
+select pg_temp.setv('ss0', '{"correct":0,"wrong":0,"missed":30,"mean_swipe_ms":null}');
 select pg_temp.setv('ss_f', '{"correct":46,"wrong":1,"missed":2,"mean_swipe_ms":430}');
 
 select pg_temp.login(pg_temp.v('G')::uuid);
@@ -96,13 +96,14 @@ from (values
   ('ss', 0, 32000, pg_temp.set('ss', '{wrong}', '121'), 'GD008:ss.range', 'ss.range fail: wrong 121'),
   ('ss', 0, 32000, pg_temp.set('ss', '{missed}', '80'), 'ok', 'ss.range pass: missed 80 (net negative, score 0)'),
   ('ss', 0, 32000, pg_temp.set('ss', '{missed}', '81'), 'GD008:ss.range', 'ss.range fail: missed 81'),
-  ('ss', 110, 32000, pg_temp.set('ss_c', '{mean_swipe_ms}', '900'), 'ok', 'ss.range pass: mean_swipe_ms 900 (example C, no bonus)'),
-  ('ss', 110, 32000, pg_temp.set('ss_c', '{mean_swipe_ms}', '901'), 'GD008:ss.range', 'ss.range fail: mean_swipe_ms 901'),
+  ('ss', 110, 32000, pg_temp.set('ss_c', '{mean_swipe_ms}', '901'), 'ok', 'ss.range pass: mean_swipe_ms 901 (the old 900 bound is gone, ADR-139)'),
+  ('ss', 110, 32000, pg_temp.set('ss_c', '{mean_swipe_ms}', '1100'), 'ok', 'ss.range pass: mean_swipe_ms 1100 (example C, no bonus; the longest window)'),
+  ('ss', 110, 32000, pg_temp.set('ss_c', '{mean_swipe_ms}', '1101'), 'GD008:ss.range', 'ss.range fail: mean_swipe_ms 1101'),
   -- ---------------- ss.rt ----------------
   ('ss', 0, 32000, pg_temp.set('ss0', '{mean_swipe_ms}', '500'), 'GD008:ss.rt', 'ss.rt fail: no correct swipes but a mean time'),
   ('ss', 864, 32000, pg_temp.set('ss', '{mean_swipe_ms}', 'null'), 'GD008:ss.rt', 'ss.rt fail: correct swipes without a mean time'),
   -- ---------------- ss.zero ----------------
-  ('ss', 0, 32000, pg_temp.b('ss0'), 'ok', 'ss.zero pass: idle (37 misses), score 0'),
+  ('ss', 0, 32000, pg_temp.b('ss0'), 'ok', 'ss.zero pass: idle (30 misses), score 0'),
   ('ss', 22, 32000, pg_temp.b('ss0'), 'GD008:ss.zero', 'ss.zero fail: no correct swipes, score 22'),
   -- ---------------- ss.too_fast (SS-T4: 40 correct, net 34, band 748..808) ----------------
   ('ss', 808, 32000, pg_temp.set2('ss', '{correct}', '40', '{mean_swipe_ms}', '200'), 'ok', 'ss.too_fast pass: 200 ms'),

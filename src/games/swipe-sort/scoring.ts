@@ -9,9 +9,9 @@ export const SS_GAME_MS = 30_000;
 /** The gap after every item (the chevron flies off / fades; feedback). */
 export const SS_GAP_MS = 150;
 
-/** The item window I(t) ramps linearly from 900 ms at t = 0 to 450 ms at t = 30 s (ADR-136 floor). */
-export const SS_WINDOW_START_MS = 900;
-export const SS_WINDOW_END_MS = 450;
+/** The item window I(t) ramps linearly from 1100 ms at t = 0 to 600 ms at t = 30 s (ADR-139). */
+export const SS_WINDOW_START_MS = 1100;
+export const SS_WINDOW_END_MS = 600;
 
 /** Points per net correct swipe (22 x net). */
 export const SS_POINTS_PER_NET = 22;
@@ -36,8 +36,8 @@ function clamp(x: number, lo: number, hi: number): number {
 }
 
 /**
- * The item window I(t) = round(900 - 450 x t / 30000) ms, where t is the item's
- * onset on the game clock (clamped to 0..30 s): 900 -> 675 -> 450.
+ * The item window I(t) = round(1100 - 500 x t / 30000) ms, where t is the item's
+ * onset on the game clock (clamped to 0..30 s): 1100 -> 850 -> 600.
  */
 export function itemWindowMs(t: number): number {
   const onset = clamp(t, 0, SS_GAME_MS);
