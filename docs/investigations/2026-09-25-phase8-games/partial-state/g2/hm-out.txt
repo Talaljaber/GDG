@@ -1,0 +1,280 @@
+﻿node.exe : [33mThe CJS build of Vite's Node API is deprecated. See 
+https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mThe CJS bu...e details.[39m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+ RUN  v2.1.9 C:/Users/hp/.m2/GDG
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > intro +1000
+
+=== hide during intro at 500 for 1000 ms ===
+0 intro#0
+500 HIDE
+1500 SHOW -> look eyebrow=game.how_many.round
+1500 look#0
+2500 flash#0
+3500 answer#0 secs=10
+5210 locked#0
+5660 look#1
+6660 flash#1
+7660 answer#1 secs=10
+9370 locked#1
+9820 look#2
+10820 flash#2
+11820 answer#2 secs=10
+13530 locked#2
+flash seen (visible): true,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 13960
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > intro +5000
+
+=== hide during intro at 500 for 5000 ms ===
+0 intro#0
+500 HIDE
+1500 look#0 (hidden)
+2500 answer#0 (hidden) secs=10
+5500 SHOW -> answer secs=8 eyebrow=game.how_many.round
+7210 locked#0
+7660 look#1
+8660 flash#1
+9660 answer#1 secs=10
+11370 locked#1
+11820 look#2
+12820 flash#2
+13820 answer#2 secs=10
+15530 locked#2
+flash seen (visible): false,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":4640,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 15960
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > intro +30000
+
+=== hide during intro at 500 for 30000 ms ===
+0 intro#0
+500 HIDE
+1500 look#0 (hidden)
+2500 answer#0 (hidden) secs=10
+13500 locked#0 (hidden)
+14000 look#1 (hidden)
+15000 answer#1 (hidden) secs=10
+26000 locked#1 (hidden)
+26500 look#2 (hidden)
+27500 answer#2 (hidden) secs=10
+30500 SHOW -> answer secs=8 eyebrow=game.how_many.round
+32210 locked#2
+flash seen (visible): false,false,false
+raw {"rounds":[{"true_count":8,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":32,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":46,"guess":20,"answer_ms":4640,"timed_out":false}]} score 0 dur 32640
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > look +1000
+
+=== hide during look at 1800 for 1000 ms ===
+0 intro#0
+1500 look#0
+1800 HIDE
+2500 answer#0 (hidden) secs=10
+2800 SHOW -> answer secs=10 eyebrow=game.how_many.round
+4510 locked#0
+4960 look#1
+5960 flash#1
+6960 answer#1 secs=10
+8670 locked#1
+9120 look#2
+10120 flash#2
+11120 answer#2 secs=10
+12830 locked#2
+flash seen (visible): false,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":1940,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 13260
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > look +5000
+
+=== hide during look at 1800 for 5000 ms ===
+0 intro#0
+1500 look#0
+1800 HIDE
+2500 answer#0 (hidden) secs=10
+6800 SHOW -> answer secs=7 eyebrow=game.how_many.round
+8510 locked#0
+8960 look#1
+9960 flash#1
+10960 answer#1 secs=10
+12670 locked#1
+13120 look#2
+14120 flash#2
+15120 answer#2 secs=10
+16830 locked#2
+flash seen (visible): false,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":5940,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 17260
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > look +30000
+
+=== hide during look at 1800 for 30000 ms ===
+0 intro#0
+1500 look#0
+1800 HIDE
+2500 answer#0 (hidden) secs=10
+13500 locked#0 (hidden)
+14000 look#1 (hidden)
+15000 answer#1 (hidden) secs=10
+26000 locked#1 (hidden)
+26500 look#2 (hidden)
+27500 answer#2 (hidden) secs=10
+31800 SHOW -> answer secs=7 eyebrow=game.how_many.round
+33510 locked#2
+flash seen (visible): false,false,false
+raw {"rounds":[{"true_count":8,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":32,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":46,"guess":20,"answer_ms":5940,"timed_out":false}]} score 0 dur 33940
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > flash +1000
+
+=== hide during flash at 2800 for 1000 ms ===
+0 intro#0
+1500 look#0
+2500 flash#0
+2800 HIDE
+3500 answer#0 (hidden) secs=10
+3800 SHOW -> answer secs=10 eyebrow=game.how_many.round
+5510 locked#0
+5960 look#1
+6960 flash#1
+7960 answer#1 secs=10
+9670 locked#1
+10120 look#2
+11120 flash#2
+12120 answer#2 secs=10
+13830 locked#2
+flash seen (visible): true,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":1940,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 14260
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > flash +5000
+
+=== hide during flash at 2800 for 5000 ms ===
+0 intro#0
+1500 look#0
+2500 flash#0
+2800 HIDE
+3500 answer#0 (hidden) secs=10
+7800 SHOW -> answer secs=6 eyebrow=game.how_many.round
+9510 locked#0
+9960 look#1
+10960 flash#1
+11960 answer#1 secs=10
+13670 locked#1
+14120 look#2
+15120 flash#2
+16120 answer#2 secs=10
+17830 locked#2
+flash seen (visible): true,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":5940,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 18260
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > flash +30000
+
+=== hide during flash at 2800 for 30000 ms ===
+0 intro#0
+1500 look#0
+2500 flash#0
+2800 HIDE
+3500 answer#0 (hidden) secs=10
+13500 locked#0 (hidden)
+14000 look#1 (hidden)
+15000 answer#1 (hidden) secs=10
+26000 locked#1 (hidden)
+26500 look#2 (hidden)
+27500 answer#2 (hidden) secs=10
+32800 SHOW -> answer secs=6 eyebrow=game.how_many.round
+34510 locked#2
+flash seen (visible): true,false,false
+raw {"rounds":[{"true_count":8,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":32,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":46,"guess":20,"answer_ms":6940,"timed_out":false}]} score 0 dur 34940
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > answer +1000
+
+=== hide during answer at 4000 for 1000 ms ===
+0 intro#0
+1500 look#0
+2500 flash#0
+3500 answer#0 secs=10
+4000 HIDE
+5000 SHOW -> answer secs=9 eyebrow=game.how_many.round
+5210 locked#0
+5660 look#1
+6660 flash#1
+7660 answer#1 secs=10
+9370 locked#1
+9820 look#2
+10820 flash#2
+11820 answer#2 secs=10
+13530 locked#2
+flash seen (visible): true,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 13960
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > answer +5000
+
+=== hide during answer at 4000 for 5000 ms ===
+0 intro#0
+1500 look#0
+2500 flash#0
+3500 answer#0 secs=10
+4000 HIDE
+9000 SHOW -> answer secs=5 eyebrow=game.how_many.round
+9210 locked#0
+9660 look#1
+10660 flash#1
+11660 answer#1 secs=10
+13370 locked#1
+13820 look#2
+14820 flash#2
+15820 answer#2 secs=10
+17530 locked#2
+flash seen (visible): true,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":5640,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 17960
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > answer +30000
+
+=== hide during answer at 4000 for 30000 ms ===
+0 intro#0
+1500 look#0
+2500 flash#0
+3500 answer#0 secs=10
+4000 HIDE
+13500 locked#0 (hidden)
+14000 look#1 (hidden)
+15000 answer#1 (hidden) secs=10
+26000 locked#1 (hidden)
+26500 look#2 (hidden)
+27500 answer#2 (hidden) secs=10
+34000 SHOW -> answer secs=5 eyebrow=game.how_many.round
+35710 locked#2
+flash seen (visible): true,false,false
+raw {"rounds":[{"true_count":8,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":32,"guess":null,"answer_ms":null,"timed_out":true},{"true_count":46,"guess":20,"answer_ms":8140,"timed_out":false}]} score 0 dur 36140
+
+stdout | ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx > G2 How Many? hidden (timers keep firing) > baseline, never hidden
+
+=== baseline ===
+0 intro#0
+1500 look#0
+2500 flash#0
+3500 answer#0 secs=10
+5210 locked#0
+5660 look#1
+6660 flash#1
+7660 answer#1 secs=10
+9370 locked#1
+9820 look#2
+10820 flash#2
+11820 answer#2 secs=10
+13530 locked#2
+flash seen: true,true,true
+raw {"rounds":[{"true_count":8,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":32,"guess":20,"answer_ms":1640,"timed_out":false},{"true_count":46,"guess":20,"answer_ms":1640,"timed_out":false}]} score 24 dur 13960
+
+ ✓ ../../AppData/Local/Temp/claude/c--Users-hp--m2-GDG/f37d25ab-80f0-495e-93ed-dcd0ab723d43/scratchpad/g2/hm-hidden.g2.test.tsx (13 tests) 3096ms
+   ✓ G2 How Many? hidden (timers keep firing) > intro +1000 356ms
+   ✓ G2 How Many? hidden (timers keep firing) > intro +30000 418ms
+   ✓ G2 How Many? hidden (timers keep firing) > look +30000 330ms
+   ✓ G2 How Many? hidden (timers keep firing) > flash +30000 341ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  21:13:09
+   Duration  5.67s (transform 249ms, setup 235ms, collect 408ms, tests 3.10s, environment 1.33s, prepare 196ms)
+

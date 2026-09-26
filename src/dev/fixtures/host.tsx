@@ -298,7 +298,12 @@ function Intermission({
   /** Round `roundNo` is How Many? (its count reveal, games-v3 §5). */
   howMany?: boolean;
 }) {
-  const rs = rounds(null, roundNo).map((r) => (howMany && r.round_no === roundNo ? { ...r, game: 'how_many' as GameId } : r));
+  // The shown round ended when the fixture mounted: the reveal counts from ended_at (ADR-137 (5)),
+  // so a fixed past time would show it already finished. Read once, so a rerender never replays it.
+  const [endedAt] = useState(() => new Date().toISOString());
+  const rs = rounds(null, roundNo).map((r) =>
+    r.round_no === roundNo ? { ...r, ended_at: endedAt, ...(howMany ? { game: 'how_many' as GameId } : {}) } : r,
+  );
   const d = data({
     session: session({ status: last ? 'results' : 'playing' }),
     running: true,

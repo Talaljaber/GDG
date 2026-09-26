@@ -2,7 +2,7 @@
 
 Purpose: the complete spec for Pairs: rules, board, flow, timings, difficulty curve, scoring with worked examples, rejection bounds, UI states, theming (including the icon set), accessibility, edge cases and test cases. Shared rules are in `SCORING.md`; if they disagree, `SCORING.md` wins.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Game id: `pairs` · One-line pitch (COPY `game.pairs.pitch`): "Flip two cards at a time. Find all 8 pairs."
 
@@ -28,7 +28,7 @@ Related: ADR-136 (the v3 games), ADR-134 (2) (per-round seeding), `docs/plans/ga
 ```mermaid
 stateDiagram-v2
     [*] --> intro: round starts (3-2-1 done)
-    intro --> board: 1.5 s (the 60 s clock starts)
+    intro --> board: roundStartEpoch + 1.5 s (the 60 s clock starts)
     board --> one_up: tap a face-down card
     one_up --> resolve: tap a second face-down card
     resolve --> board: match (0.3 s amber feedback; both stay up; no lock)
@@ -39,13 +39,15 @@ stateDiagram-v2
 
 | Step | Duration |
 |---|---|
-| Intro card | 1.5 s |
+| Intro card | 1.5 s, ending at `roundStartEpoch + 1500` (not 1.5 s after mount) |
 | Game clock (everything below runs inside it) | 60 s |
 | Match feedback (no lock; the next tap is accepted at once) | 0.3 s |
 | Mismatch lock (both up, all input ignored) | 0.7 s |
 | Worst case total | 1.5 + 60 = 61.5 s → **62 s** (`worstCaseMs = 62_000`, inside the 120 s cap) |
 
-Measurement: `clear_ms` is `performance.now()` at the **`pointerdown`** of the eighth match minus the moment the board was committed to the screen (epoch fallback after a reload), rounded and capped at 60 000 ms. Taps count on `pointerdown` only.
+Board clock: `gameStartEpoch = roundStartEpoch + 1500`, fixed, never the time the phone mounted the game or became visible. A phone hidden during the 3-2-1 or the intro therefore still ends its board at `roundStartEpoch + 61.5 s` (worst case 62 s, E15: clocks never pause); if it mounts after `gameStartEpoch` the board appears at once with the time left (and finishes at once if 60 s have passed).
+
+Measurement: `clear_ms` is `Date.now()` at the **`pointerdown`** of the eighth match minus `gameStartEpoch` (the same epoch clock as the 60 s end and the countdown, so a device sleep never shortens it), rounded and capped at 60 000 ms. Taps count on `pointerdown` only.
 
 ## 4. Scoring
 
@@ -98,7 +100,7 @@ Why: a clear needs 16 taps, and 16 taps at ≥ 250 ms is 4000 ms; every miss add
 | `resolve`, match (0.3 s) | Both cards keep an amber ring (for the rest of the round) and get a brief amber tint; they stay face up | accepted (the next tap starts a new pair) |
 | `resolve`, mismatch (0.7 s) | Both face up with the icon muted; **all input ignored** (the flip-back lock) | ignored |
 | `cleared` | Every card face up with its ring, the countdown frozen at the time left, `game.pairs.cleared`; finishes at once | none |
-| `done` (60 s or round ended) | The board as it was (unfound cards stay down), `game.pairs.times_up` | none |
+| `done` (60 s or round ended) | The found pairs stay up; every unfound card is shown face down (an open card or a locked mismatch flips down), `game.pairs.times_up` | none |
 
 P7 breakdown (`SCREENS.md` P7): pairs found (`game.pairs.result_pairs`) · misses (`game.pairs.result_misses`) · time (`game.pairs.result_time` with `game.pairs.result_time_value`, or `game.pairs.result_not_cleared`).
 
@@ -142,13 +144,13 @@ Snapshot (persisted through `onProgress` after the board appears and after every
 | Two fingers on two cards at once | Two ordinary flips, in `pointerdown` order. |
 | Reload during the lock | Both cards shown up until `lockUntilEpoch`, then flipped back; the miss is already counted (PR-T13). A lock that ended while the page was away resolves at once. |
 | Reload with one card up | Restored from `faceUp`; the clock continues from `gameStartEpoch`. |
-| Reload during the intro | The intro plays again (no snapshot is saved before the board appears). |
-| Screen lock | The clock runs on `gameStartEpoch`; on return a passed lock resolves and a passed 60 s finishes at once. |
-| Round ended early | Finish now: `matched` so far, `misses`, `clear_ms` null unless cleared. |
+| Reload or hidden during the intro | The intro shows again until `roundStartEpoch + 1.5 s` (no snapshot is saved before the board appears); the board clock starts at `roundStartEpoch + 1.5 s` regardless, so a late return shows the board with the time left. |
+| Screen lock | The clock runs on `gameStartEpoch`, and the clear time includes the lock. On return (`visibilitychange` to visible, or `pageshow`) the board is re-evaluated at once: a passed lock flips back, a passed 60 s finishes with `game.pairs.times_up`, and the countdown re-renders (timers stall while the device sleeps, so the phone never waits for them). |
+| Round ended early | Finish now: `matched` so far, `misses`, `clear_ms` null unless cleared; unfound cards go face down. |
 | Rotation | The shell's portrait overlay covers the game; the clock keeps running (E16). |
 | Clear at the 60 s tick | Taps at or after 60 s are ignored, so a clear is always committed before the clock ends (`clear_ms` < 60000). |
 | Language toggle | Hidden during rounds (E17). |
-| Shared board | Everyone has the same layout, so a finished player could call out positions (accepted, like Odd One Out's shared grids). A timed-out board is not revealed. |
+| Shared board | Everyone has the same layout, so a finished player could call out positions (accepted, like Odd One Out's shared grids). A timed-out board is not revealed (open unmatched cards flip down). |
 
 ## 10. Test cases
 
@@ -168,6 +170,7 @@ Snapshot (persisted through `onProgress` after the board appears and after every
 | PR-T12 | Icon review | all eight silhouettes distinct at 40 px on a phone; none resembles a product logo | manual checklist below |
 | PR-T13 | Reload during the lock | both cards up until `lockUntilEpoch`; then down; `misses` unchanged | `Pairs.test.tsx` |
 | PR-T14 | Playtest, 5 strong players | median 780–900, nobody 1000 → else retune 6 / 12 / 80 (ADR-136) | playtest |
+| PR-T15 | Device sleep: 30 s mid-game then clear; live sleep across the 60 s end; sleep across a lock end; timeout with a mismatch up; mount 30 s after the round start | `clear_ms` includes the sleep and the countdown never jumps up; finishes (`times_up`) at once on `visibilitychange`; the pair flips back at once; both tiles down; board at `roundStartEpoch + 1500` with 31.5 s left | `Pairs.test.tsx` |
 
 PR-T12 checklist (at the contrast pass and on a real phone, `/__preview` Pairs fixtures, EN and AR, light and dark):
 

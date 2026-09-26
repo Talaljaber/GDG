@@ -16,7 +16,7 @@ export type SwipeSortFeedback = 'correct' | 'wrong' | 'missed' | null;
 
 export interface SwipeSortSnapshot {
   phase: SwipeSortPhase;
-  /** Date.now() when the first chevron appeared (the 30 s game clock); null in `intro`. */
+  /** roundStartEpoch + 1.5 s (the first chevron's onset, the start of the 30 s game clock); null in `intro`. */
   gameStartEpoch: number | null;
   /** k of the current item (the one just sorted or missed, during a gap). */
   itemIndex: number;

@@ -120,6 +120,40 @@ export interface RevealProps {
   version: number;
   /** Dev preview / tests only: fixed rows instead of the database query. */
   rows?: RevealRow[];
+  /**
+   * The round's `ended_at` on the LOCAL clock (server time minus the host's offset), in epoch
+   * ms: the start of the 7 s round-board step (ADR-129 (1)). Every dot and marker is timed
+   * from it, not from the mount, so a late mount, a host reload or a second host tab shows
+   * the same reveal state for the same elapsed time. Null/absent (dev fixtures): timed from
+   * the mount, as before.
+   */
+  anchorMs?: number | null;
+}
+
+/**
+ * How long from now until a reveal slot that is due `delayMs` after the anchor (the
+ * round's `ended_at`, local clock): `delayMs` itself without an anchor (dev fixtures:
+ * mount-relative), otherwise the time still to go, 0 once it is overdue (a late row,
+ * a late mount or a reload mid-step shows it at once).
+ */
+export function slotDelay(anchorMs: number | null | undefined, delayMs: number, nowMs = Date.now()): number {
+  if (anchorMs === null || anchorMs === undefined) return delayMs;
+  return Math.max(0, anchorMs + delayMs - nowMs);
+}
+
+/**
+ * The delay and shard count for one reveal slot: anchored, a slot that is already due
+ * appears at once without a burst (`shards: 0`); otherwise it plays as planned.
+ */
+export function anchoredSlot(
+  anchorMs: number | null | undefined,
+  slot: { delayMs: number; shards: number } | undefined,
+  nowMs = Date.now(),
+): { delayMs: number; shards: number } {
+  const planned = slot ?? { delayMs: 0, shards: 0 };
+  const delayMs = slotDelay(anchorMs, planned.delayMs, nowMs);
+  const due = anchorMs !== null && anchorMs !== undefined && delayMs === 0;
+  return { delayMs, shards: due ? 0 : planned.shards };
 }
 
 /**

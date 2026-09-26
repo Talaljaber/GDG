@@ -269,7 +269,7 @@
 
 .zoneCorrect {
   outline: var(--focus-width) solid var(--highlight);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 
 /* A wrong swipe: the label it went to shakes, outlined in ink (no red). */

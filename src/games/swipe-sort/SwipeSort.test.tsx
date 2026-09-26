@@ -4,6 +4,7 @@ import { SwipeSort, type SwipeSortSnapshot } from './SwipeSort';
 import type { GameProps, GameResult } from '../types';
 import { itemFor, type SwipeSide } from './items';
 import { itemWindowMs, scoreSwipeSort, validateSwipeSortRaw, type SwipeSortRaw } from './scoring';
+import { catchUp } from './timeline';
 
 vi.mock('../../i18n', () => ({
   useT: () => (key: string, params?: Record<string, string | number>) =>
@@ -419,5 +420,91 @@ describe('Swipe Sort: browser-gesture defence', () => {
     const surfaceBlock = css.slice(css.indexOf('.surface {'), css.indexOf('}', css.indexOf('.surface {')));
     expect(surfaceBlock).toContain('touch-action: none');
     expect(css).toContain('padding-inline: var(--swipe-safe-inset)');
+  });
+});
+
+describe('Swipe Sort: anchored game clock (SS-T15)', () => {
+  it('a mount 5 s after roundStartEpoch: the clock starts at roundStartEpoch + 1.5 s and the elapsed windows are misses', () => {
+    vi.setSystemTime(ROUND_START + 5_000);
+    const { last, onFinish } = renderGame();
+    advance(50);
+    const expected = catchUp(playSnapshot({}), ROUND_START + 5_000);
+    expect(expected.missed).toBeGreaterThanOrEqual(3);
+    expect(last()).toMatchObject({ phase: 'play', gameStartEpoch: GAME_START, missed: expected.missed, itemIndex: expected.itemIndex });
+
+    advance(GAME_START + 30_000 - Date.now() - 60);
+    expect(onFinish).not.toHaveBeenCalled();
+    advance(100);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0][0].raw).toMatchObject({ correct: 0, wrong: 0, missed: 37 });
+    expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(32_000);
+  });
+
+  it('hidden during the intro: on return the first onset is still roundStartEpoch + 1.5 s', () => {
+    const { container, last } = renderGame();
+    advance(500);
+    expect(shownItem(container)).toBeNull();
+    vi.setSystemTime(Date.now() + 4_000);
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    advance(50);
+    expect(last()).toMatchObject({ phase: 'play', gameStartEpoch: GAME_START });
+    expect(last().missed).toBe(catchUp(playSnapshot({}), Date.now()).missed);
+  });
+
+  it('a swipe on the first item of a late mount is timed from the anchored onset', () => {
+    vi.setSystemTime(ROUND_START + 1_700);
+    const { container, last } = renderGame();
+    advance(50); // the first item's onset was GAME_START, 200 ms ago
+    advance(100);
+    swipe(container, itemFor(SEED, 0).side);
+    expect(last()).toMatchObject({ correct: 1, swipeSumMs: 350 });
+  });
+
+  it('a mount after the whole game time finishes at once with every window missed', () => {
+    vi.setSystemTime(ROUND_START + 40_000);
+    const { onFinish } = renderGame();
+    advance(100);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0][0].raw).toMatchObject({ correct: 0, wrong: 0, missed: 37 });
+  });
+});
+
+describe('Swipe Sort: the chevron offset (SS-T16)', () => {
+  const dragOf = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>('[data-testid="ss-item"]')?.style.getPropertyValue('--ss-drag');
+
+  it('a drag held across a miss never moves the next chevron, and a further move counts nothing', () => {
+    const { container, last } = renderGame();
+    advance(1500);
+    const el = surface(container);
+    advance(800);
+    pointer(el, 'pointerdown', CX, CY);
+    pointer(el, 'pointermove', CX + 10, CY);
+    expect(dragOf(container)).toBe('10px'); // item 0 follows its own drag
+    advance(250); // item 0 missed at 900 ms, item 1 live at 1050 ms
+    expect(shownItem(container)?.index).toBe(1);
+    pointer(el, 'pointermove', CX + 30, CY);
+    expect(dragOf(container)).toBe('0px');
+    pointer(el, 'pointermove', CX + 80, CY);
+    expect(dragOf(container)).toBe('0px');
+    expect(last()).toMatchObject({ correct: 0, wrong: 0, missed: 1, itemIndex: 1 });
+    pointer(el, 'pointerup', CX + 80, CY);
+    expect(dragOf(container)).toBe('0px');
+  });
+
+  it('a swipe that registers past the deadline (before the miss timer) springs the chevron back', () => {
+    const { container, last } = renderGame();
+    advance(1500);
+    const el = surface(container);
+    pointer(el, 'pointerdown', CX, CY);
+    pointer(el, 'pointermove', CX + 20, CY);
+    expect(dragOf(container)).toBe('20px');
+    // The clock passes item 0's 900 ms deadline without its timer firing yet.
+    vi.setSystemTime(Date.now() + 1_000);
+    pointer(el, 'pointermove', CX + 60, CY);
+    expect(dragOf(container)).toBe('0px');
+    expect(last()).toMatchObject({ correct: 0, wrong: 0 });
   });
 });

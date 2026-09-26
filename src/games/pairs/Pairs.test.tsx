@@ -300,3 +300,153 @@ describe('Pairs: reload (ADR-018)', () => {
     expect(onFinish.mock.calls[0][0].raw).toEqual({ matched: 1, misses: 2, clear_ms: null });
   });
 });
+
+describe('Pairs: device sleep and a late mount (PR-T15, E15)', () => {
+  const seconds = (container: HTMLElement) => Number(container.querySelector('[data-testid="pr-seconds"]')?.textContent);
+  const showPage = () =>
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+  it('a sleep mid-game counts toward clear_ms (epoch clock); the countdown never jumps back up at the clear', () => {
+    const { container, onFinish, last } = renderGame();
+    const gameStart = ROUND_START + 1500;
+    advance(1500);
+    tap(container, BUG_1);
+    tap(container, BUG_2);
+    advance(1000);
+    const readings = [seconds(container)];
+    // A device sleep: the wall clock jumps 30 s, performance.now() and the pending timers stall.
+    vi.setSystemTime(Date.now() + 30_000);
+    advance(300);
+    readings.push(seconds(container));
+    for (const icon of ICON_IDS.filter((i) => i !== 'bug')) {
+      const [a, b] = posOf(icon);
+      tap(container, a);
+      advance(100);
+      tap(container, b);
+      readings.push(seconds(container));
+    }
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    const raw = onFinish.mock.calls[0][0].raw as PairsRaw;
+    const elapsed = Date.now() - gameStart;
+    expect(raw).toEqual({ matched: 8, misses: 0, clear_ms: elapsed });
+    expect(raw.clear_ms).toBeGreaterThanOrEqual(30_000);
+    expect(onFinish.mock.calls[0][0].score).toBe(scorePairs(raw));
+    expect(onFinish.mock.calls[0][0].score).toBeLessThan(1000);
+    expect(validatePairsRaw(raw, onFinish.mock.calls[0][0].score)).toBeNull();
+    expect(last().clearEpoch).toBe(gameStart + elapsed);
+    advance(1000);
+    readings.push(seconds(container));
+    for (let i = 1; i < readings.length; i++) expect(readings[i]).toBeLessThanOrEqual(readings[i - 1]);
+    expect(readings[readings.length - 1]).toBe(Math.ceil((60_000 - elapsed) / 1000));
+  });
+
+  it('a live sleep across the 60 s end finishes at once on visibilitychange (Time\'s up, taps ignored)', () => {
+    const { container, onFinish } = renderGame();
+    advance(1500 + 20_000);
+    tap(container, BUG_1);
+    tap(container, BUG_2);
+    vi.setSystemTime(Date.now() + 50_000);
+    expect(onFinish).not.toHaveBeenCalled();
+    showPage();
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0][0].raw).toEqual({ matched: 1, misses: 0, clear_ms: null });
+    expect(container.querySelector('[data-testid="pr-status"]')?.textContent).toBe('game.pairs.times_up');
+    expect(seconds(container)).toBe(0);
+    tap(container, GEAR_1);
+    expect(stateOf(container, GEAR_1)).toBe('down');
+    advance(60_000);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('pageshow (back from the bfcache) re-evaluates the board too', () => {
+    const { onFinish } = renderGame();
+    advance(1500 + 10_000);
+    vi.setSystemTime(Date.now() + 55_000);
+    act(() => {
+      window.dispatchEvent(new Event('pageshow'));
+    });
+    expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('a sleep across the end of a mismatch lock flips both back at once on return', () => {
+    const { container, last } = renderGame();
+    advance(1500 + 5000);
+    tap(container, BUG_1);
+    tap(container, COFFEE_1);
+    advance(100);
+    vi.setSystemTime(Date.now() + 10_000);
+    expect(stateOf(container, BUG_1)).toBe('up');
+    showPage();
+    expect(stateOf(container, BUG_1)).toBe('down');
+    expect(stateOf(container, COFFEE_1)).toBe('down');
+    expect(last()).toMatchObject({ faceUp: [], lockUntilEpoch: null, misses: 1 });
+    // the countdown re-rendered on return (60 - 15.1 s -> 45)
+    expect(seconds(container)).toBe(45);
+    tap(container, GEAR_1);
+    expect(stateOf(container, GEAR_1)).toBe('up');
+  });
+
+  it('a mismatch tapped at 59.9 s, then the timeout: both tiles end face down', () => {
+    const { container, onFinish, last } = renderGame();
+    advance(1500 + 59_900);
+    tap(container, BUG_1);
+    tap(container, COFFEE_1);
+    expect(stateOf(container, BUG_1)).toBe('up');
+    advance(150);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0][0].raw).toEqual({ matched: 0, misses: 1, clear_ms: null });
+    expect(stateOf(container, BUG_1)).toBe('down');
+    expect(stateOf(container, COFFEE_1)).toBe('down');
+    expect(last()).toMatchObject({ phase: 'done', faceUp: [], lockUntilEpoch: null });
+  });
+
+  it('round ended with one card up: the card flips down; found pairs stay up', () => {
+    const { container, onFinish, rerenderWith } = renderGame();
+    advance(1500);
+    tap(container, BUG_1);
+    tap(container, BUG_2);
+    tap(container, GEAR_1);
+    rerenderWith({ roundEnded: true });
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(stateOf(container, GEAR_1)).toBe('down');
+    expect(stateOf(container, BUG_1)).toBe('matched');
+  });
+
+  it('a mount 30 s after roundStartEpoch (hidden 3-2-1): the board starts at roundStartEpoch + 1.5 s with the time left', () => {
+    vi.setSystemTime(ROUND_START + 30_000);
+    const { container, onFinish, last } = renderGame();
+    advance(50);
+    expect(last()).toMatchObject({ phase: 'play', gameStartEpoch: ROUND_START + 1500 });
+    expect(seconds(container)).toBe(32); // 60 - 28.5 s
+    advance(31_400);
+    expect(onFinish).not.toHaveBeenCalled();
+    advance(150);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0][0].durationMs).toBe(61_500);
+    expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(62_000);
+  });
+
+  it('hidden during the intro: on return the board uses roundStartEpoch + 1.5 s; the idle case finishes by 62 s', () => {
+    const { container, onFinish, last } = renderGame();
+    advance(500);
+    expect(container.querySelector('[data-testid="pr-grid"]')).toBeNull();
+    vi.setSystemTime(Date.now() + 30_000);
+    showPage();
+    expect(last()).toMatchObject({ phase: 'play', gameStartEpoch: ROUND_START + 1500 });
+    expect(container.querySelector('[data-testid="pr-grid"]')).not.toBeNull();
+    advance(32_000);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0][0].durationMs).toBeLessThanOrEqual(62_000);
+  });
+
+  it('a mount after the whole board time finishes at once with 0', () => {
+    vi.setSystemTime(ROUND_START + 70_000);
+    const { onFinish } = renderGame();
+    advance(50);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0][0].raw).toEqual({ matched: 0, misses: 0, clear_ms: null });
+    expect(onFinish.mock.calls[0][0].score).toBe(0);
+  });
+});

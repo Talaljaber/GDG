@@ -243,6 +243,8 @@ export function HostIntermission({
       </div>
     );
   } else if (layout === 'reveal' && Reveal) {
+    // The reveal's slots count from the step start: the round's ended_at on the local clock.
+    const anchorMs = round.ended_at ? Date.parse(round.ended_at) - (host.offset ?? 0) : null;
     content = (
       <>
         <div className={s.revealHead}>
@@ -250,9 +252,9 @@ export function HostIntermission({
           {upNext}
         </div>
         {preview?.reveal ? (
-          <Reveal roundId={round.id} version={host.scoresVersion} rows={preview.reveal} />
+          <Reveal roundId={round.id} version={host.scoresVersion} rows={preview.reveal} anchorMs={anchorMs} />
         ) : (
-          <Reveal roundId={round.id} version={host.scoresVersion} />
+          <Reveal roundId={round.id} version={host.scoresVersion} anchorMs={anchorMs} />
         )}
       </>
     );

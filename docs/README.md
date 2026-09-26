@@ -37,4 +37,5 @@ Last updated: 2026-09-25
 | [EVENT_RUNBOOK.md](EVENT_RUNBOOK.md) | For the booth: setup, running a session, what to say, failure playbook, end of day. |
 | [PHASES.md](PHASES.md) | Build plan: phases 0–6 with checkable acceptance criteria; minimum shippable version. |
 | [GLOSSARY.md](GLOSSARY.md) | One meaning per term (session, round, attempt, playerId, day board, …). |
+| [investigations/2026-09-25-phase8-games/summary.md](investigations/2026-09-25-phase8-games/summary.md) | Verified investigation of How Many?, Swipe Sort and Pairs (timing, seed, reveal); full findings in `report.md`, raw state in `state.json`; fixes not started. |
 | [plans/host-v3.md](plans/host-v3.md) | Host v3 "Stage and Rail" redesign plan: diagnosis, tokens, per-screen specs, work packages, ADR-135. |

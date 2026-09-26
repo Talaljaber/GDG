@@ -5,9 +5,14 @@
  * second: a match stays face up (0.3 s amber feedback, no lock); a mismatch
  * shows both for 0.7 s with all input ignored, then both flip back. 60 s
  * from the board appearing; the game ends early on the eighth pair. The
- * clear time is performance.now() on pointerdown while live; every clock
- * is an epoch persisted through onProgress, so a reload never resets it and
- * a reload during the lock resolves it at its stored time (ADR-018).
+ * board appears at roundStartEpoch + 1.5 s (never from mount, so a phone
+ * hidden during the 3-2-1 or the intro doesn't start late). The clear time
+ * is Date.now() on the eighth match's pointerdown minus the board's epoch:
+ * the same clock as the 60 s end and the countdown, so a device sleep never
+ * shortens it. Every clock is an epoch persisted through onProgress, so a
+ * reload never resets it and a reload during the lock resolves it at its
+ * stored time (ADR-018); on return from a screen lock / tab switch whatever
+ * is due is applied at once (E15).
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
@@ -27,7 +32,7 @@ type Phase = 'intro' | 'play' | 'done';
 
 export interface PairsSnapshot {
   phase: Phase;
-  /** Date.now() when the board appeared (the 60 s game clock); null in `intro`. */
+  /** The board's epoch, roundStartEpoch + 1.5 s (the 60 s game clock); null in `intro`. */
   gameStartEpoch: number | null;
   /** Positions (0-15) of the unmatched cards currently face up: 0, 1 or 2 (2 only during the lock). */
   faceUp: number[];
@@ -125,9 +130,6 @@ export function Pairs({ seed, roundStartEpoch, roundEnded, snapshot, onProgress,
   const roundStartEpochRef = useRef(roundStartEpoch);
   roundStartEpochRef.current = roundStartEpoch;
 
-  // performance.now() when the board appeared live; null after a reload
-  // (the clear time then falls back to the epoch).
-  const perfStartRef = useRef<number | null>(null);
   const finishedRef = useRef(false);
   const reducedMotionRef = useRef<boolean | null>(null);
   if (reducedMotionRef.current === null) reducedMotionRef.current = prefersReducedMotion();
@@ -152,14 +154,14 @@ export function Pairs({ seed, roundStartEpoch, roundEnded, snapshot, onProgress,
     const raw = buildRaw(matched, current.misses, clearMs);
     const score = scorePairs(raw);
     const durationMs = Math.min(120_000, Math.max(0, Date.now() - roundStartEpochRef.current));
-    commit({ ...current, phase: 'done', lockUntilEpoch: null, faceUp: current.clearEpoch !== null ? [] : current.faceUp });
+    // Cleared: every card is matched. Timed out: unfound cards go (or stay) face down (§6, §9).
+    commit({ ...current, phase: 'done', lockUntilEpoch: null, faceUp: [] });
     onFinishRef.current({ score, raw, durationMs });
   }, [commit]);
 
   const handleTap = useCallback(
     (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
       event.preventDefault();
-      const nowPerf = performance.now();
       const now = Date.now();
       let current = stateRef.current;
       const gameStart = current.gameStartEpoch;
@@ -186,8 +188,8 @@ export function Pairs({ seed, roundStartEpoch, roundEnded, snapshot, onProgress,
       if (layout[other] === icon) {
         const matchedIcons = [...current.matchedIcons, icon];
         if (matchedIcons.length === PR_PAIRS) {
-          const elapsed = perfStartRef.current !== null ? nowPerf - perfStartRef.current : now - gameStart;
-          const clearMs = Math.max(0, Math.min(Math.round(elapsed), PR_GAME_MS));
+          // The epoch clock, as the 60 s end and the countdown: a sleep mid-game counts (§4).
+          const clearMs = Math.max(0, Math.min(Math.round(now - gameStart), PR_GAME_MS));
           commit({ ...current, faceUp: [], matchedIcons, clearEpoch: gameStart + clearMs });
           finishNow();
           return;
@@ -202,36 +204,70 @@ export function Pairs({ seed, roundStartEpoch, roundEnded, snapshot, onProgress,
     [commit, finishNow, layout],
   );
 
-  // Intro card -> the board; the 60 s game clock starts here.
-  useEffect(() => {
-    if (state.phase !== 'intro') return;
-    const timer = window.setTimeout(() => {
-      perfStartRef.current = performance.now();
-      commit({ ...stateRef.current, phase: 'play', gameStartEpoch: Date.now() });
-    }, INTRO_MS);
-    return () => window.clearTimeout(timer);
-  }, [state.phase, commit]);
+  /**
+   * Applies whatever is due on the epochs: the board appearing at
+   * roundStartEpoch + 1.5 s, the 60 s end, the end of a mismatch lock.
+   * Returns false when nothing was due yet.
+   */
+  const runDue = useCallback((): boolean => {
+    const current = stateRef.current;
+    const now = Date.now();
+    if (current.phase === 'intro') {
+      const boardEpoch = roundStartEpochRef.current + INTRO_MS;
+      if (now < boardEpoch) return false;
+      // The 60 s board clock is anchored on the round start, never on mount (§3).
+      commit({ ...current, phase: 'play', gameStartEpoch: boardEpoch });
+      // Back after the whole board time: time's up at once.
+      if (now >= boardEpoch + PR_GAME_MS) finishNow();
+      return true;
+    }
+    if (current.phase !== 'play' || current.gameStartEpoch === null) return false;
+    if (now >= current.gameStartEpoch + PR_GAME_MS) {
+      finishNow();
+      return true;
+    }
+    if (current.lockUntilEpoch !== null && now >= current.lockUntilEpoch) {
+      commit({ ...current, faceUp: [], lockUntilEpoch: null });
+      return true;
+    }
+    return false;
+  }, [commit, finishNow]);
 
-  // One scheduler for what is due on the epochs: the game end and the end of
-  // a mismatch lock (resumable after a reload or a screen lock).
+  // One scheduler for what is due on the epochs: the intro's end, the game
+  // end and the end of a mismatch lock (resumable after a reload).
   useEffect(() => {
-    if (state.phase !== 'play' || state.gameStartEpoch === null) return;
-    const gameEnd = state.gameStartEpoch + PR_GAME_MS;
-    const due = state.lockUntilEpoch !== null ? Math.min(state.lockUntilEpoch, gameEnd) : gameEnd;
+    let due: number;
+    if (state.phase === 'intro') {
+      due = roundStartEpochRef.current + INTRO_MS;
+    } else if (state.phase === 'play' && state.gameStartEpoch !== null) {
+      const gameEnd = state.gameStartEpoch + PR_GAME_MS;
+      due = state.lockUntilEpoch !== null ? Math.min(state.lockUntilEpoch, gameEnd) : gameEnd;
+    } else {
+      return;
+    }
     const timer = window.setTimeout(() => {
-      const current = stateRef.current;
-      if (current.phase !== 'play' || current.gameStartEpoch === null) return;
-      const now = Date.now();
-      if (now >= current.gameStartEpoch + PR_GAME_MS) {
-        finishNow();
-      } else if (current.lockUntilEpoch !== null && now >= current.lockUntilEpoch) {
-        commit({ ...current, faceUp: [], lockUntilEpoch: null });
-      } else {
-        setWake((n) => n + 1);
-      }
+      if (!runDue()) setWake((n) => n + 1);
     }, Math.max(0, due - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [state, wake, commit, finishNow]);
+  }, [state, wake, runDue]);
+
+  // Screen lock / tab switch: timers stall while the device sleeps. On return
+  // apply what is due at once (a passed 60 s ends the game, a passed lock
+  // flips back) and re-arm the scheduler and the countdown (§9, E15).
+  useEffect(() => {
+    const onReturn = () => {
+      if (document.visibilityState === 'hidden') return;
+      runDue();
+      setWake((n) => n + 1);
+      setTick((n) => n + 1);
+    };
+    document.addEventListener('visibilitychange', onReturn);
+    window.addEventListener('pageshow', onReturn);
+    return () => {
+      document.removeEventListener('visibilitychange', onReturn);
+      window.removeEventListener('pageshow', onReturn);
+    };
+  }, [runDue]);
 
   // The match feedback fades after 0.3 s.
   useEffect(() => {

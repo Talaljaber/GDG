@@ -16,11 +16,12 @@ Loaded when working on a game. The spec for each game is `docs/games/<game>.md`;
 - Never weaken a server bound in `SCORING.md` §4 without test evidence and a new ADR.
 
 ## Timing
-- Measure with `performance.now()` on `pointerdown`, not `click`.
+- Measure with `performance.now()` on `pointerdown`, not `click`. A duration that spans a game clock (e.g. Pairs' `clear_ms`) uses `Date.now()` epochs, the same clock as the game's end, because `performance.now()` stops while a phone sleeps (ADR-137 (3)).
 - Persist attempt/round start times as epoch ms (`Date.now()`) through the shell's progress callback after every start and every attempt, so a reload resumes and never resets a clock (ADR-018).
 - Every attempt has its documented timeout; the game must also finish immediately with its timeout rule when the shell signals "round ended".
+- Anchor every step on stored epochs (`roundStartEpoch` + intro, the previous step's end), never on when a timer happened to fire; on `visibilitychange`/`pageshow` close every step whose epoch passed (ADR-137).
 - Never exceed the documented worst-case duration (SCORING §2); the round cap is 120 s.
-- All randomness (layouts, sequences, draws, option shuffles) comes from the per-round seed.
+- All randomness (layouts, sequences, draws, option shuffles) comes from `GameProps.seed`: the round id, shared by every phone in the round (`seedScope: 'round'`, the default). Only Trivia sets `seedScope: 'player'` for its per-player draw and shuffle (ADR-027, ADR-137 (1)).
 
 ## Per-game theming (only design tokens)
 - Odd One Out: brand chevron SVG (not the logo); blue tiles; amber for grid 1's odd tile and "found" rings.

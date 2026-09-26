@@ -13,6 +13,8 @@ export const trivia: GameModule<TriviaSnapshot> = {
   Component: Trivia,
   score: scoreTrivia,
   worstCaseMs: TRIVIA_WORST_CASE_MS,
+  // Each player draws their own five and their own option order (ADR-027, games/trivia.md §2).
+  seedScope: 'player',
 };
 
 export default trivia;

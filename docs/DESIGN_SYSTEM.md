@@ -2,7 +2,7 @@
 
 Purpose: the visual and motion rules that make every screen feel like our GDG chapter: colour tokens (sampled from the logo), typography for phones and the projector, spacing, the mosaic shatter effect, iconography, logo use, RTL rules and accessibility. All UI code uses these tokens by name; no raw colours, sizes or durations in components.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Related: ADR-135, ADR-131, ADR-033, ADR-034, ADR-122, ADR-123, `docs/plans/host-v3.md`, `SCREENS.md`, `COPY.md`.
 
@@ -315,7 +315,8 @@ A standalone effect layer, never applied to the logo.
 | Celebrate | P7 `new_best` line (after the phone's round is over) | H4: the winner's podium, once per session (not on a poll refresh); no per-round #1 shatter (that's a pulse now, `flip.ts`) | `RevealIn variant="celebrate"` |
 | Board rows | none (phones keep plain boards: lighter on low-end phones) | none: every host board (H2/H3/H4/H5) renders all its rows in one frame (`--stagger-row: 0`); a fade-in on mount and a FLIP + pulse on a rank change, never a shatter | `src/host/BoardTable.tsx`, `src/host/flip.ts`, `src/host/countUp.ts` |
 | H4 → H5 (Show day board) | none | one `--dur-step` (~300 ms) crossfade of the whole stage; no merge (removed 2026-09-25, see above) | `src/host/Results.tsx` |
-| Stop the Clock reveal | none | H3 round board of a Stop the Clock round: dots burst in strip by strip within 5 s (`revealSchedule`) | `src/host/StcReveal.tsx` via `RevealIn variant="dot"` |
+| Stop the Clock reveal | none | H3 round board of a Stop the Clock round: dots burst in strip by strip within 5 s of the round's `ended_at` (`revealSchedule`; a dot already due when it mounts, e.g. a late score or a reloaded host, appears at once, ADR-137 (5)) | `src/host/StcReveal.tsx` via `RevealIn variant="dot"` |
+| How Many? reveal | none (phones never show the true counts) | H3 round board of a How Many? round: dots burst in track by track within 3.5 s of `ended_at` (`HM_REVEAL_DOTS_MS`), then the amber crowd-average marker fades in at 4.0 s (`HM_REVEAL_MEAN_MS`), leaving 3 s of the 7 s step; anything already due appears at once (ADR-137 (5)) | `src/host/HowManyReveal.tsx` via `RevealTrack` |
 
 During a transition's 320 ms fly-in the previous screen stays on screen under the shards, frozen and not clickable; the host's `data-screen` (and anything that says "the current screen") follows the screen actually shown, not the state that triggered the change. Board rows are always in the DOM with their text; the shatter-in only sets their opacity.
 

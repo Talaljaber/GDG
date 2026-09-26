@@ -19,7 +19,14 @@ import { acquireTabLock } from '../lib/storage';
 import { replaceEqualDeep } from '../lib/equal';
 
 /** Safety-net refetch of the state rows, in case a realtime event was missed. */
-const STATE_SAFETY_REFETCH_MS = 15_000;
+export const STATE_SAFETY_REFETCH_MS = 15_000;
+
+/**
+ * While a round is on this phone (3-2-1 or game), the round rows alone are refetched this often,
+ * so a missed round-end event (socket still SUBSCRIBED, tab visible) is caught well inside the
+ * 15 s late-accept window (`LATE_ACCEPT_MS`) instead of right at its edge. One small request.
+ */
+export const ROUND_SAFETY_REFETCH_MS = 5000;
 
 export interface SessionSync {
   session: SessionRow | null;
@@ -34,7 +41,8 @@ export interface SessionSync {
   refresh(): void;
 }
 
-export function useSessionSync(sessionId: string, playerRowId: string): SessionSync {
+/** `inRound`: a round is on this phone and not yet submitted (adds the 5 s round-row refetch). */
+export function useSessionSync(sessionId: string, playerRowId: string, inRound = false): SessionSync {
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [me, setMe] = useState<PlayerRow | null>(null);
@@ -104,6 +112,25 @@ export function useSessionSync(sessionId: string, playerRowId: string): SessionS
       document.removeEventListener('visibilitychange', onWake);
     };
   }, [sessionId, playerRowId, load]);
+
+  useEffect(() => {
+    if (!inRound) return;
+    let active = true;
+    const timer = window.setInterval(() => {
+      fetchRounds(sessionId).then(
+        (r) => {
+          if (active && alive.current) setRounds((prev) => replaceEqualDeep(prev, r));
+        },
+        () => {
+          // Offline or transient: the next tick, event or full refetch tries again.
+        },
+      );
+    }, ROUND_SAFETY_REFETCH_MS);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [sessionId, inRound]);
 
   const refresh = useCallback(() => void load(), [load]);
   return useMemo(

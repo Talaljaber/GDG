@@ -161,7 +161,7 @@ const plan = revealSchedule([dots5s.length, dots10s.length, dots7s.length]);  //
 </ShatterBurst>
 ```
 
-- Strips burst in one after another within 5 s. Each strip gets a 5000/3 ms window, and its dots are spread across the window in the order you pass them. The last burst ends at 5000 ms.
+- Strips burst in one after another within 5 s (the default `totalMs`; the How Many? reveal passes 3500). Each strip gets a `totalMs`/3 window, and its dots are spread across the window in the order you pass them. The last burst ends at `totalMs`. The host times the slots from the round's `ended_at`, not the mount (`anchoredSlot`, ADR-137 (5)).
 - Each dot stays hidden until its `delay`. It then fades in while 2–6 shards around it (a box 1.6× the dot's size) burst outward 10–36 px and fade over 600 ms.
 - Only the dot's **opacity** is touched, never its transform, so you can position dots with transforms.
 - `shards` from `revealSchedule` keeps concurrent shards ≤ 48. It drops to 0 (plain fade) for very dense strips.

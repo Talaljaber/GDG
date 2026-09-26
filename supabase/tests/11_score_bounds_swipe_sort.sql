@@ -69,7 +69,7 @@ select pg_temp.setv('ss', '{"correct":43,"wrong":1,"missed":5,"mean_swipe_ms":45
 select pg_temp.setv('ss_b', '{"correct":33,"wrong":3,"missed":8,"mean_swipe_ms":550}');
 select pg_temp.setv('ss_c', '{"correct":22,"wrong":5,"missed":12,"mean_swipe_ms":640}');
 select pg_temp.setv('ss_spam', '{"correct":30,"wrong":33,"missed":0,"mean_swipe_ms":260}');
-select pg_temp.setv('ss0', '{"correct":0,"wrong":0,"missed":36,"mean_swipe_ms":null}');
+select pg_temp.setv('ss0', '{"correct":0,"wrong":0,"missed":37,"mean_swipe_ms":null}');
 select pg_temp.setv('ss_f', '{"correct":46,"wrong":1,"missed":2,"mean_swipe_ms":430}');
 
 select pg_temp.login(pg_temp.v('G')::uuid);
@@ -102,7 +102,7 @@ from (values
   ('ss', 0, 32000, pg_temp.set('ss0', '{mean_swipe_ms}', '500'), 'GD008:ss.rt', 'ss.rt fail: no correct swipes but a mean time'),
   ('ss', 864, 32000, pg_temp.set('ss', '{mean_swipe_ms}', 'null'), 'GD008:ss.rt', 'ss.rt fail: correct swipes without a mean time'),
   -- ---------------- ss.zero ----------------
-  ('ss', 0, 32000, pg_temp.b('ss0'), 'ok', 'ss.zero pass: idle (36 misses), score 0'),
+  ('ss', 0, 32000, pg_temp.b('ss0'), 'ok', 'ss.zero pass: idle (37 misses), score 0'),
   ('ss', 22, 32000, pg_temp.b('ss0'), 'GD008:ss.zero', 'ss.zero fail: no correct swipes, score 22'),
   -- ---------------- ss.too_fast (SS-T4: 40 correct, net 34, band 748..808) ----------------
   ('ss', 808, 32000, pg_temp.set2('ss', '{correct}', '40', '{mean_swipe_ms}', '200'), 'ok', 'ss.too_fast pass: 200 ms'),

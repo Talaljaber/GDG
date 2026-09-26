@@ -2,7 +2,7 @@
 
 Purpose: how the GDG Booth Game is put together: the static-site + Supabase design with no backend server, the main flows as diagrams (system, join, gameplay and score submission, realtime leaderboards), the trade-offs of going serverless, capacity against the verified free-plan limits, the game module contract, and the planned source tree. Tables and policies are in `DATA_MODEL.md`; state machines in `SESSION_LIFECYCLE.md`.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 ---
 
@@ -176,7 +176,8 @@ Every game is a self-contained module under `src/games/<game-id>/` and is regist
 | Part | Contract |
 |---|---|
 | `id` | One of the `game_id` enum values |
-| Screen component | Receives: the per-round seed, language, the round's remaining budget, a "round ended" signal, and callbacks to persist progress and to finish. Renders only inside the game area (the shell draws header/banners). |
+| `seedScope` | `'round'` (default: seed = the round id, the same on every phone in the round) or `'player'` (`<round id>:<player row id>`; only Trivia, ADR-027). The shell derives the seed from it (ADR-137 (1)). |
+| Screen component | Receives: the seed (per round, or per player for `seedScope: 'player'`), language, the round's remaining budget, a "round ended" signal, and callbacks to persist progress and to finish. Renders only inside the game area (the shell draws header/banners). |
 | Progress persistence | Calls back with a JSON-serialisable snapshot after every attempt and every start event (epochs, not `performance.now()` values), so the shell can store it (ADR-018) and hand it back on reload. |
 | Finish | Calls back once with `{ score, raw, duration_ms }`. The shell submits. |
 | Scoring function | Pure function `raw → score`, in its own file, fully unit-tested against the worked examples and test cases of the game doc. No DOM, no time, no randomness. |

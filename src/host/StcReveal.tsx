@@ -11,16 +11,20 @@
  * The time axis is geometry, not text, so it is never mirrored in Arabic
  * (DESIGN_SYSTEM RTL rules): the tracks are always laid out left-to-right.
  *
- * Dots appear in shatter bursts, track after track, within 5 s (a data
- * reveal, one of the places the shatter is allowed, host-v3 §2.1 rule 6):
- * `revealSchedule` spaces them and sizes each burst so no more than 48
- * shards are alive at once. Reduced motion: each dot fades in (200 ms) at
- * its slot.
+ * Dots appear in shatter bursts, track after track, within 5 s of the
+ * round's `ended_at` (a data reveal, one of the places the shatter is
+ * allowed, host-v3 §2.1 rule 6): `revealSchedule` spaces them and sizes each
+ * burst so no more than 48 shards are alive at once. The slots count from
+ * `ended_at` (the step's own anchor, ADR-129 (1)), not from the mount: a dot
+ * that is already due when it mounts (a late score, a host reload mid-step)
+ * appears at once without a burst. Reduced motion: each dot fades in
+ * (200 ms) at its slot.
  */
 import { useMemo, type ReactNode } from 'react';
 import { formatNumber, useT } from '../i18n';
 import { STC_TARGETS_MS } from '../games/stop-the-clock/scoring';
 import {
+  anchoredSlot,
   labelLanes,
   projectorLabelWidth,
   revealStrips,
@@ -49,19 +53,24 @@ const ENDS = [0, 100];
 /**
  * A flat track with its dots (shared with the How Many? reveal). `before`
  * renders under the dots (e.g. the crowd-average marker), so names always
- * stay on top.
+ * stay on top. `anchorMs` (the round's `ended_at`, local clock) makes every
+ * slot count from the step start; each dot reads its delay once, when it
+ * mounts, so a rerender never replays it.
  */
 export function RevealTrack({
   dots,
   slots,
   testIds,
   before,
+  anchorMs = null,
 }: {
   dots: readonly RevealDot[];
   slots: readonly RevealSlot[];
   testIds: { dot: string; label: string };
   before?: ReactNode;
+  anchorMs?: number | null;
 }) {
+  const nowMs = Date.now();
   const places = labelLanes(dots, projectorLabelWidth());
   return (
     <div className={s.track} dir="ltr">
@@ -76,13 +85,14 @@ export function RevealTrack({
       {before}
       {dots.map((d, j) => {
         const place = places.get(d.playerRowId);
+        const slot = anchoredSlot(anchorMs, slots[j], nowMs);
         return (
           <RevealIn
             key={d.playerRowId}
             as="span"
             variant="dot"
-            delayMs={slots[j]?.delayMs ?? 0}
-            shards={slots[j]?.shards ?? 0}
+            delayMs={slot.delayMs}
+            shards={slot.shards}
             className={`${s.dot} ${d.pinned ? s.dotPinned : ''}`}
             style={{ insetInlineStart: `${d.pos}%` }}
             data-testid={testIds.dot}
@@ -101,7 +111,7 @@ export function RevealTrack({
   );
 }
 
-export function StcReveal({ roundId, version, rows: previewRows }: RevealProps) {
+export function StcReveal({ roundId, version, rows: previewRows, anchorMs = null }: RevealProps) {
   const t = useT();
   const rows = useRoundReveal(roundId, version, previewRows);
   const strips = useMemo(() => (rows ? revealStrips(rows) : null), [rows]);
@@ -121,7 +131,12 @@ export function StcReveal({ roundId, version, rows: previewRows }: RevealProps) 
         return (
           <section key={i} className={s.strip} data-testid="stc-strip" data-target={STC_TARGETS_MS[i]}>
             <p className={s.stripLabel}>{t('game.stop_the_clock.target', { s: formatNumber(sec), count: sec })}</p>
-            <RevealTrack dots={dots} slots={plan[i]} testIds={{ dot: 'stc-dot', label: 'stc-dot-label' }} />
+            <RevealTrack
+              dots={dots}
+              slots={plan[i]}
+              testIds={{ dot: 'stc-dot', label: 'stc-dot-label' }}
+              anchorMs={anchorMs}
+            />
           </section>
         );
       })}

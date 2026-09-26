@@ -9,7 +9,7 @@ const A = raw(43, 1, 5, 450);
 const B = raw(33, 3, 8, 550);
 const C = raw(22, 5, 12, 640);
 const D = raw(30, 33, 0, 260);
-const E = raw(0, 0, 36, null);
+const E = raw(0, 0, 37, null);
 const F = raw(46, 1, 2, 430);
 
 describe('scoreSwipeSort: worked examples (docs/games/swipe-sort.md §4)', () => {
@@ -33,7 +33,7 @@ describe('scoreSwipeSort: worked examples (docs/games/swipe-sort.md §4)', () =>
     expect(scoreSwipeSort(D)).toBe(0);
   });
 
-  it('E (idle): 36 misses -> 0', () => {
+  it('E (idle): 37 misses -> 0', () => {
     expect(scoreSwipeSort(E)).toBe(0);
   });
 

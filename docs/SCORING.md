@@ -2,7 +2,7 @@
 
 Purpose: the one place that defines how every game turns play into a number: the shared 0–1000 contract, each game's formula, what happens on timeouts, the impossible-value bounds the database enforces, tie-breaking, session totals, day boards, and name normalisation for "best per name". The per-game docs in `docs/games/` repeat their own formula with worked examples; if they ever disagree with this file, this file wins and the game doc is fixed.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Related: ADR-021, ADR-022, ADR-105, ADR-113, ADR-134, ADR-136.
 
@@ -30,9 +30,9 @@ Every game fits inside the 120 s round cap even in the worst case.
 | Trivia | 5 questions | 10 s per question | 1.5 intro + 5 × (10 + 1.5 feedback) ≈ **59 s** |
 | Close the Brackets | sequences of length 2…8 inside a 30 s game clock | 10 s per sequence | 1.5 intro + 30 ≈ **32 s** (transitions run inside the 30 s) |
 | Color Clash | trials inside a 30 s game clock | 3 s per trial | 1.5 intro + 30 ≈ **32 s** (the 0.3 s gaps run inside the 30 s) |
-| How Many? | 3 flashes | 10 s per answer | 1.5 intro + 3 × (1 look + 1 flash + 10 + 0.5 locked) ≈ **39 s** (`worstCaseMs` 40 000) |
-| Swipe Sort | items inside a 30 s game clock | item window `I(t)` 900 → 450 ms | 1.5 intro + 30 ≈ **32 s** (the 0.15 s gaps run inside the 30 s) |
-| Pairs | one 4 × 4 board | 60 s game clock | 1.5 intro + 60 ≈ **62 s** (the 0.7 s mismatch locks run inside the 60 s) |
+| How Many? | 3 flashes | 10 s per answer | 1.5 intro + 3 × (1 look + 1 flash + 10 + 0.5 locked) ≈ **39 s** (`worstCaseMs` 40 000); a fixed schedule from `roundStartEpoch`, so a lock or hidden page never extends it (ADR-137 (2)) |
+| Swipe Sort | items inside a 30 s game clock | item window `I(t)` 900 → 450 ms | 1.5 intro + 30 ≈ **32 s** (the 0.15 s gaps run inside the 30 s); the clock starts at `roundStartEpoch` + 1.5 s whatever the mount time (ADR-137 (3)) |
+| Pairs | one 4 × 4 board | 60 s game clock | 1.5 intro + 60 ≈ **62 s** (the 0.7 s mismatch locks run inside the 60 s); the clock starts at `roundStartEpoch` + 1.5 s whatever the mount time (ADR-137 (3)) |
 
 ## 3. Formulas
 
@@ -107,12 +107,12 @@ Symbols: `clamp(x, lo, hi)`, all times in milliseconds.
 - Item window `I(t) = round(900 − 450 × t / 30000)` ms for an item whose onset is at `t` on the 30 s game clock (900 → 450 ms); a 0.15 s gap follows every item.
 - Speed bonus `B = 60 × clamp((700 − r̄) / 300, 0, 1) × clamp(net / 20, 0, 1)` when `c ≥ 1`, else 0 (full at ≤ 400 ms mean and net ≥ 20; 0 at ≥ 700 ms). The `net / 20` factor keeps a random swiper (expected net 0) at ≈ 0.
 - **`score = clamp(round(22 × net + B), 0, 1000)`**; `c = 0` → 0.
-- Examples: 43 / 1 / 5 at 450 ms → 864; 33 / 3 / 8 at 550 ms → 514; 22 / 5 / 12 at 640 ms → 113; a random spammer 30 / 33 / 0 → 0; idle (0 / 0 / 36) → 0; 46 / 1 / 2 at 430 ms → 1000.
+- Examples: 43 / 1 / 5 at 450 ms → 864; 33 / 3 / 8 at 550 ms → 514; 22 / 5 / 12 at 640 ms → 113; a random spammer 30 / 33 / 0 → 0; idle (0 / 0 / 37) → 0; 46 / 1 / 2 at 430 ms → 1000.
 - Calibration assumptions (ADR-136): a **strong** player registers swipes at ≈ 450 ms (SD 80) with 2 % wrong: ≈ 49 items, misses concentrated in the last third where `I(t) < 550` → ≈ 43 / 1 / 5 → **≈ 864**. Typical (550 ms, 5 %) ≈ 33 / 3 / 8 → ≈ 514. **1000** needs `net ≥ 43` with a ≤ 430 ms mean (e.g. 46 / 1 / 2): out of reach at a 450 ms floor.
 
 ### 3.10 Pairs
 
-- `p` = pairs found (0–8), `m` = mismatched flip-pairs, `clear_ms` = game-clock time at the eighth match (null unless `p = 8`).
+- `p` = pairs found (0–8), `m` = mismatched flip-pairs, `clear_ms` = game-clock time at the eighth match (null unless `p = 8`), measured on the epoch clock: `Date.now()` at the eighth match − `gameStartEpoch`, so a device sleep never shortens it (ADR-137 (3)).
 - Cleared (`p = 8`): `base = 1000 − 6 × max(0, clear_ms − 15000) / 1000`.
 - Not cleared: `base = 730 − 80 × (8 − p)` (continuous with clearing at exactly 60 s: 1000 − 270 = 730).
 - **`score = clamp(round(base − 12 × m), 0, 1000)`**; `p = 0` → 0.

@@ -5,10 +5,19 @@
  * chevrons for exactly 1.0 s, then a number pad with a 10 s timeout and a
  * 0.5 s "locked in". No feedback on the phone; the big screen reveals the true
  * counts. The flash mounts in one commit and never changes; a reload or a late
- * timer never shows it again, and the answer deadline stays anchored on the
- * stored epochs (ADR-018). Taps are pointerdown with a 60 ms bounce guard.
+ * timer never shows it again. Taps are pointerdown with a 60 ms bounce guard.
+ *
+ * Fixed schedule (how-many.md §3, ADR-137 (2)): every step boundary comes from
+ * stored epochs, never from the moment a timer happened to fire. The first
+ * look starts at `roundStartEpoch + HM_INTRO_MS`; an answer ends at the OK tap
+ * or at `answerStartEpoch + HM_ANSWER_MS`; "locked in" ends 0.5 s after that;
+ * the next look starts at `lockedEndEpoch`. `runDue` is a catch-up loop: after
+ * a reload, a screen lock, a JS freeze or a hidden page whose timers were
+ * throttled, it closes every step whose time has passed with that step's rule
+ * (a missed flash is skipped, a missed answer times out), so the round keeps
+ * its 39 s worst case. A hidden page never pauses the schedule (ADR-018).
  */
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useLang, useT } from '../../i18n';
 import type { GameProps } from '../types';
@@ -34,11 +43,16 @@ export const HM_FLASH_MS = 1000;
 /** "Locked in" after every answer or timeout. */
 export const HM_LOCKED_MS = 500;
 /**
- * A look timer that fires later than this (screen lock, a throttled
- * background tab) skips the flash, as a reload does: the flash window is
- * anchored on the look's epoch, so a late flash would stretch the round.
+ * The end of a look processed later than this (screen lock, a throttled
+ * background tab, the catch-up after a freeze), or while the page is hidden,
+ * skips the flash, as a reload does: the flash window
+ * (`lookStartEpoch + 1000 … + 2000`) belongs to the fixed schedule, so a late
+ * flash would stretch the round. A field painted later than this after its
+ * commit (a freeze in between) only stays until the window's end.
  */
 export const HM_FLASH_LATE_MS = 250;
+/** Guard for the catch-up loop: intro + 3 × (look, answer, locked) is 10 steps. */
+const MAX_CATCH_UP_STEPS = 12;
 /** A second pointerdown within this window is a bounce. */
 const DEBOUNCE_MS = 60;
 /** The countdown turns amber for the last 3 s. */
@@ -84,7 +98,9 @@ function initialSnapshot(): HowManySnapshot {
 /**
  * Reload rule (§9): the field is never shown again. A reload during the flash
  * (or after the look should have ended) goes straight to the answer, whose
- * timeout counts from the end of the flash window.
+ * timeout counts from the end of the flash window. Everything else a reload
+ * finds overdue (the intro, an answer's timeout, "locked in", the next look)
+ * is closed on the schedule by `runDue`'s catch-up loop at mount.
  */
 function resumeSnapshot(s: HowManySnapshot, now: number): HowManySnapshot {
   if (s.phase === 'flash') {
@@ -110,10 +126,18 @@ function isHidden(): boolean {
   return typeof document !== 'undefined' && document.visibilityState === 'hidden';
 }
 
-/** When the current step ends (epoch ms), or null if nothing is scheduled. */
-function dueEpoch(s: HowManySnapshot): number | null {
+/**
+ * When the current step ends (epoch ms), or null if nothing is scheduled
+ * (`done`). Every step has a deadline, including the intro (anchored on the
+ * round start) and a flash whose start epoch is not written yet (the latest
+ * allowed end: the flash window's end).
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- pure helper, exported for tests
+export function dueEpoch(s: HowManySnapshot, roundStartEpoch: number): number | null {
+  if (s.phase === 'intro') return roundStartEpoch + HM_INTRO_MS;
   if (s.phase === 'look' && s.lookStartEpoch !== null) return s.lookStartEpoch + HM_LOOK_MS;
   if (s.phase === 'flash' && s.flashStartEpoch !== null) return s.flashStartEpoch + HM_FLASH_MS;
+  if (s.phase === 'flash' && s.lookStartEpoch !== null) return s.lookStartEpoch + HM_LOOK_MS + HM_FLASH_MS;
   if (s.phase === 'answer' && s.answerStartEpoch !== null) return s.answerStartEpoch + HM_ANSWER_MS;
   if (s.phase === 'locked' && s.lockedEndEpoch !== null) return s.lockedEndEpoch;
   return null;
@@ -203,13 +227,6 @@ export function HowMany({ seed, roundStartEpoch, roundEnded, snapshot, onProgres
     onProgressRef.current(next);
   }, []);
 
-  // A resumed snapshot that the reload rule changed is persisted at once.
-  useEffect(() => {
-    if (snapshot && initial !== snapshot) onProgressRef.current(initial);
-    // Mount only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const trueCount = useCallback((i: number) => fieldFor(seed, i).count, [seed]);
 
   const finishNow = useCallback(() => {
@@ -235,13 +252,14 @@ export function HowMany({ seed, roundStartEpoch, roundEnded, snapshot, onProgres
     onFinishRef.current({ score, raw, durationMs });
   }, [commit, trueCount]);
 
+  /** Look `roundIndex` starts at `at`: the intro's end or the previous "locked in" end, never the timer's firing time. */
   const startLook = useCallback(
-    (roundIndex: number) => {
+    (roundIndex: number, at: number) => {
       commit({
         ...stateRef.current,
         phase: 'look',
         roundIndex,
-        lookStartEpoch: Date.now(),
+        lookStartEpoch: at,
         flashStartEpoch: null,
         answerStartEpoch: null,
         lockedEndEpoch: null,
@@ -260,8 +278,9 @@ export function HowMany({ seed, roundStartEpoch, roundEnded, snapshot, onProgres
     [commit],
   );
 
+  /** The answer ended at `answerEnd` (the OK tap, or the timeout epoch): "locked in" ends 0.5 s after it. */
   const lock = useCallback(
-    (round: HowManyRound) => {
+    (round: HowManyRound, answerEnd: number) => {
       const current = stateRef.current;
       perfAnswerStartRef.current = null;
       padShownEpochRef.current = null;
@@ -269,7 +288,7 @@ export function HowMany({ seed, roundStartEpoch, roundEnded, snapshot, onProgres
         ...current,
         phase: 'locked',
         rounds: [...current.rounds, round],
-        lockedEndEpoch: Date.now() + HM_LOCKED_MS,
+        lockedEndEpoch: answerEnd + HM_LOCKED_MS,
       });
     },
     [commit],
@@ -299,7 +318,7 @@ export function HowMany({ seed, roundStartEpoch, roundEnded, snapshot, onProgres
         // Two taps after the pad appears take >= 300 ms; an earlier OK is ignored (never a rejected score).
         if (elapsed < HM_MIN_ANSWER_MS) return;
         const answerMs = Math.round(Math.min(elapsed, HM_ANSWER_MS));
-        lock({ true_count: trueCount(current.roundIndex), guess, answer_ms: answerMs, timed_out: false });
+        lock({ true_count: trueCount(current.roundIndex), guess, answer_ms: answerMs, timed_out: false }, now);
         return;
       }
       if (current.typed.length >= HM_MAX_DIGITS) return;
@@ -308,54 +327,83 @@ export function HowMany({ seed, roundStartEpoch, roundEnded, snapshot, onProgres
     [commit, lock, trueCount],
   );
 
-  // Intro card -> the first look.
-  useEffect(() => {
-    if (state.phase !== 'intro') return;
-    const timer = window.setTimeout(() => startLook(0), HM_INTRO_MS);
-    return () => window.clearTimeout(timer);
-  }, [state.phase, startLook]);
-
-  // The field was committed: record when (after the paint), once.
-  useEffect(() => {
-    if (state.phase !== 'flash' || state.flashStartEpoch !== null) return;
-    commit({ ...stateRef.current, flashStartEpoch: Date.now() });
-  }, [state.phase, state.flashStartEpoch, commit]);
-
-  // What is due on the epochs: the end of the look, of the flash, the answer
-  // timeout and the end of "locked in" (resumable after a reload). Returns
-  // false when nothing was due yet.
+  // What is due on the epochs, as a catch-up loop: the end of the intro, of
+  // the look, of the flash, the answer timeout and the end of "locked in".
+  // Applies every step whose time has passed (reload, screen lock, a throttled
+  // hidden page), each with its own rule; stops at a shown flash (it needs a
+  // paint) or at the first step still in the future. Returns false when
+  // nothing was due yet.
   const runDue = useCallback((): boolean => {
-    const current = stateRef.current;
-    const due = dueEpoch(current);
-    const now = Date.now();
-    if (due === null || now < due) return false;
-    if (current.phase === 'look' && current.lookStartEpoch !== null) {
-      if (now <= due + HM_FLASH_LATE_MS && !isHidden()) {
-        // Show the field; its start epoch is written after the commit.
-        const next = { ...current, phase: 'flash' as const, flashStartEpoch: null };
-        stateRef.current = next;
-        setState(next);
-      } else {
-        // Late (locked screen, background): the flash window has started or passed; never show it.
+    let applied = false;
+    for (let i = 0; i < MAX_CATCH_UP_STEPS && !finishedRef.current; i++) {
+      const current = stateRef.current;
+      const due = dueEpoch(current, roundStartEpochRef.current);
+      const now = Date.now();
+      if (due === null || now < due) break;
+      applied = true;
+      if (current.phase === 'intro') {
+        startLook(0, due);
+      } else if (current.phase === 'look' && current.lookStartEpoch !== null) {
+        if (now <= due + HM_FLASH_LATE_MS && !isHidden()) {
+          // Show the field (persisted, so a reload never shows it again); its
+          // start epoch is written after the paint. Until then the flash is
+          // due at the window's end (dueEpoch).
+          commit({ ...current, phase: 'flash', flashStartEpoch: null });
+          break;
+        }
+        // Late (locked screen, background, catch-up) or hidden: the flash
+        // window has started or passed; never show it.
         startAnswer(current.lookStartEpoch + HM_LOOK_MS + HM_FLASH_MS, null);
+      } else if (current.phase === 'flash') {
+        // The field unmounts now; the deadline counts from the end of the flash, not from a late timer.
+        if (current.flashStartEpoch !== null) startAnswer(current.flashStartEpoch + HM_FLASH_MS, current.flashStartEpoch);
+        else startAnswer(due, null);
+      } else if (current.phase === 'answer' && current.answerStartEpoch !== null) {
+        lock(
+          { true_count: trueCount(current.roundIndex), guess: parseGuess(current.typed), answer_ms: null, timed_out: true },
+          current.answerStartEpoch + HM_ANSWER_MS,
+        );
+      } else if (current.phase === 'locked' && current.lockedEndEpoch !== null) {
+        if (current.rounds.length >= HM_FLASHES) {
+          finishNow();
+          break;
+        }
+        startLook(current.rounds.length, current.lockedEndEpoch);
+      } else {
+        break;
       }
-    } else if (current.phase === 'flash' && current.flashStartEpoch !== null) {
-      // The field unmounts now; the deadline counts from the end of the flash, not from a late timer.
-      startAnswer(current.flashStartEpoch + HM_FLASH_MS, current.flashStartEpoch);
-    } else if (current.phase === 'answer') {
-      lock({ true_count: trueCount(current.roundIndex), guess: parseGuess(current.typed), answer_ms: null, timed_out: true });
-    } else if (current.phase === 'locked') {
-      if (current.rounds.length >= HM_FLASHES) finishNow();
-      else startLook(current.rounds.length);
     }
-    return true;
-  }, [finishNow, lock, startAnswer, startLook, trueCount]);
+    return applied;
+  }, [commit, finishNow, lock, startAnswer, startLook, trueCount]);
   const runDueRef = useRef(runDue);
   runDueRef.current = runDue;
 
+  // Mount: a resumed snapshot that the reload rule changed is persisted at
+  // once, then everything already due is applied before the first paint (a
+  // reload during the intro or after "locked in" ended never replays a step).
+  useLayoutEffect(() => {
+    if (snapshot && initial !== snapshot) onProgressRef.current(initial);
+    runDueRef.current();
+    // Mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The field was committed: record when (after the paint), once. A paint
+  // later than HM_FLASH_LATE_MS after the look's end (the page froze between
+  // the commit and the paint) never gets a new second: the field only stays
+  // until the flash window's end, and is hidden at once if that has passed.
+  useEffect(() => {
+    if (state.phase !== 'flash' || state.flashStartEpoch !== null || state.lookStartEpoch === null) return;
+    const now = Date.now();
+    const windowStart = state.lookStartEpoch + HM_LOOK_MS;
+    const late = now > windowStart + HM_FLASH_LATE_MS;
+    commit({ ...stateRef.current, flashStartEpoch: late ? windowStart : now });
+    if (late) runDueRef.current();
+  }, [state.phase, state.flashStartEpoch, state.lookStartEpoch, commit]);
+
   // One scheduler, keyed on the snapshot.
   useEffect(() => {
-    const due = dueEpoch(state);
+    const due = dueEpoch(state, roundStartEpochRef.current);
     if (due === null) return;
     const timer = window.setTimeout(() => {
       if (!runDueRef.current()) setWake((n) => n + 1);
@@ -363,14 +411,19 @@ export function HowMany({ seed, roundStartEpoch, roundEnded, snapshot, onProgres
     return () => window.clearTimeout(timer);
   }, [state, wake]);
 
-  // Screen lock / tab switch: timers fire late; on return apply what is due at
-  // once (the field is hidden immediately if its second has passed).
+  // Screen lock / tab switch / back-forward cache: timers fire late or not at
+  // all; on return apply everything that is due at once (the field is hidden
+  // immediately if its second has passed; overdue answers time out).
   useEffect(() => {
     const onVisibility = () => {
       if (!isHidden()) runDueRef.current();
     };
     document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pageshow', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pageshow', onVisibility);
+    };
   }, []);
 
   // Countdown display only.

@@ -2,11 +2,11 @@
 
 Purpose: the complete spec for How Many?: rules, field layout, flow, timings, difficulty curve, scoring with worked examples, rejection bounds, UI states, theming, accessibility, edge cases and test cases. Shared rules are in `SCORING.md`; if they disagree, `SCORING.md` wins.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Game id: `how_many` · One-line pitch (COPY `game.how_many.pitch`): "A flash of chevrons. How many did you see?"
 
-Related: ADR-136 (this game, the reveal and the "true counts only on the big screen" rule), ADR-018 (reload), ADR-025 (the Stop the Clock reveal it extends), `docs/plans/games-v3.md` §1 and §5, `docs/games/newgames.md` (the brief).
+Related: ADR-137 (2) (the fixed step schedule, §3/§9), ADR-136 (this game, the reveal and the "true counts only on the big screen" rule), ADR-018 (reload), ADR-025 (the Stop the Clock reveal it extends), `docs/plans/games-v3.md` §1 and §5, `docs/games/newgames.md` (the brief).
 
 ---
 
@@ -50,8 +50,15 @@ stateDiagram-v2
 | `locked` | 0.5 s |
 | Worst case total | 1.5 + 3 × (1 + 1 + 10 + 0.5) = **39 s** → `worstCaseMs = 40 000` (inside the 120 s cap) |
 
-- **The flash is one frame.** The whole field mounts in one commit with all `N_i` chevrons (no per-chevron transition, no fade-in) and nothing in it changes until it unmounts; `flashStartEpoch` is written by the effect after that commit. The field is **unmounted** at `flashStartEpoch + 1000` (a timer, plus a `visibilitychange` fallback). Nothing else on the screen changes during the flash: the eyebrow and the "Look" caption stay, only the frame's contents swap from the fixation dot to the chevrons.
-- A look timer that fires more than **250 ms** late (a locked screen, a throttled tab) or while the page is hidden skips the flash, exactly as a reload does (§9): the flash window is anchored on the look's epoch, so a late flash would stretch the round past its worst case.
+- **Fixed schedule** (ADR-137 (2)). The game clock is anchored on `roundStartEpoch` and on the player's own OK taps; every step boundary comes from stored epochs, never from the moment a timer happened to fire:
+  - look 1 starts at `roundStartEpoch + 1500`;
+  - the flash window is `lookStartEpoch + 1000 … + 2000`; `answerStartEpoch` is the end of the flash (`flashStartEpoch + 1000`, or `lookStartEpoch + 2000` when the flash was skipped);
+  - an answer ends at the OK tap, or at `answerStartEpoch + 10 000` on a timeout; `lockedEndEpoch` = that end + 500;
+  - look `i+1` starts at `lockedEndEpoch_i`.
+
+  One scheduler applies what is due as a **catch-up loop**: after a reload, a screen lock, a JS freeze or a hidden page whose timers were throttled, every step whose epoch has passed is closed at once with its own rule (a passed flash window is skipped, a passed answer times out with whatever is typed, `null` on a fresh look), and the chain continues from the stored epochs. A phone that comes back late is therefore on whatever step the schedule says, and an idle round always ends at `roundStartEpoch + 39 s` (plus the time to come back, if the phone was frozen past it). **A hidden page never pauses the schedule**: flashes that end while the page is hidden are skipped and their answers time out on schedule (team decision 2026-09-26). The loop runs on each timer, on `visibilitychange` and `pageshow` (back-forward cache), and once at mount before the first paint.
+- **The flash is one frame.** The whole field mounts in one commit with all `N_i` chevrons (no per-chevron transition, no fade-in) and nothing in it changes until it unmounts. The `flash` phase is persisted at that commit; `flashStartEpoch` is written by the effect after the paint. Until it is written, the flash is due at the window's end (`lookStartEpoch + 2000`), so it always has a deadline; a paint that lands more than 250 ms after the look's end (the page froze between the commit and the paint) records `flashStartEpoch = lookStartEpoch + 1000`, so the field only stays until the window's end and is hidden at once if that has passed — it never gets a new second after an unlock. The field is **unmounted** at `flashStartEpoch + 1000` (a timer, plus the `visibilitychange` / `pageshow` fallback). Nothing else on the screen changes during the flash: the eyebrow and the "Look" caption stay, only the frame's contents swap from the fixation dot to the chevrons.
+- A look whose end is processed more than **250 ms** late (a locked screen, a throttled tab, the catch-up) or while the page is hidden skips the flash, exactly as a reload does (§9): the flash window belongs to the fixed schedule, so a late flash would stretch the round past its worst case.
 - `answer_ms` = `performance.now()` at the OK `pointerdown` minus the moment the pad appeared (after a reload: the epoch, measured from the earlier of the answer anchor and the moment the pad appeared on this page load), capped at 10 000. An OK within **300 ms** of the pad appearing is ignored (two taps take longer; the server rejects faster answers, §5). Keys are `pointerdown` with a 60 ms bounce guard.
 - Round ended early (`roundEnded`): finish at once. The open flash (look, flash or answer) counts as timed out with whatever is typed; flashes not started count as `guess: null, timed_out: true`. `true_count` always comes from the seed.
 
@@ -157,9 +164,13 @@ Big screen (H3, ADR-136): after the round, the reveal shows three strips (one pe
 | Reload during `look` | Resume `look` until `lookStartEpoch + 1000`; if that has passed, the flash window (`lookStartEpoch + 1000 … + 2000`) has started or passed: **never show the field again**; go to `answer` with `answerStartEpoch = lookStartEpoch + 2000` (the 10 s timeout counts from there). |
 | Reload during `flash` | Same rule: the flash happened; straight to `answer` with the deadline `flashStartEpoch + 1000 + 10000`. |
 | Reload during `answer` | Same flash, typed digits restored from the snapshot, deadline unchanged. |
+| Reload during the intro | Look 1 still starts at `roundStartEpoch + 1500` (the intro is never replayed from the reload); if that has passed, the look/flash rules apply from that epoch (a passed window skips the flash, a passed answer times out). |
 | Reload during `locked` | "Locked in" ends at its stored `lockedEndEpoch`, then the next look (or the finish). |
-| Screen lock during the flash | The timer fires late; on return the field is hidden at once (the `visibilitychange` handler) and `answer` runs with the remaining time. |
-| Screen lock during the look | The late look timer skips the flash (§3); `answer` runs from `lookStartEpoch + 2000`. |
+| Reload during `locked` after `lockedEndEpoch` | The next look counts from `lockedEndEpoch`, not from the reload; a passed flash window skips the flash and the answer runs from `lockedEndEpoch + 2000`. |
+| Screen lock during the flash | The timer fires late; on return the field is hidden at once (the `visibilitychange` / `pageshow` handler) and `answer` runs with what the schedule leaves of its 10 s. A freeze between the flash's commit and its paint never shows the field for a new second (§3). |
+| Screen lock during the look | The late look skips the flash (§3); `answer` runs from `lookStartEpoch + 2000`, on the schedule. |
+| Long screen lock / JS freeze | On return every step whose epoch passed is closed with its rule, in order (answers time out with whatever was typed, later looks skip their flash); the player lands on the step the schedule is on. Flashes missed while locked are timed out, never replayed; the round ends by its worst case (or at once, if the lock outlasted it). |
+| Page hidden but timers running (background tab, covered or minimised window, an app switch before the browser freezes the page) | The same schedule keeps running: flashes that end while hidden are skipped, their answers time out on schedule, and a returning player is on whatever step the schedule says. The round never pauses and never runs past 39 s. |
 | Timeout with digits typed | The typed number is the guess, `timed_out = true`, `answer_ms = null`. |
 | Round ended early | Finish now: open flash = timed out with typed digits; unstarted flashes null. |
 | Rotation | The shell's portrait overlay covers the game; clocks keep running (E16). |
@@ -169,7 +180,7 @@ Big screen (H3, ADR-136): after the round, the reveal shows three strips (one pe
 | Leading zeros | `007` → 7 (the display shows the digits as typed). |
 | Language toggle | Hidden during rounds (E17). |
 
-Snapshot (epochs only, persisted with `onProgress` after every start, every key and every answer): `{ phase, roundIndex, lookStartEpoch, flashStartEpoch, answerStartEpoch, lockedEndEpoch, typed, rounds }`.
+Snapshot (epochs only, persisted with `onProgress` after every start — including the flash's commit and its start epoch — every key and every answer): `{ phase, roundIndex, lookStartEpoch, flashStartEpoch, answerStartEpoch, lockedEndEpoch, typed, rounds }`.
 
 ## 10. Test cases
 
@@ -189,5 +200,10 @@ Snapshot (epochs only, persisted with `onProgress` after every start, every key 
 | HM-T12 | Idle player | three nulls, score 0, finished by 40 s (`HowMany.test.tsx`, `worstCase.test.tsx`) |
 | HM-T13 | Real devices | flash-3 chevrons legible at 360 px; pad keys ≥ 56 px; no zoom on double-tap |
 | HM-T14 | Playtest, 5 strong players | median 780–900, nobody 1000 → else retune `D` / `W` (ADR-136) |
+| HM-T15 | Reload during the intro (mount at `roundStart + 3.4 s`, no snapshot); and at `roundStart + 1.0 s` | first `lookStartEpoch = roundStart + 1500`; the flash is skipped, the pad shows with the deadline `roundStart + 13 500`; idle finish at 39 s. Early reload: look 1 still at `+1500` (`HowMany.test.tsx`) |
+| HM-T16 | Screen lock: answer 1 open at 4 s, clock jumps to 40 s with no timer firing, then `visibilitychange`; and a jump to 20 s | finish at once, flashes 2–3 `guess: null, timed_out: true`, `durationMs ≤ 40 100`. 20 s: on answer 2 from `+16 000` with 6 s left, looks at 1.5 / 14 / 26.5 s (`HowMany.test.tsx`) |
+| HM-T17 | Reload in `locked` 3 s after `lockedEndEpoch`; OK tap at `answerStart + 2 s` | next `lookStartEpoch = lockedEndEpoch`, `answer` from `lockedEndEpoch + 2000`; after the tap `lockedEndEpoch = tap + 500` and the next look starts there (`HowMany.test.tsx`) |
+| HM-T18 | `document.visibilityState = 'hidden'` from the intro, timers firing | `hm-field` never renders; answers from 3.5 / 16 / 28.5 s time out on schedule; finish at `roundStart + 39 000` (`HowMany.test.tsx`) |
+| HM-T19 | `flash` with `flashStartEpoch` null; a 5 s freeze between the flash's commit and its paint | due at `lookStartEpoch + 2000` (`dueEpoch`); after the freeze the field is gone and the answer runs from `lookStartEpoch + 2000` with 6 s left (`HowMany.test.tsx`) |
 
 `HowMany.test.tsx` also asserts the one-frame flash: the chevron count on the first frame equals `N_i`, and no chevron node changes between mount and unmount.

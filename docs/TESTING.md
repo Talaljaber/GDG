@@ -2,7 +2,7 @@
 
 Purpose: how we know the system works before guests touch it: the test strategy per layer (pure scoring, database/RLS, UI, multi-phone end-to-end), the device and browser matrix, the bright-light and projector checks, the load test with simulated phones, and the scripted dry run the day before the event. Phase acceptance criteria in `PHASES.md` point to sections here.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 ---
 
@@ -27,10 +27,12 @@ Last updated: 2026-09-25
 - Perfect Circle synthetic strokes PC-T1 to PC-T10.
 - Close the Brackets (ADR-134): CB-T1–T11 (`src/games/close-brackets/*.test.ts*`): worked examples, `S(n)`, the bounds mirror, seeded openers with no identical neighbours, wrong tap keeps the length, 10 s sequence timeout, reload mid-sequence, round ended.
 - Color Clash (ADR-134): CC-T1–T10 (`src/games/color-clash/*.test.ts*`): worked examples, the bounds mirror, exactly 3 congruent trials per 10, wrong tap and 3 s timeout, reload mid-trial and mid-gap, round ended.
-- How Many? (ADR-136): HM-T1–T12 (`src/games/how-many/*.test.ts*`): worked examples A–F, the bounds mirror, seeded fields with no overlapping chevrons and true counts never a multiple of 10, `too_fast`/`too_perfect`/`formula_band`/`range`/`timeout`, reload during `look`/`flash`, idle player.
-- Swipe Sort (ADR-136): SS-T1–T12 (`src/games/swipe-sort/*.test.ts*`): worked examples A–F, the bounds mirror, the item window `I(t)` at t = 0/15 000/30 000, the gesture reducer (40 px threshold, vertical/cancel ignored), wrong swipe, idle player, reload mid-item.
-- Pairs (ADR-136): PR-T1–T11, T13 (`src/games/pairs/*.test.ts*`): worked examples A–G, the bounds mirror, the 0.7 s flip-back lock and reload during it, idle player, reload before the 8th match.
+- How Many? (ADR-136): HM-T1–T12, T15–T19 (`src/games/how-many/*.test.ts*`): worked examples A–F, the bounds mirror, seeded fields with no overlapping chevrons and true counts never a multiple of 10, `too_fast`/`too_perfect`/`formula_band`/`range`/`timeout`, reload during `look`/`flash`, idle player; the fixed schedule (ADR-137 (2)): reload during the intro, a 40 s freeze closes every overdue step at once, a `locked` resume anchored on `lockedEndEpoch`, a hidden page keeps the schedule and finishes at 39 s (HM-T15–T18); a `flash` whose start epoch isn't stored yet is due at the end of its window (`dueEpoch`, HM-T19).
+- Swipe Sort (ADR-136): SS-T1–T12, T15, T16 (`src/games/swipe-sort/*.test.ts*`): worked examples A–F (idle E = 0 / 0 / 37), the bounds mirror, the item window `I(t)` at t = 0/15 000/30 000, the gesture reducer (40 px threshold, vertical/cancel ignored), wrong swipe, idle player, reload mid-item; ADR-137: a mount 5 s late (a hidden 3-2-1) keeps the clock at `roundStartEpoch` + 1.5 s and counts the missed items (SS-T15); a drag held through a miss doesn't move the next item and a swipe past the deadline resets the drag (SS-T16). A press during the 0.15 s gap stays ignored (§3).
+- Pairs (ADR-136): PR-T1–T11, T13, T15 (`src/games/pairs/*.test.ts*`): worked examples A–G, the bounds mirror, the 0.7 s flip-back lock and reload during it, idle player, reload before the 8th match; device sleep (PR-T15, ADR-137 (3)): `clear_ms` on the epoch clock under a simulated sleep, `visibilitychange` finishes a board past its end and resolves a passed lock, a timeout turns unfound cards down, a late mount keeps the board clock at `roundStartEpoch` + 1.5 s.
 - `src/games/worstCase.test.tsx` runs every registered game (10): idle player inside its worst case, "round ended" finishes at once.
+- Player shell (ADR-137 (1), (7)): `src/player/seed.test.ts` (every game but Trivia gets the round id, so two phones draw the same How Many? fields and Pairs layout; Trivia differs per player), `src/player/playerFlow.test.ts` (a round that ended during the 3-2-1 never mounts), `src/player/hooks.test.tsx` (round rows refetched every 5 s while a round is on the phone and not yet submitted, the 3-2-1 included; only the 15 s full refetch otherwise).
+- Host reveals (ADR-137 (5), (6)): `src/host/HowManyReveal.test.tsx` (dots within 3.5 s and the average at 4.0 s counted from `ended_at`, a host reloaded late in the step shows everything at once, late rows at once, `slotDelay`), `src/host/howManyStrips.test.ts` (mixed true counts → the mode, a 2-row tie → the higher-ranked row), `src/host/Intermission.test.tsx` (the How Many? reveal layout and its last-round variant).
 
 ## 3. Database tests (pgTAP)
 
@@ -58,7 +60,7 @@ Run as three identities: `anon` (no JWT), a guest (anonymous JWT), the admin (JW
 
 **Boards (`07_boards.sql`):** round board `score desc, created_at asc`; session board totals with `total_duration_ms` then `joined_at` tie-breaks, a guest sees only sessions it joined; day board one row per name key with the best score, the earliest of equal bests, names without suffix, current day only; a hidden key leaves all three (rows kept) and comes back when unhidden.
 
-**Trigger bounds:** one passing and one failing case per bound in `SCORING.md` §4 (reason code asserted): `05_score_bounds.sql` for the five original games, `09_score_bounds_new_games.sql` for Close the Brackets and Color Clash (ADR-134; also checks guests can't execute `private.score_bounds_violation`), `10_score_bounds_how_many.sql` / `11_score_bounds_swipe_sort.sql` / `12_score_bounds_pairs.sql` for How Many?, Swipe Sort and Pairs (ADR-136).
+**Trigger bounds:** one passing and one failing case per bound in `SCORING.md` §4 (reason code asserted): `05_score_bounds.sql` for the five original games, `09_score_bounds_new_games.sql` for Close the Brackets and Color Clash (ADR-134; also checks guests can't execute `private.score_bounds_violation`), `10_score_bounds_how_many.sql` / `11_score_bounds_swipe_sort.sql` / `12_score_bounds_pairs.sql` for How Many?, Swipe Sort and Pairs (ADR-136; `11`'s idle fixture is 37 misses, `SCORING.md` §3.9).
 
 **Names:** the §6 vectors in SQL; blocklist "must pass" list (real names that contain short English terms): `Hassan`, `Assem`, `Anass`, `Cassandra`, `Basem`, plus the Arabic names the blocklist owner adds (OQ-13). "Must block" list: maintained with the blocklist (not in this doc).
 

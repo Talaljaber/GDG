@@ -22,7 +22,8 @@ import styles from './player.module.css';
 import { phoneScreenKey, phoneSwapIsInstant } from './screenKey';
 import { JoinFlow } from './JoinFlow';
 import { usePresence, useSessionSync, useTabLock } from './hooks';
-import { derivePlayerView, viewKey, type FlowInput } from './playerFlow';
+import { derivePlayerView, roundEndedBeforeStart, viewKey, type FlowInput } from './playerFlow';
+import { gameSeed } from './seed';
 import { useSteppedNow } from '../components/useSteppedNow';
 import { latestDoneRound } from '../host/hostLoop';
 import { DayBoardScreen, IntermissionScreen } from './betweenScreens';
@@ -180,7 +181,10 @@ function MemberFlow({
   /** The shell's lang toggle / rotate overlay for this screen (set before paint). */
   onChrome(chrome: Chrome): void;
 }) {
-  const sync = useSessionSync(sessionId, playerRowId);
+  // A round is on this phone (3-2-1 or game) and not yet submitted: drives the 250 ms clock and
+  // the 5 s round-row refetch that catches a missed round-end event (hooks.ts).
+  const inRound = local.roundId !== null && !local.submittedRounds.includes(local.roundId);
+  const sync = useSessionSync(sessionId, playerRowId, inRound);
   const [uid, setUid] = useState<string | null>(null);
 
   useEffect(() => {
@@ -225,7 +229,6 @@ function MemberFlow({
 
   // ---- clock for the countdown / local cap / P8 steps: checked every 250 ms, but the flow
   // (and the game under it) only re-renders when the screen it derives actually changes.
-  const inRound = local.roundId !== null && !local.submittedRounds.includes(local.roundId);
   const now = useSteppedNow(
     (n) => viewKey(derivePlayerView({ ...flow, now: n })),
     250,
@@ -233,6 +236,16 @@ function MemberFlow({
   );
 
   const view = derivePlayerView({ ...flow, now });
+
+  // ---- a round that ended during this phone's 3-2-1 was never played (E26/E27, ADR-014): drop its
+  // local state so the game never mounts once the start time passes, and the clock stops.
+  // A layout effect, so the cleared state lands in the same render as a clock step past the start.
+  const endedBeforeStart = roundEndedBeforeStart(local, sync.rounds, now);
+  useLayoutEffect(() => {
+    if (!endedBeforeStart) return;
+    update(() => ({ roundId: null, game: null, roundStartEpoch: null, seed: null, gameSnapshot: null }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endedBeforeStart]);
 
   // ---- presence: tracked while this phone is a joined member of a live session
   const sessionLive = !!sync.session && sync.session.status !== 'closed' && sync.me?.status === 'joined';
@@ -247,7 +260,8 @@ function MemberFlow({
       roundId: round.id,
       game: round.game,
       roundStartEpoch: Date.now() + COUNTDOWN_MS,
-      seed: `${round.id}:${playerRowId}`,
+      // Per round for every game; per player only for `seedScope: 'player'` (Trivia, ADR-027).
+      seed: gameSeed(round.game, round.id, playerRowId),
       gameSnapshot: null,
     }));
     void setProgressPlaying(playerRowId, round.round_no).catch(() => {
@@ -348,11 +362,12 @@ function MemberFlow({
       );
       break;
     case 'game':
+      // The stored seed wins, so a reload keeps the one the round began with (incl. older storage).
       body = (
         <GameScreen
           key={view.round.id}
           round={view.round}
-          seed={String(local.seed ?? `${view.round.id}:${playerRowId}`)}
+          seed={String(local.seed ?? gameSeed(view.round.game, view.round.id, playerRowId))}
           roundStartEpoch={local.roundStartEpoch ?? Date.now()}
           roundEnded={view.roundEnded}
           onProgress={onProgress}

@@ -50,9 +50,13 @@ function flashOf(raw: unknown, i: number): HowManyRoundLike | null {
 }
 
 /**
- * The most common value (everyone shares the round's seed, so one tampered
- * row can't move the axis). Ties go to the value seen first, i.e. the
- * higher-ranked row's.
+ * The most common value. Everyone in a round shares the round's seed, so
+ * every row normally carries the same `true_count` and the mode is
+ * unanimous (ADR-137 (1)). With 3 or more rows one tampered row can't move
+ * the axis; with 1–2 rows it can: the value seen first wins a tie, i.e. the
+ * higher-ranked row's (and a single row is its own mode). Kept as is:
+ * cheating is an accepted risk (ADR-021), and the server bands `true_count`
+ * per flash.
  */
 export function modeOf(values: readonly number[]): number | null {
   const counts = new Map<number, number>(); // insertion order = first seen
@@ -77,16 +81,23 @@ export function countPos(value: number, count: number, window = HM_REVEAL_WINDOW
 /**
  * For each of the three flashes: the true count, one dot per row that
  * guessed, and the crowd average. `rows` are in round-board order; the first
- * `labelled` get their display name.
+ * `labelled` get their display name. `fixedCounts[i]`, when not null, is used
+ * as flash i's count instead of the mode (the reveal keeps the count it
+ * first showed, so a late row never moves the dots already on screen).
  */
 export function howManyStrips(
   rows: readonly Pick<RevealRow, 'playerRowId' | 'name' | 'displaySuffix' | 'raw'>[],
   labelled = HM_REVEAL_LABELLED,
   window = HM_REVEAL_WINDOW,
+  fixedCounts: readonly (number | null)[] = [],
 ): HowManyStrip[] {
   return Array.from({ length: HM_FLASHES }, (_, i) => {
     const flashes = rows.map((row) => flashOf(row.raw, i));
-    const count = modeOf(flashes.flatMap((f) => (f && f.true_count > 0 ? [f.true_count] : [])));
+    const fixed = fixedCounts[i];
+    const count =
+      typeof fixed === 'number' && fixed > 0
+        ? fixed
+        : modeOf(flashes.flatMap((f) => (f && f.true_count > 0 ? [f.true_count] : [])));
     if (count === null) return { count: null, dots: [], mean: null, meanPos: null };
 
     const guesses: number[] = [];

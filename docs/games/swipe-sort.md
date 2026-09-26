@@ -2,7 +2,7 @@
 
 Purpose: the complete spec for Swipe Sort: rules, flow, timings, the gesture and the browser-gesture defence, difficulty curve, scoring with worked examples, rejection bounds, UI states, theming, accessibility, edge cases (including the iOS ones) and test cases. Shared rules are in `SCORING.md`; if they disagree, `SCORING.md` wins.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Game id: `swipe_sort` · One-line pitch (COPY `game.swipe_sort.pitch`): "Blue goes left, amber goes right. Faster and faster."
 
@@ -33,7 +33,7 @@ Related: ADR-136 (this game, its brief deviations and constants), ADR-134 (per-r
 ```mermaid
 stateDiagram-v2
     [*] --> intro: round starts (3-2-1 done)
-    intro --> item: 1.5 s (the 30 s game clock starts)
+    intro --> item: roundStartEpoch + 1.5 s (the 30 s game clock starts)
     item --> gap: swipe registered (correct or wrong)
     item --> gap: window I(t) elapsed (miss)
     gap --> item: 0.15 s
@@ -44,20 +44,22 @@ stateDiagram-v2
 
 | Step | Duration |
 |---|---|
-| Intro card | 1.5 s |
+| Intro card | 1.5 s, ending at `roundStartEpoch + 1500` (not 1.5 s after mount) |
 | Game clock (everything below runs inside it) | 30 s |
 | Item window `I(t)` | 900 → 450 ms (§2) |
 | Gap after every item (the chevron flies off / fades; feedback) | 0.15 s |
 | Worst case total | 1.5 + 30 ≈ **32 s** (`worstCaseMs = 32_000`, inside the 120 s cap) |
 
-The timeline is epoch-exact (`timeline.ts`): item `k + 1`'s onset is item `k`'s gap end, and a missed item's gap starts at its deadline. An idle player therefore misses exactly **37** items (the plan's "≈ 36"); an item or gap still open at the 30 s mark doesn't count.
+The timeline is epoch-exact (`timeline.ts`): item `k + 1`'s onset is item `k`'s gap end, and a missed item's gap starts at its deadline. An idle player therefore misses exactly **37** items (as in `docs/plans/games-v3.md`); an item or gap still open at the 30 s mark doesn't count.
+
+The game clock is anchored on the round start: `gameStartEpoch = itemStartEpoch(0) = roundStartEpoch + 1500`, never the time the phone mounted the game or became visible. A phone hidden during the 3-2-1 or the intro (or mounting late) lands on that epoch; the windows that already elapsed are counted as misses in order (the same catch-up as a screen lock), and the game still ends at `roundStartEpoch + 31.5 s` (worst case 32 s).
 
 **Gesture** (`gesture.ts`, a pure reducer, plus the component's pointer handlers):
 
 - `pointerdown` on the surface while an item is live starts a drag (`setPointerCapture`). Only one pointer is tracked (`pointerId`); a second finger is ignored. Presses during the intro or a gap are ignored.
 - On `pointermove`, the moment `|dx| ≥ 40 px` and `|dx| > |dy|`, the swipe **registers** in the sign of `dx`. That instant is the measurement: `swipe_ms = performance.now()` at registration − the item's onset (epoch fallback, back-dated, after a reload), capped at the item's window. The rest of that drag does nothing.
 - Anything else registers nothing and the item keeps its window: a release before 40 px, a mostly vertical drag, `pointercancel` (the browser took the gesture).
-- A drag only ever sorts the item it started on: if the item times out mid-drag, the drag can't sort the next one.
+- A drag only ever sorts the item it started on: if the item times out mid-drag, the drag can't sort the next one, and the next chevron doesn't follow it (it stays centred). A swipe that registers but can't count (the item already missed, the window or the clock just ran out) springs the chevron back.
 - `mean_swipe_ms` = the rounded mean `swipe_ms` over **correct** items.
 - There is **no tap fallback** (tap-left / tap-right halves): the plan doesn't specify one, and a tap would skip the 40 px of travel that the `ss.too_fast` floor assumes. The catch labels are labels, not buttons.
 
@@ -86,7 +88,7 @@ Calibration (`SCORING.md` §3.9): a **strong** player registers swipes at ≈ 45
 | B (typical) | 33 / 3 / 8 | 550 | 22 | 60 × 0.5 × 1 = 30 | **514** |
 | C (weak) | 22 / 5 / 12 | 640 | 5 | 60 × 0.2 × 0.25 = 3 | round(113) = **113** |
 | D (random spammer) | 30 / 33 / 0 | 260 | −3 | 0 (net ≤ 0) | clamp(−66) = **0** |
-| E (idle) | 0 / 0 / 36 | null | −36 | 0 | **0** |
+| E (idle) | 0 / 0 / 37 | null | −37 | 0 | **0** |
 | F (near-perfect) | 46 / 1 / 2 | 430 | 43 | 60 × 0.9 × 1 = 54 | clamp(1000) = **1000** |
 
 ## 5. Submission and rejection bounds
@@ -150,8 +152,9 @@ P7 breakdown (`SCREENS.md` P7): correct · wrong way · missed · average time (
 | Vertical or too-short drag | Ignored; the item keeps its window. |
 | `pointercancel` (the browser took the gesture) | Drag state reset; the chevron springs back; the item keeps its window. |
 | Two fingers | Only the captured (first) pointer counts. |
-| Drag still held when the item times out | The miss counts; that drag can't sort the next item. |
+| Drag still held when the item times out | The miss counts; that drag can't sort the next item, and the next chevron doesn't move with it (`--ss-drag` stays 0). |
 | Press during the intro or a gap | Ignored. |
+| Hidden or late during the 3-2-1 / intro | The first chevron's onset is `roundStartEpoch + 1.5 s` regardless; on mount or return the elapsed windows are misses in order and the game ends at the original 30 s. |
 | Reload mid-drag | Drag lost; the same item continues from `itemStartEpoch` with its original window (a reload never gains time). |
 | Reload during the gap | The gap ends at `gapEndEpoch`, then item `k + 1` (its onset is that epoch). |
 | Screen lock / tab in the background | Epochs run. On return (timer or `visibilitychange`) the elapsed windows are counted as misses **in order** until the clock catches up: each due miss advances `itemIndex` onto the next window of the ramp, so a 10 s lock yields ≈ 13–15 misses, as an idle player would get. The game still ends at the original 30 s. |
@@ -179,3 +182,5 @@ Snapshot (persisted with `onProgress` after every start, swipe, miss and gap end
 | SS-T12 | Reload mid-item | same item, same deadline; the game ends at the original 30 s | `SwipeSort.test.tsx` |
 | SS-T13 | **Manual, real devices:** an iPhone in Safari and in iOS Chrome, plus an Android phone in Chrome, on the deployed preview | 20 swipes from the surface centre: 0 back-navigations, 0 refreshes, 0 page scrolls; then 5 swipes starting at the very left edge and 5 at the right edge: none scores (a back-navigation, if iOS makes one, returns to the round and it resumes); a pull-down from the surface doesn't refresh | device matrix (`TESTING.md` §6) |
 | SS-T14 | Playtest, 5 strong players | median 780–900, nobody 1000 → else retune 22 / 60 / the 450 ms floor (ADR-136) | playtest |
+| SS-T15 | Mount 5 s after `roundStartEpoch` (a hidden 3-2-1) | `gameStartEpoch = roundStartEpoch + 1500`; the elapsed windows counted as misses; the game ends at the original 30 s | `SwipeSort.test.tsx` |
+| SS-T16 | A drag held across a miss, moved on the next item; a swipe registering past its deadline | the next chevron keeps `--ss-drag: 0px` and nothing is counted; the chevron springs back to 0 | `SwipeSort.test.tsx` |

@@ -44,7 +44,7 @@ describe('howManyStrips (games-v3 §5)', () => {
     expect(countPos(1.5 * 12, 12)).toBe(100);
   });
 
-  it('the true count is the most common true_count, so one tampered row cannot move the axis', () => {
+  it('the true count is the most common true_count, so with ≥ 3 rows one tampered row cannot move the axis', () => {
     const rows = [
       row(0, [11, 24, 46], [99, 27, 55]), // tampered, and ranked first
       row(1, [10, 22, 42]),
@@ -56,6 +56,40 @@ describe('howManyStrips (games-v3 §5)', () => {
     expect(strips[0].dots[0].pos).toBeCloseTo(countPos(11, 12));
     expect(modeOf([5, 7, 7, 5])).toBe(5); // a tie goes to the value seen first (the higher row)
     expect(modeOf([])).toBeNull();
+  });
+
+  it('mixed true_counts: the count is the mode', () => {
+    const rows = [
+      row(0, [11, 24, 46], [13, 27, 55]),
+      row(1, [10, 22, 42]),
+      row(2, [9, 18, 30], [12, 28, 54]),
+      row(3, [12, 25, 50], [14, 28, 55]),
+    ];
+    // flash 1: 13, 12, 12, 14; flash 2: 27, 27, 28, 28 (a tie: the first seen); flash 3: 55, 55, 54, 55
+    expect(howManyStrips(rows).map((s) => s.count)).toEqual([12, 27, 55]);
+  });
+
+  it('with 1–2 rows the rule needs ≥ 3 rows: a tie goes to the first (higher-ranked) row (ADR-137 (6))', () => {
+    // documented caveat, kept on purpose (cheating is an accepted risk, ADR-021)
+    const tie = howManyStrips([row(0, [11, 24, 46], [15, 27, 55]), row(1, [10, 22, 42])]);
+    expect(tie[0].count).toBe(15); // the true count is 12, but the top row wins the 1–1 tie
+    expect(tie.slice(1).map((s) => s.count)).toEqual([27, 55]);
+    expect(howManyStrips([row(0, [11, 24, 46], [15, 30, 60])]).map((s) => s.count)).toEqual([15, 30, 60]);
+  });
+
+  it('5 rows where 4 agree and 1 differs: the agreed value, whatever the odd row’s rank', () => {
+    for (const odd of [0, 2, 4]) {
+      const rows = Array.from({ length: 5 }, (_, i) => row(i, [11, 24, 46], i === odd ? [20, 35, 70] : N));
+      expect(howManyStrips(rows).map((s) => s.count)).toEqual(N);
+    }
+  });
+
+  it('a fixed count (the one already on screen) overrides the mode; null falls back to it', () => {
+    const rows = [row(0, [11, 24, 46], [15, 27, 55]), row(1, [10, 22, 42]), row(2, [9, 18, 30], [15, 27, 55])];
+    expect(howManyStrips(rows).map((s) => s.count)).toEqual([15, 27, 55]);
+    const kept = howManyStrips(rows, undefined, undefined, [12, null]);
+    expect(kept.map((s) => s.count)).toEqual([12, 27, 55]);
+    expect(kept[0].dots[0].pos).toBeCloseTo(countPos(11, 12));
   });
 
   it('null guesses give no dot; the crowd average is the rounded mean of the guesses', () => {

@@ -39,7 +39,10 @@ export interface GameResult {
 }
 
 export interface GameProps<S = unknown> {
-  /** Per-round seed (reload-stable); feeds src/lib/rng.ts for any randomness. */
+  /**
+   * Per-round seed (reload-stable; per player only for `seedScope: 'player'`); feeds
+   * src/lib/rng.ts for any randomness. Built by `gameSeed` (src/player/seed.ts).
+   */
   seed: string;
   /** Date.now() at the end of the 3-2-1 countdown. */
   roundStartEpoch: number;
@@ -69,4 +72,13 @@ export interface GameModule<S = unknown> {
   score(raw: unknown): number;
   /** Documented worst-case round length in ms (docs/SCORING.md §2). Never exceeded. */
   worstCaseMs: number;
+  /**
+   * Which seed `GameProps.seed` carries (src/player/seed.ts):
+   * - `'round'` (default): every phone in the round gets the same seed (`round.id`). Required by
+   *   games whose content is shared by the room (the same field, board or sequence for everyone,
+   *   ADR-134 (2), ADR-136 (1)) and by the H3 How Many? reveal, which centres on that shared count.
+   * - `'player'`: `${round.id}:${playerRowId}`, for games whose doc asks for per-player variety
+   *   (Trivia's per-player draw and option shuffle, ADR-027).
+   */
+  seedScope?: 'round' | 'player';
 }

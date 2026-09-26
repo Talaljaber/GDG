@@ -2,7 +2,7 @@
 
 Purpose: exactly how a session, its three rounds and each player move through their states. Covers who triggers each transition, what the phone and the big screen show, timings, and the expected behaviour in every edge case we could think of. Implementation of the host loop, the phone state machine and the database functions follows this file; `DATA_MODEL.md` §6 has the function signatures.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Related: ADR-003, ADR-010, ADR-012, ADR-014–ADR-020, ADR-104, ADR-108, ADR-117, ADR-129.
 
@@ -20,6 +20,7 @@ Related: ADR-003, ADR-010, ADR-012, ADR-014–ADR-020, ADR-104, ADR-108, ADR-117
 | Intermission | 15 s: round board 7 s → session total 5 s → "Next: <game>" 3 s; skippable by host. After the last round: round board 7 s, then results | app config |
 | Presence grey-out | 10 s without presence | host client |
 | Score submit retry | every 2 s, up to the late-acceptance window | phone |
+| State safety refetch | every 15 s (session, rounds, own player row); plus the round rows every 5 s while a round is on the phone and not yet submitted (the 3-2-1 included), so a missed round-end event is caught well inside the late-acceptance window (ADR-137 (7)) | phone |
 
 ## 2. Session state machine
 
@@ -126,7 +127,7 @@ The phone keeps one object in localStorage under `gdg.v1.current`, rewritten on 
 | `lang` | chosen language (separate key `gdg.v1.lang`) |
 | `roundId`, `game`, `roundStartEpoch` | round in progress; epoch ms at the end of the 3-2-1 |
 | `attemptIndex`, `attemptStartEpoch`, `attemptResults[]` | game progress (per-game shape in `docs/games/*`) |
-| `seed` | per-round random seed (grid positions, Simon sequence, trivia draw) so a reload shows the same content |
+| `seed` | the seed the game was started with, so a reload shows the same content: the round id, shared by every phone in the round (grids, sequences, boards, fields); Trivia alone uses `<round id>:<player row id>` for its per-player draw (ADR-027, ADR-137 (1)) |
 | `pendingSubmit` | the score payload if submitted but not yet acknowledged |
 | `submittedRounds[]` | round ids with an acknowledged score |
 
@@ -154,7 +155,8 @@ sequenceDiagram
 ```
 
 - Phone local cap: at 120 s after `roundStartEpoch` the game force-finishes and scores whatever was completed, following the per-game timeout rule (`SCORING.md` §3). If the phone was not in the round at all (joined after it started, or was dead), it submits nothing.
-- If the `rounds` UPDATE to `done` arrives before the phone finishes (another trigger ended the round), the phone finishes immediately with the same rule and submits within the 15 s acceptance window.
+- If the `rounds` UPDATE to `done` arrives before the phone finishes (another trigger ended the round), the phone finishes immediately with the same rule and submits within the 15 s acceptance window. A missed UPDATE is caught by the 5 s round-row refetch (§1).
+- A round that ends (server `done`) while the phone is still in its 3-2-1 is treated as not played: no game mounts, nothing is submitted, and the phone clears that round's local state (`roundId`, `roundStartEpoch`, `seed`, snapshot) so its round clock stops (ADR-014, ADR-137 (7)).
 - Between rounds the phone shows P8: the round board 7 s, the session total 5 s, then "Next: <game>" until the next round's `rounds` UPDATE arrives (then P5's 3-2-1). The steps run from the local time the phone saw the round end (it never compares clocks with the server, ADR-104), so they can drift from the big screen by the realtime delay (well under a second on a good connection).
 
 ## 6. Edge cases
@@ -177,7 +179,7 @@ sequenceDiagram
 | E12 | **Zero players finish a round** | Round ends at the host deadline with `time_cap`; round board shows "No scores this round"; session continues. If nobody scored in all 3 rounds, results show "No scores this session" and New session works normally. |
 | E13 | **Start with zero joined players** | Start button disabled; `admin_start_session` raises `GD010` if called anyway. |
 | E14 | **Network drop mid-submit** | Payload kept in `pendingSubmit`; retried every 2 s; on reconnect the insert succeeds or returns 23505 (already stored) and both count as success. If the 15 s window passes, `GD007`: the phone shows "Your score couldn't be saved in time" and the score is shown locally only. |
-| E15 | **Screen locks mid-round** | Timers are epoch-based, so the round keeps going. On unlock the phone recomputes; any attempt whose timeout passed is closed with its timeout rule; if the round cap passed, the phone submits immediately. Realtime reconnects automatically; the phone then re-reads round state. |
+| E15 | **Screen locks mid-round** | Timers are epoch-based, so the round keeps going. On unlock the phone recomputes; any attempt whose timeout passed is closed with its timeout rule; if the round cap passed, the phone submits immediately. The games close what is overdue as soon as the page is back (How Many? and Pairs on `visibilitychange`/`pageshow`, Swipe Sort on `visibilitychange`; ADR-137 (2)–(3)); a lock never moves a step's anchor. Realtime reconnects automatically; the phone then re-reads round state. |
 | E16 | **Phone rotates to landscape** | Games are portrait-only: an overlay says "Turn your phone back upright". Timers keep running (no pause). A Perfect Circle stroke in progress is discarded without using an invalid-stroke try. |
 | E17 | **Language switched mid-game** | The toggle is hidden during rounds (visible on join, lobby, intermission, results). A device language change mid-round has no effect until the next screen. |
 | E18 | **Supabase project paused at first request** | Shouldn't happen (keepalive). If it does: the join fails, the phone shows "We're warming up, try again in a minute", and the host view shows a red banner "Database unreachable". Runbook §5.1: restore the project from the dashboard. |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { derivePlayerView, hasFinishedRound, isRoundEndedLocally } from './playerFlow';
+import { derivePlayerView, hasFinishedRound, isRoundEndedLocally, roundEndedBeforeStart, viewKey } from './playerFlow';
 import type { PlayerRow, RoundRow, SessionRow } from '../lib/api';
 import type { CurrentState } from '../lib/storage';
 
@@ -124,6 +124,54 @@ describe('derivePlayerView', () => {
     const l = local({ roundId: 'r1', roundStartEpoch: NOW - 30_000 });
     const v = derivePlayerView({ local: l, session: session('results'), rounds: [round('done')], me: me(), now: NOW });
     expect(v).toMatchObject({ screen: 'game', roundEnded: true });
+  });
+
+  describe('a round that ended while the phone was still in its 3-2-1 (E26/E27, ADR-014)', () => {
+    const T0 = NOW;
+    const l = local({ roundId: 'r1', game: 'how_many', roundStartEpoch: T0 + 3000 });
+    const gameKey = viewKey({ screen: 'game', round: round('done'), roundEnded: true });
+
+    it('is not mounted: the intermission follows when more rounds are left', () => {
+      const rounds = [
+        round('done', { game: 'how_many', end_reason: 'force_end' }),
+        round('upcoming', { id: 'r2', round_no: 2, game: 'pairs' }),
+      ];
+      const v = derivePlayerView({ local: l, session: session('playing'), rounds, me: me(), now: T0 + 1000 });
+      expect(v.screen).not.toBe('game');
+      expect(v.screen).not.toBe('intro');
+      expect(v).toMatchObject({ screen: 'intermission', round: { id: 'r1' }, next: { id: 'r2' } });
+      expect(viewKey(v)).not.toBe(gameKey);
+    });
+
+    it('is not mounted: the session results follow after the last round', () => {
+      const rounds = [round('done', { game: 'how_many', end_reason: 'force_end' })];
+      const v = derivePlayerView({ local: l, session: session('results'), rounds, me: me(), now: T0 + 1000 });
+      expect(v).toEqual({ screen: 'results' });
+      expect(viewKey(v)).not.toBe(gameKey);
+    });
+
+    it('roundEndedBeforeStart is true only for a server-ended round before the local start', () => {
+      const done = [round('done')];
+      expect(roundEndedBeforeStart(l, done, T0 + 1000)).toBe(true);
+      // Started (the game was on screen): finish and submit as usual (§5).
+      expect(roundEndedBeforeStart(l, done, T0 + 3000)).toBe(false);
+      // Still playing on the server: the 3-2-1 goes on.
+      expect(roundEndedBeforeStart(l, [round('playing')], T0 + 1000)).toBe(false);
+      // Already has a result, or no local round.
+      expect(roundEndedBeforeStart({ ...l, submittedRounds: ['r1'] }, done, T0 + 1000)).toBe(false);
+      expect(roundEndedBeforeStart(local(), done, T0 + 1000)).toBe(false);
+    });
+
+    it('a round still playing keeps the 3-2-1', () => {
+      const v = derivePlayerView({
+        local: l,
+        session: session('playing'),
+        rounds: [round('playing', { game: 'how_many' })],
+        me: me(),
+        now: T0 + 1000,
+      });
+      expect(v).toMatchObject({ screen: 'intro', begin: false });
+    });
   });
 
   it('shows the round result after finishing while the round is still playing (E3)', () => {

@@ -2,7 +2,7 @@
 
 Purpose: the implementation plan for the next three games of `docs/games/newgames.md` (How Many?, Phase B's Swipe Sort and Pairs), split into work packages with exclusive file ownership so Opus/Sonnet agents can build them in parallel. Steady Hand (Phase C) is **not** built; §8 is its risk entry for `OPEN_QUESTIONS.md`. Everything numeric here is a starting value under the usual rule: the game doc and `SCORING.md` are the source of truth once written, and constants are retuned only with playtest evidence (`TESTING.md` §4).
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Related: ADR-134 (pool expansion, seeding already per round), ADR-136 (this plan, §7), ADR-018/021/025/104/113/116, `docs/plans/host-v3.md` (host redesign, in parallel; it may take ADR-135), research notes `scratchpad/v3/research-games.md` (numerosity Weber fractions, choice RT, 4×4 memory benchmarks, DeviceMotion permissions).
 
@@ -14,7 +14,7 @@ Same contract as the seven existing games (`.claude/rules/games.md`, `ARCHITECTU
 
 - Touch only, portrait, 360 px minimum. Worst case ≤ 62 s, well inside the 120 s round cap. Every attempt has its own timeout; `roundEnded` finishes the game at once with the timeout rule.
 - One integer 0–1000 from a pure `score(raw)` in `scoring.ts` (`Math.round` once, then clamp); `buildRaw(...)` builds the exact payload; `validate<Game>Raw(raw, score)` mirrors the server bounds (as `validateColorClashRaw`); worked examples = unit tests with the same numbers.
-- All randomness from `GameProps.seed` through `src/lib/rng.ts`, keyed by content position (`Rng(\`${seed}:hm:round${i}\`)` style, ADR-134 (2)), so everyone in the round sees the same content and a reload shows the same thing again.
+- All randomness from `GameProps.seed` through `src/lib/rng.ts`, keyed by content position (`Rng(\`${seed}:hm:round${i}\`)` style, ADR-134 (2)), so everyone in the round sees the same content and a reload shows the same thing again. *(Superseded by ADR-137 (1): the shell seeded per player when this plan was written; the round id is the seed since then, Trivia alone per player.)*
 - Timing: `performance.now()` on `pointerdown` while live; every clock is a `Date.now()` epoch in the snapshot, persisted with `onProgress` after every start event and every attempt; on reload elapsed time is measured from the stored epoch (ADR-018). Copy the Color Clash pattern: one scheduler effect keyed on the snapshot, `wake` counter, `finishedRef`, `onFinish` exactly once.
 - Strings only via `t('game.<id>.…')` from `COPY.md` §5.8–§5.10 (all listed in §6 below; WP0 adds them). Tokens only in CSS modules; logical properties; RTL never mirrors game geometry; player names in `<bdi>`; Western digits.
 - Phone chrome per `DESIGN_SYSTEM.md` §0.3 (eyebrow + title intro card 1.5 s, countdown bar + seconds as Trivia/Color Clash, `ScreenHeader`/`DetailList` from `src/player/chrome.tsx` where a shared block fits). Touch targets ≥ 48 px. Reduced motion honoured (`prefers-reduced-motion` → no shake/flip/fly animations; countdown steps once per second).
@@ -240,7 +240,7 @@ Calibration assumptions: a **strong** player registers swipes at ≈ 450 ms (SD 
 | B (typical) | 33 / 3 / 8 | 550 | 22 | 30 | **514** |
 | C (weak) | 22 / 5 / 12 | 640 | 5 | 12 × 0.25 = 3 | round(113) = **113** |
 | D (random spammer) | 30 / 33 / 0 | 260 | −3 | 0 (net ≤ 0) | clamp(−66) = **0** |
-| E (idle) | 0 / 0 / 36 | null | −36 | 0 | **0** |
+| E (idle) | 0 / 0 / 37 | null | −37 | 0 | **0** |
 | F (near-perfect) | 46 / 1 / 2 | 430 | 43 | 54 | clamp(1000) = **1000** |
 
 ### 2.4 Raw payload
@@ -304,7 +304,7 @@ P7 rows: correct · wrong way · missed · average time (`game.swipe_sort.result
 | Two fingers | Only the captured pointer counts |
 | Reload mid-drag | Drag lost; the same item continues from `itemStartEpoch` with its original window |
 | Reload during the gap | Gap ends at `gapEndEpoch`, then item `k + 1` |
-| Screen lock | Epochs run; on return, elapsed windows are misses counted in order until the clock catches up (the scheduler loops: each due miss advances `itemIndex` and re-arms, so a 10 s lock yields ≈ 15 misses, as an idle player would get) |
+| Screen lock | Epochs run; on return, elapsed windows are misses counted in order until the clock catches up (the scheduler loops: each due miss advances `itemIndex` and re-arms, so a 10 s lock yields ≈ 13–15 misses, as an idle player would get) |
 | Round ended early | Finish now; the open item doesn't count |
 | Rotation | Shell overlay (E16) |
 
@@ -322,9 +322,9 @@ Snapshot: `{ phase, gameStartEpoch, itemIndex, itemStartEpoch, gapEndEpoch, corr
 | SS-T6 | Example A with score 875 (22 × 37 + 61) | `ss.formula_band`; 814 and 874 accepted |
 | SS-T7 | Same seed | same colour sequence; over 200 items 40–60 % blue |
 | SS-T8 | `I(t)`: t = 0 → 900; t = 15000 → 675; t = 30000 → 450 |
-| SS-T9 | Gesture: 39 px → nothing; 40 px right → `amber`; dy 50 / dx 30 → nothing; cancel → nothing |
+| SS-T9 | Gesture: 39 px → nothing; 40 px right → `right`; dy 50 / dx 30 → nothing; cancel → nothing |
 | SS-T10 | Wrong swipe | wrong + 1, gap 150 ms, next item |
-| SS-T11 | Idle player | ≈ 36 misses, score 0, finishes by 32 s (`worstCase.test.tsx`) |
+| SS-T11 | Idle player | 37 misses, score 0, finishes by 32 s (`worstCase.test.tsx`) |
 | SS-T12 | Reload mid-item | same item, same deadline; game ends at the original 30 s |
 | SS-T13 | Real iPhone (Safari) and iOS Chrome | 20 swipes from the surface centre: 0 navigations, 0 refreshes; an edge-started swipe never scores |
 | SS-T14 | Playtest, 5 strong players | median 780–900, nobody 1000 → else retune 22 / 60 / the floor (ADR-136) |
@@ -483,11 +483,13 @@ Snapshot: `{ phase, gameStartEpoch, faceUp: number[] (0–2 positions), matchedI
 
 ## 5. How Many? big-screen reveal (H3)
 
+> Superseded by ADR-137 (5), (6) for the timing and the mode rule: the reveal is anchored on `rounds.ended_at`, not the mount (current spec: `SCREENS.md` H3). Kept below as history, with the numbers corrected.
+
 Extends the Stop the Clock reveal (ADR-025, `StcReveal.tsx`) to a count axis.
 
-- **Data source:** `fetchRoundReveal(roundId)` (unchanged, `src/lib/api.ts`): visible round-board rows with `raw`. Pure layout in `src/host/howManyReveal.ts` (`howManyStrips(rows, labelled = HM_REVEAL_LABELLED)`), mirroring `reveal.ts`: for flash `i`, `N_i` = the **most common** `rounds[i].true_count` across rows (everyone shares the seed; a tampered row can't move the axis); one dot per row with a non-null guess at `pos = 50 + 100 × clamp((g − N) / N, −0.5, 0.5)` (the window is ±50 % relative error, `HM_REVEAL_WINDOW = 0.5` in `config.ts`, so all three strips share one scale), `pinned` beyond it; the first `HM_REVEAL_LABELLED = 5` rows (round-board order) are labelled. Also per strip: `mean` = the rounded mean of the non-null guesses and its `meanPos`.
-- **Layout** (`src/host/HowManyReveal.tsx`, on the v2 tokens and the existing `.strip*`/`.reveal*` classes; host-v3 restyles later): header eyebrow `game.how_many.reveal_title` with the centre-axis label `game.how_many.reveal_axis`; three strips, each labelled `game.how_many.reveal_round` ("Flash n · 27", the true count as the hero of the label) with `game.how_many.reveal_mean` ("Crowd average 25") muted under it; ticks at 10 %…90 % (every 5 % error); centre line at the true count; player dots as STC (labels in lanes, `labelLanes` moved into a shared helper or duplicated: WP4 may copy it, the file is small); a **crowd-average marker** (`.revealMean`: an amber `--highlight` bar, `--line-width-strong` wide, full track height) at `meanPos`.
-- **Timing inside the 7 s round-board step:** dots burst in with `revealSchedule([n1, n2, n3])` within 5 s (shatter, as STC; 200 ms fades with reduced motion); the crowd-average marker fades in at 5.2 s (`RevealIn` with `shards = 0`, delay = `plan` end), so the "wisdom of the crowd" beat lands last. After the last round the step still shows 7 s then H4 (ADR-129 (2)); nothing to skip.
+- **Data source:** `fetchRoundReveal(roundId)` (unchanged, `src/lib/api.ts`): visible round-board rows with `raw`. Pure layout in `src/host/howManyReveal.ts` (`howManyStrips(rows, labelled = HM_REVEAL_LABELLED)`), mirroring `reveal.ts`: for flash `i`, `N_i` = the **most common** `rounds[i].true_count` across rows (everyone shares the seed since ADR-137 (1); a tampered row can't move the axis only with ≥ 3 rows: with 1–2 rows the higher-ranked row's value wins); one dot per row with a non-null guess at `pos = 50 + 100 × clamp((g − N) / N, −0.5, 0.5)` (the window is ±50 % relative error, `HM_REVEAL_WINDOW = 0.5` in `config.ts`, so all three strips share one scale), `pinned` beyond it; the first `HM_REVEAL_LABELLED = 5` rows (round-board order) are labelled. Also per strip: `mean` = the rounded mean of the non-null guesses and its `meanPos`.
+- **Layout** (`src/host/HowManyReveal.tsx`, on the v2 tokens and the existing `.strip*`/`.reveal*` classes; host-v3 restyles later): header eyebrow `game.how_many.reveal_title` with the centre-axis label `game.how_many.reveal_axis`; three strips, each labelled `game.how_many.reveal_round` ("Flash n · 27", the true count as the hero of the label) with `game.how_many.reveal_mean` ("Crowd average 25") muted under it; ticks at 10 %…90 % (every 10 % error); centre line at the true count; player dots as STC (labels in lanes, `labelLanes` moved into a shared helper or duplicated: WP4 may copy it, the file is small); a **crowd-average marker** (`.revealMean`: an amber `--highlight` bar, `--line-width-strong` wide, full track height) at `meanPos`.
+- **Timing inside the 7 s round-board step:** every delay counts from `rounds.ended_at` (host offset), not the mount; dots burst in with `revealSchedule([n1, n2, n3], { totalMs: HM_REVEAL_DOTS_MS })` within 3.5 s (shatter, as STC; 200 ms fades with reduced motion); the crowd-average marker fades in at 4.0 s after `ended_at` (`HM_REVEAL_MEAN_MS`, `RevealIn` with `shards = 0`), so the "wisdom of the crowd" beat lands last with ≥ 3 s left in the step; a reloaded host and late rows show what is already due at once (ADR-137 (5)). After the last round the step still shows 7 s then H4 (ADR-129 (2)); nothing to skip.
 - **Hook-up:** `Intermission.tsx` replaces the `round.game === 'stop_the_clock'` special case with a `REVEALS` map `{ stop_the_clock: StcReveal, how_many: HowManyReveal }` (same props `roundId`, `version`, `rows?`), one small edit block. Phones show no reveal (as STC). H2 already shows scores only.
 - **ADR:** no separate ADR; ADR-136 (§7) records the reveal, the "true counts only on the big screen" rule and the crowd-average marker. ADR-025 is unchanged (it governs Stop the Clock).
 
@@ -656,7 +658,7 @@ Owns: `src/host/HowManyReveal.tsx`, `src/host/howManyReveal.ts`, `src/host/howMa
 
 Interface: does **not** import from `src/games/how-many`; reads `raw.rounds[i].true_count` / `.guess` through a local `HowManyRoundLike` type (as `reveal.ts` does with `StcAttemptLike`), so it builds in parallel with WP1. Props identical to `StcReveal` (`roundId`, `version`, `rows?`) so the dev preview and Intermission treat both alike. Test ids: `hm-reveal`, `hm-strip` (`data-count`), `hm-dot`, `hm-dot-label`, `hm-mean`.
 
-Acceptance: pure layout unit tests (positions for `g = N` → 50, `g = 1.5 N` → 100 pinned, `g = 0.8 N` → 10; the mode rule for `N` with one tampered row; null guesses produce no dot; labelled count = 5); a render test with 3 fake rows shows three strips, dots with `insetInlineStart` from the layout, and the mean marker after the last dot's slot (fake timers); the STC reveal's tests still pass; the `stop_the_clock` path in Intermission behaves exactly as before (existing tests green).
+Acceptance: pure layout unit tests (positions for `g = N` → 50, `g = 1.5 N` → 100 pinned, `g = 0.8 N` → 30; the mode rule for `N` with one tampered row; null guesses produce no dot; labelled count = 5); a render test with 3 fake rows shows three strips, dots with `insetInlineStart` from the layout, and the mean marker after the last dot's slot (fake timers); the STC reveal's tests still pass; the `stop_the_clock` path in Intermission behaves exactly as before (existing tests green).
 
 ### WP5 — integration and docs sync · **sonnet**
 

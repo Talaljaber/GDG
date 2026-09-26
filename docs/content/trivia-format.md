@@ -98,7 +98,7 @@ Also checked by the content script (`npm run check:trivia`, a Phase 3 task), whi
 | Field | Rule |
 |---|---|
 | `question.en` / `.ar` | One sentence, ≤ 140 characters, ends with "?" (Arabic "؟"). |
-| `options[0]` | **Always the correct answer.** The phone shuffles all four per player (Fisher–Yates, per-round seed), so position in the file never leaks. |
+| `options[0]` | **Always the correct answer.** The phone shuffles all four per player (Fisher–Yates, per-player seed `<round id>:<player row id>`, ADR-027), so position in the file never leaks. |
 | `options[1..3]` | Plausible wrong answers of similar length and style to the correct one; ≤ 60 characters. |
 | `source` | A URL or "common knowledge" for obvious facts. Used by reviewers, never shown. |
 | `reviewed_by` | Names of team members who checked the fact, the Arabic, and the fairness. |

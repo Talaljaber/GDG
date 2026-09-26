@@ -47,6 +47,19 @@ export function isRoundEndedLocally(round: RoundRow, roundStartEpoch: number | n
   return roundStartEpoch !== null && now >= roundStartEpoch + ROUND_CAP_MS;
 }
 
+/**
+ * The round this phone set up locally ended on the server while the phone was still in its P5
+ * 3-2-1 (host force-end, or an E26 late phone that began just before the cap): the game never
+ * showed, so the round counts as not played. Only a server `done` can do this; the local 120 s cap
+ * can't pass before the start. The phone submits nothing (SESSION_LIFECYCLE §5, ADR-014) and the
+ * shell clears the round's local state (MemberFlow).
+ */
+export function roundEndedBeforeStart(local: CurrentState, rounds: readonly RoundRow[], now: number): boolean {
+  if (!local.roundId || local.roundStartEpoch === null || now >= local.roundStartEpoch) return false;
+  if (hasFinishedRound(local, local.roundId)) return false;
+  return rounds.some((r) => r.id === local.roundId && r.status === 'done');
+}
+
 export interface FlowInput {
   local: CurrentState;
   session: SessionRow | null;
@@ -99,9 +112,16 @@ export function derivePlayerView({
   }
 
   // A round this phone started locally and hasn't finished must be finished
-  // first (and submitted), even if the server already ended it (§5).
+  // first (and submitted), even if the server already ended it (§5), unless it ended while the
+  // phone was still in its 3-2-1 (E26/E27): then the game is never mounted, no 0 row is sent
+  // (ADR-014), and the flow falls through to the between-rounds / results screens.
   const localRound = local.roundId ? rounds.find((r) => r.id === local.roundId) : undefined;
-  if (localRound && local.roundStartEpoch !== null && !hasFinishedRound(local, localRound.id)) {
+  if (
+    localRound &&
+    local.roundStartEpoch !== null &&
+    !hasFinishedRound(local, localRound.id) &&
+    !roundEndedBeforeStart(local, rounds, now)
+  ) {
     const ended = isRoundEndedLocally(localRound, local.roundStartEpoch, now);
     if (!ended && now < local.roundStartEpoch) {
       return { screen: 'intro', round: localRound, begin: false };

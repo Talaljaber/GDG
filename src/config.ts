@@ -52,8 +52,14 @@ export const HM_REVEAL_LABELLED = 5;
 /** How Many? reveal window: ±50 % relative error around the true count; dots beyond are pinned. */
 export const HM_REVEAL_WINDOW = 0.5;
 
-/** The crowd-average marker fades in this long into the 7 s board step (after the 5 s of dots). */
-export const HM_REVEAL_MEAN_MS = 5200;
+/** The How Many? dots burst in within this long after `rounds.ended_at` (ADR-137 (5)). */
+export const HM_REVEAL_DOTS_MS = 3500;
+
+/**
+ * The crowd-average marker fades in this long after `rounds.ended_at`, leaving ≥ 3 s of the
+ * 7 s round-board step (INTERMISSION_ROUND_BOARD_MS) for the whole picture (ADR-137 (5)).
+ */
+export const HM_REVEAL_MEAN_MS = 4000;
 
 /** Presence grey-out: time without presence before a player is shown greyed out. */
 export const PRESENCE_GREY_MS = 10_000;

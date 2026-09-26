@@ -6,9 +6,12 @@
  * geometry, never mirrored). A blue chevron always points left, an amber one
  * right (the shape cue beside colour). Each item has a window I(t) that
  * shrinks from 900 to 450 ms over the 30 s game clock; no swipe in time is a
- * miss. Swipe time = performance.now() at the swipe registering (40 px of
+ * miss. The first chevron appears at roundStartEpoch + 1.5 s (never from
+ * mount, so a phone hidden during the 3-2-1 or the intro doesn't start
+ * late). Swipe time = performance.now() at the swipe registering (40 px of
  * horizontal travel) minus the item's onset; every clock is an epoch
- * persisted through onProgress, so a reload never resets it (ADR-018).
+ * persisted through onProgress, so a reload never resets it (ADR-018). Only
+ * the live item a drag started on follows the finger.
  *
  * Browser-gesture defence (§3, §9): `touch-action: none` on the surface, a
  * non-passive `touchmove` listener that calls preventDefault, a non-passive
@@ -157,11 +160,22 @@ export function SwipeSort({ seed, roundStartEpoch, roundEnded, snapshot, onProgr
       const current = stateRef.current;
       const deadline = itemDeadline(current);
       const gameEnd = gameEndEpoch(current);
-      if (current.phase !== 'play' || deadline === null || gameEnd === null || current.gapEndEpoch !== null) return;
-      if (dragItemRef.current !== current.itemIndex) return;
+      // Every early return below comes after the gesture was consumed: the
+      // chevron springs back (nothing else would reset it).
+      if (current.phase !== 'play' || deadline === null || gameEnd === null || current.gapEndEpoch !== null) {
+        setDrag(0);
+        return;
+      }
+      if (dragItemRef.current !== current.itemIndex) {
+        setDrag(0);
+        return;
+      }
       const now = Date.now();
       // Past the window or the clock: the scheduler is about to count the miss / end the game.
-      if (now >= deadline || now >= gameEnd) return;
+      if (now >= deadline || now >= gameEnd) {
+        setDrag(0);
+        return;
+      }
       const rawMs =
         perfStartRef.current !== null ? performance.now() - perfStartRef.current : now - (current.itemStartEpoch as number);
       const swipeMs = Math.round(Math.max(0, Math.min(rawMs, currentWindowMs(current))));
@@ -178,7 +192,7 @@ export function SwipeSort({ seed, roundStartEpoch, roundEnded, snapshot, onProgr
         side,
       });
     },
-    [commit, seed],
+    [commit, seed, setDrag],
   );
 
   // ---- pointer handlers (the surface) ----
@@ -210,8 +224,15 @@ export function SwipeSort({ seed, roundStartEpoch, roundEnded, snapshot, onProgr
       if (before.pointerId === null || event.pointerId !== before.pointerId) return;
       const step = reduceGesture(before, { type: 'move', pointerId: event.pointerId, x: event.clientX, y: event.clientY });
       gestureRef.current = step.state;
-      if (step.swipe) registerSwipe(step.swipe);
-      else setDrag(step.dx);
+      if (step.swipe) {
+        registerSwipe(step.swipe);
+        return;
+      }
+      // Only the live item the drag started on follows the finger: a drag held
+      // across a miss never moves the next chevron (it can't sort it, §3).
+      const current = stateRef.current;
+      if (dragItemRef.current === current.itemIndex && current.itemStartEpoch !== null) setDrag(step.dx);
+      else setDrag(0);
     },
     [registerSwipe, setDrag],
   );
@@ -271,16 +292,27 @@ export function SwipeSort({ seed, roundStartEpoch, roundEnded, snapshot, onProgr
     };
   }, []);
 
-  // Intro card -> first chevron; the 30 s game clock starts here.
+  // Intro card -> first chevron at roundStartEpoch + 1.5 s: the 30 s game
+  // clock is anchored on the round start, never on mount, so a phone hidden
+  // during the 3-2-1 or the intro doesn't start late (§3). A later mount or
+  // return lands on that epoch and the scheduler counts the missed items.
   useEffect(() => {
     if (state.phase !== 'intro') return;
+    const onset = roundStartEpochRef.current + INTRO_MS;
     const timer = window.setTimeout(() => {
       const now = Date.now();
-      perfStartRef.current = performance.now();
-      commit({ ...stateRef.current, phase: 'play', gameStartEpoch: now, itemIndex: 0, itemStartEpoch: now });
-    }, INTRO_MS);
+      if (now < onset) {
+        setWake((n) => n + 1);
+        return;
+      }
+      // Back-dated to the onset epoch, as after a reload.
+      perfStartRef.current = performance.now() - (now - onset);
+      commit({ ...stateRef.current, phase: 'play', gameStartEpoch: onset, itemIndex: 0, itemStartEpoch: onset });
+      // A late mount / return: count what already elapsed (or end the game) at once.
+      if (now > onset) runTimeline();
+    }, Math.max(0, onset - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [state.phase, commit]);
+  }, [state.phase, wake, commit, runTimeline]);
 
   // One scheduler for what is due on the epochs: the game end, the item's
   // deadline (a miss) and the end of a gap (resumable after a reload).

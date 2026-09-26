@@ -2,7 +2,7 @@
 
 Purpose: the complete spec for Trivia: rules, the per-player draw from the pool, timings, scoring with worked examples, rejection bounds, UI states, theming, accessibility, edge cases and test cases. The question file format and the writing guide are in `docs/content/trivia-format.md`. Shared rules are in `SCORING.md`; if they disagree, `SCORING.md` wins.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Game id: `trivia` · One-line pitch (COPY `game.trivia.pitch`): "5 quick questions. Faster right answers score more."
 
@@ -15,7 +15,9 @@ Game id: `trivia` · One-line pitch (COPY `game.trivia.pitch`): "5 quick questio
 - A correct answer scores 100 points plus up to 100 more for time remaining. A wrong answer or a timeout scores 0 for that question; the round continues.
 - One tap answers; no changing the answer.
 
-## 2. The draw (on the phone, from the per-round seed)
+## 2. The draw (on the phone, from the per-player seed)
+
+Trivia is the one game whose seed is **per player**: `<round id>:<player row id>` (`seedScope: 'player'` on the game module, `src/player/seed.ts`), so each player draws their own five and their own option order (ADR-027). Every other game gets the round id, the same seed on every phone in the round (ADR-134 (2), ADR-136 (1)).
 
 1. Take only questions with `status: "ready"` from `docs/content/trivia-questions.json` (or, in a `TRIVIA_POOL=family` build, from the family test set, step 7).
 2. Draw **2** from bucket `google_dev`, **2** from `ai_basics`, **1** from `gdg_community`, uniformly without replacement.
